@@ -1,0 +1,1435 @@
+            ORG PRFBS
+S7CSLOF EQU $34 ; corrupt string length source offset
+S7CSIOF EQU $33 ; corrupt string index source offset
+S7DCRJ  EQU $95 ; data-capacity diagnostic offset
+S7BCRJ  EQU $14 ; BSS-capacity diagnostic offset
+S7WDRJ  EQU $2D ; wide-record diagnostic offset
+S7SACP  EQU $17 ; sealed array capacity source offset
+S7PRCP  EQU $A0 ; parameter-capacity diagnostic offset
+S7ROWH  EQU $55 ; read-only whole-assignment diagnostic offset
+S7ROFL  EQU $42 ; read-only field-assignment diagnostic offset
+S7ROAR  EQU $2A ; read-only array-assignment diagnostic offset
+S7ROST  EQU $2A ; read-only string-assignment diagnostic offset
+S7ACIN  EQU $3D ; aggregate-constant incomplete diagnostic offset
+S7ACWT  EQU $1A ; aggregate-constant wrong-type diagnostic offset
+S7ACRT  EQU $25 ; aggregate-constant runtime diagnostic offset
+S7ACST  EQU $10 ; aggregate-constant scalar-type diagnostic offset
+S7RCRJ  EQU $96 ; read-only capacity diagnostic offset
+S7RDOF  EQU $C00 ; read-only data offset from generated image base
+S7BRDO  EQU $AC00 ; backup address corresponding to generated read-only data
+S7SREB  EQU $4474 ; read-only segment entry base field
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFCS),A
+            LD   (PRFSTTS),A
+            LD   A,160
+            LD   HL,STG7CPYS
+            LD   DE,STG7CPY0
+            CALL CMPLAGG0
+            JP   C,PRFFLCMP
+            CALL ENCDAGGR
+            JP   C,PRFFLENC
+            LD   HL,(GNRTDSZ)
+            LD   (PRFCPYGN),HL
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLRN
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLOT8
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFFLOT8
+            LD   A,(PRGRMDTB)
+            CP   1
+            JP   NZ,PRFFLST3
+            LD   A,(PRGRMBS0)
+            CP   2
+            JP   NZ,PRFFLST3
+            LD   A,160
+            LD   HL,STG7FRWR
+            LD   DE,STG7FRW0
+            CALL CMPLAGG0
+            JP   C,PRFFLFRW
+            CALL ENCDAGGR
+            JP   C,PRFFLFR0
+            LD   HL,(GNRTDSZ)
+            LD   (PRFFRWRD),HL
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFR1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLFR2
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLFR3
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFFLFR3
+            LD   A,(PRGRMDTB)
+            CP   3
+            JP   NZ,PRFFLFR4
+            LD   A,(PRGRMDTB+1)
+            CP   9
+            JP   NZ,PRFFLFR4
+            LD   A,160
+            LD   HL,STG7STR9
+            LD   DE,STG7STRA
+            CALL CMPLAGG0
+            JP   C,PRFFLST4
+            CALL ENCDAGGR
+            JP   C,PRFFLST5
+            LD   HL,(GNRTDSZ)
+            LD   (PRFSTRNG),HL
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLST6
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLST7
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLST8
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFFLST8
+            LD   A,(PRGRMDTB)
+            CP   3
+            JP   NZ,PRFFLST9
+            LD   A,(PRGRMDTB+1)
+            CP   'A'
+            JP   NZ,PRFFLST9
+            LD   A,(PRGRMDTB+2)
+            CP   'Y'
+            JP   NZ,PRFFLST9
+            LD   A,(PRGRMDTB+3)
+            CP   'C'
+            JP   NZ,PRFFLST9
+            LD   A,(PRGRMDTB+4)    ; sealed byte at capacity+1
+            OR   A
+            JP   NZ,PRFFLST9
+            LD   A,161
+            LD   HL,STG7CRRP
+            LD   DE,STG7CRR6
+            CALL CMPLAGG0
+            JP   C,PRFFLBN4
+            CALL ENCDAGGR
+            JP   C,PRFFLBN5
+            LD   A,$FF                    ; L=255 remains invalid
+            LD   (GNRTDRO0),A
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLBN6
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLBN7
+            LD   A,(TRPNMBR)
+            CP   1
+            JP   NZ,PRFFLBN7
+            LD   HL,(TRPOFFST)
+            LD   DE,S7CSLOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLBN7
+            LD   A,163
+            LD   HL,STG7CRR7
+            LD   DE,STG7CRR8
+            CALL CMPLAGG0
+            JP   C,PRFFLBN4
+            CALL ENCDAGGR
+            JP   C,PRFFLBN5
+            LD   A,$FF                    ; indexing rejects the same corruption
+            LD   (GNRTDRO0),A
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLBN6
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLBN7
+            LD   A,(TRPNMBR)
+            CP   1
+            JP   NZ,PRFFLBN7
+            LD   HL,(TRPOFFST)
+            LD   DE,S7CSIOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLBN7
+            LD   A,162
+            LD   HL,STG7SLDA
+            LD   DE,STG7SLD1
+            CALL CMPLAGG0
+            JP   C,PRFFLST4
+            LD   HL,(PRGRMBSS)
+            LD   DE,1020
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLST9
+            CALL ENCDAGGR
+            JP   C,PRFFLST5
+            LD   A,(PRGRMBS0+1019)  ; terminator in final 255-byte element
+            OR   A
+            JP   NZ,PRFFLST9
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLST6
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLST7
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLST8
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFFLST8
+            LD   A,166
+            LD   HL,STG7LRGD
+            LD   DE,STG7LRG0
+            CALL CMPLAGG0
+            JP   C,PRFFLST4
+            LD   HL,(STTCIMGL)
+            LD   DE,510
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLST9
+            CALL ENCDAGGR
+            JP   C,PRFFLST5
+            LD   HL,(GNRTDROD)
+            LD   DE,510
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLST9
+            LD   HL,(GNRTDDTS)
+            LD   DE,510
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLST9
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLST6
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLST7
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFFLST8
+            LD   A,(PRGRMDTB)
+            CP   1
+            JP   NZ,PRFFLST9
+            LD   A,(PRGRMDTB+255)
+            CP   1
+            JP   NZ,PRFFLST9
+            LD   A,(PRGRMDTB+256)
+            CP   'B'
+            JP   NZ,PRFFLST9
+            LD   A,(PRGRMDTB+509)
+            OR   A
+            JP   NZ,PRFFLST9
+
+            ; Four complete sealed strings plus a four-byte tail exactly fill
+            ; the initialized-data and rodata regions. Startup must copy all
+            ; 1024 bytes without changing the first byte beyond the region.
+            LD   A,167
+            LD   HL,STG7DTCP
+            LD   DE,STG7DTC0
+            CALL CMPLAGG0
+            JP   C,PRFFLDT0
+            LD   HL,(STTCIMGL)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLDT0
+            CALL ENCDAGGR
+            JP   C,PRFFLDT0
+            LD   HL,(GNRTDROD)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLDT0
+            LD   HL,(GNRTDDTS)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLDT0
+            LD   A,$A5
+            LD   (PRGRMDTL),A
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLDT0
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLDT0
+            LD   A,(PRGRMDTB)
+            OR   A
+            JP   NZ,PRFFLDT0
+            LD   A,(PRGRMDTL-1)
+            OR   A
+            JP   NZ,PRFFLDT0
+            LD   A,(PRGRMDTL)
+            CP   $A5
+            JP   NZ,PRFFLDT0
+
+            LD   A,168
+            LD   HL,STG7DTC1
+            LD   DE,STG7DTC2
+            LD   A,DGNSTCP1
+            LD   BC,S7DCRJ
+            CALL PRFEXPC1
+            JP   C,PRFFLDT1
+            LD   A,169
+            LD   HL,STG7DTCP
+            LD   DE,STG7DTC0
+            CALL CMPLAGG0
+            JP   C,PRFFLDT1
+
+            ; The same exact-fill and first-rejection boundary applies
+            ; independently to default-initialized BSS storage.
+            LD   A,170
+            LD   HL,STG7BSSC
+            LD   DE,STG7BSS0
+            CALL CMPLAGG0
+            JP   C,PRFFLBSS
+            LD   HL,(PRGRMBSS)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLBSS
+            CALL ENCDAGGR
+            JP   C,PRFFLBSS
+            LD   HL,(GNRTDBSS)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLBSS
+            LD   A,$A5
+            LD   (PRGRMBS1),A
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLBSS
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLBSS
+            LD   A,(PRGRMBS0)
+            OR   A
+            JP   NZ,PRFFLBSS
+            LD   A,(PRGRMBS1-1)
+            CP   'Y'
+            JP   NZ,PRFFLBSS
+            LD   A,(PRGRMBS1)
+            CP   $A5
+            JP   NZ,PRFFLBSS
+
+            LD   A,171
+            LD   HL,STG7BSS1
+            LD   DE,STG7BSS2
+            LD   A,DGNSTCP1
+            LD   BC,S7BCRJ
+            CALL PRFEXPC1
+            JP   C,PRFFLBS0
+            LD   A,172
+            LD   HL,STG7BSSC
+            LD   DE,STG7BSS0
+            CALL CMPLAGG0
+            JP   C,PRFFLBS0
+
+            ; One record may exceed 255 bytes. Its word field offset, array
+            ; length, 501-byte outer-array stride, nested element address and
+            ; complete 501-byte copy must all survive. The array occupies 1002
+            ; BSS bytes.
+            LD   A,173
+            LD   HL,STG7WDAG
+            LD   DE,STG7WDA0
+            CALL CMPLAGG0
+            JP   C,PRFFLWDA
+            LD   HL,(PRGRMBSS)
+            LD   DE,1002
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLWDA
+            CALL ENCDAGGR
+            JP   C,PRFFLWDA
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLWDA
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLWDA
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLWDA
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFFLWDA
+            LD   A,(PRGRMBS0+499)
+            CP   'Y'
+            JP   NZ,PRFFLWDA
+            LD   A,(PRGRMBS0+1000)
+            CP   'Y'
+            JP   NZ,PRFFLWDA
+
+            ; Growing an already-1024-byte field by one byte is rejected at
+            ; the final field declaration rather than wrapping its extent.
+            LD   A,174
+            LD   HL,STG7WDRC
+            LD   DE,STG7WDR0
+            LD   A,DGNSTCP1
+            LD   BC,S7WDRJ
+            CALL PRFEXPC1
+            JP   C,PRFFLWDR
+
+            ; Explicit initialization also crosses the old byte ceiling. The
+            ; 256th source element must be retained and copied into RAM.
+            LD   A,175
+            LD   HL,STG7WDIN
+            LD   DE,STG7WDI0
+            CALL CMPLAGG0
+            JP   C,PRFFLWDI
+            LD   HL,(STTCIMGL)
+            LD   DE,256
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLWDI
+            LD   A,(STTCIMGB)
+            CP   1
+            JP   NZ,PRFFLWDI
+            LD   A,(STTCIMGB+255)
+            CP   1
+            JP   NZ,PRFFLWDI
+            CALL ENCDAGGR
+            JP   C,PRFFLWDI
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLWDI
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLWDI
+            LD   A,(PRGRMDTB)
+            CP   1
+            JP   NZ,PRFFLWDI
+            LD   A,(PRGRMDTB+255)
+            CP   1
+            JP   NZ,PRFFLWDI
+
+            LD   A,176
+            LD   HL,STG7WRDL
+            LD   DE,STG7WRD0
+            CALL CMPLAGG0
+            JP   C,PRFFLWRD
+            LD   A,(AGGRGTT7)
+            CP   2
+            JP   NZ,PRFFLWRD
+
+            LD   A,'4'
+            LD   (STG7SLD0),A
+            LD   A,164
+            LD   HL,STG7SLDA
+            LD   DE,STG7SLD1
+            CALL CMPLAGG0
+            JP   NC,PRFFLSTB
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCS0
+            JP   NZ,PRFFLSTB
+            LD   HL,(DGNSTCOF)
+            LD   DE,S7SACP
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLSTB
+            LD   A,'5'
+            LD   (STG7SLD0),A
+            LD   A,165
+            LD   HL,STG7SLDA
+            LD   DE,STG7SLD1
+            CALL CMPLAGG0
+            JP   NC,PRFFLSTB
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCS0
+            JP   NZ,PRFFLSTB
+            LD   HL,(DGNSTCOF)
+            LD   DE,S7SACP
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLSTB
+            LD   A,160
+            LD   HL,STG7BND0
+            LD   DE,STG7BND1
+            CALL CMPLAGG0
+            JP   C,PRFFLBN4
+            CALL ENCDAGGR
+            JP   C,PRFFLBN5
+            LD   HL,(GNRTDSZ)
+            LD   (PRFBNDSG),HL
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLBN6
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLBN7
+            LD   A,(TRPNMBR)
+            CP   1
+            JP   NZ,PRFFLBN7
+            LD   HL,(TRPOFFST)
+            LD   DE,134
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLBN7
+            LD   A,(SRVCOTPT)
+            OR   A
+            JP   NZ,PRFFLBN7
+            LD   A,(PRGRMDTB)
+            CP   3
+            JP   NZ,PRFFLBN8
+            LD   A,(PRGRMDTB+1)
+            CP   7
+            JP   NZ,PRFFLBN8
+            LD   A,DGNSTCIN
+            LD   BC,86
+            LD   HL,STG7CNST
+            LD   DE,STG7CNS0
+            CALL PRFEXPC1
+            JP   C,PRFFLCNS
+            LD   A,DGNSTCTY
+            LD   BC,116
+            LD   HL,STG7NMNL
+            LD   DE,STG7NMN0
+            CALL PRFEXPC1
+            JP   C,PRFFLNMN
+            LD   A,DGNSTCTY
+            LD   BC,200
+            LD   HL,STG7TRNS
+            LD   DE,STG7TRN0
+            CALL PRFEXPC1
+            JP   C,PRFFLTR3
+            LD   A,DGNSTCRT
+            LD   BC,52
+            LD   HL,STG7RTN8
+            LD   DE,STG7RTN9
+            CALL PRFEXPC1
+            JP   C,PRFFLRTN
+            LD   A,DGNSTCPR
+            LD   BC,S7PRCP
+            LD   HL,STG7PRMA
+            LD   DE,STG7PRMB
+            CALL PRFEXPC1
+            JP   C,PRFFLPRM
+            LD   A,DGNSTCEK
+            LD   BC,118
+            LD   HL,STG7CLLC
+            LD   DE,STG7CLLE
+            CALL PRFEXPC1
+            JP   C,PRFFLCLL
+            LD   A,DGNSTCDP
+            LD   BC,11
+            LD   HL,STG7PRM8
+            LD   DE,STG7PRM9
+            CALL PRFEXPC1
+            JP   C,PRFFLPR0
+            LD   A,DGNSTCTY
+            LD   BC,46
+            LD   HL,STG7STR6
+            LD   DE,STG7STR7
+            CALL PRFEXPC1
+            JP   C,PRFFLSTA
+            LD   A,DGNSTCDP
+            LD   BC,6
+            LD   HL,STG7MNPR
+            LD   DE,STG7MNP0
+            CALL PRFEXPC1
+            JP   C,PRFFLMNP
+            LD   A,DGNSTCE2
+            LD   BC,9
+            LD   HL,STG7MNP1
+            LD   DE,STG7MNP2
+            CALL PRFEXPC1
+            JP   C,PRFFLMN0
+            LD   A,DGNSTCE4
+            LD   BC,11
+            LD   HL,STG7MNRS
+            LD   DE,STG7MNR0
+            CALL PRFEXPC1
+            JP   C,PRFFLMNR
+            LD   A,160
+            LD   HL,STG7RTN6
+            LD   DE,STG7RTN7
+            CALL CMPLAGG0
+            JP   C,PRFFLRT0
+            LD   A,DGNSTCEC
+            LD   BC,12
+            LD   HL,STG7MSSN
+            LD   DE,STG7MSS0
+            CALL PRFEXPC1
+            JP   C,PRFFLMS3
+            LD   A,DGNSTCEA
+            LD   BC,15
+            LD   HL,STG7AFTR
+            LD   DE,STG7AFT0
+            CALL PRFEXPC1
+            JP   C,PRFFLAFT
+            LD   A,DGNSTCDP
+            LD   BC,4
+            LD   HL,STG7SRVC
+            LD   DE,STG7SRV0
+            CALL PRFEXPC1
+            JP   C,PRFFLSRV
+            LD   A,DGNSTCDP
+            LD   BC,6
+            LD   HL,STG7SRV1
+            LD   DE,STG7SRV2
+            CALL PRFEXPC1
+            JP   C,PRFFLSR0
+            LD   A,DGNSTCDP
+            LD   BC,4
+            LD   HL,STG7SRV3
+            LD   DE,STG7SRV4
+            CALL PRFEXPC1
+            JP   C,PRFFLSR1
+            LD   A,DGNSTCTY
+            LD   BC,245
+            LD   HL,STG7SCLR
+            LD   DE,STG7SCL0
+            CALL PRFEXPC1
+            JP   C,PRFFLSCL
+            LD   A,DGNSTCTY
+            LD   BC,66
+            LD   HL,STG7RCRD
+            LD   DE,STG7RCR0
+            CALL PRFEXPC1
+            JP   C,PRFFLRC2
+            LD   HL,STG7SHRT
+            LD   DE,STG7SHR0
+            CALL PRFCMPLA
+            JP   C,PRFFLSHR
+            LD   HL,STG7STRC
+            LD   DE,STG7STR8
+            CALL PRFCMPLA
+            JP   C,PRFFLSTC
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLSTC
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFFLSTC
+            CALL PRFRNRCR
+            JP   C,PRFFLRC3
+            CALL PRFRNSFF
+            JP   C,PRFFLSFF
+            LD   A,DGNSTC10
+            LD   BC,48
+            LD   HL,STG7TFWA
+            LD   DE,STG7TFW0
+            CALL PRFEXPC1
+            JP   C,PRFFLTFW
+            LD   A,DGNSTCE2
+            LD   BC,37
+            LD   HL,STG7TMNY
+            LD   DE,STG7TMN0
+            CALL PRFEXPC1
+            JP   C,PRFFLTM0
+            LD   A,DGNSTCTY
+            LD   BC,88
+            LD   HL,STG7SCL1
+            LD   DE,STG7SCL2
+            CALL PRFEXPC1
+            JP   C,PRFFLSC5
+            LD   A,DGNSTCTY
+            LD   BC,79
+            LD   HL,STG7AGGR
+            LD   DE,STG7AGG0
+            CALL PRFEXPC1
+            JP   C,PRFFLAGG
+            LD   A,DGNSTCTY
+            LD   BC,60
+            LD   HL,STG7SCL3
+            LD   DE,STG7SCL4
+            CALL PRFEXPC1
+            JP   C,PRFFLSC6
+            LD   A,DGNSTCTY
+            LD   BC,59
+            LD   HL,STG7AGG1
+            LD   DE,STG7AGG2
+            CALL PRFEXPC1
+            JP   C,PRFFLAG0
+
+            ; Aggregate constants retain their complete initialized bytes in
+            ; the rodata suffix. A later data declaration shifts that suffix,
+            ; direct reads/copies remain valid, and passing the alias to a
+            ; writable parameter deliberately permits target mutation.
+            LD   HL,STG7AGG3
+            LD   DE,STG7AGG4
+            CALL CMPLAGG0
+            JP   C,PRFFLAG1
+            LD   HL,(STTCIMGL)
+            LD   DE,3
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLAG1
+            LD   HL,(RDONLYIM)
+            LD   DE,11
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLAG1
+            LD   A,(STTCIMGB)
+            CP   1
+            JP   NZ,PRFFLAG1
+            LD   A,(STTCIMGB+3)
+            CP   7
+            JP   NZ,PRFFLAG1
+            LD   A,(STTCIMGB+7)
+            CP   2
+            JP   NZ,PRFFLAG1
+            LD   A,(STTCIMGB+9)
+            CP   3
+            JP   NZ,PRFFLAG1
+            LD   A,(STTCIMGB+11)
+            OR   A
+            JP   NZ,PRFFLAG1
+            CALL ENCDAGGR
+            JP   C,PRFFLAG1
+            LD   HL,(GNRTDROD)
+            LD   DE,14
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLAG1
+            LD   HL,(GNRTDDTS)
+            LD   DE,3
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLAG1
+            LD   A,$A5
+            LD   (PRGRMDTB+3),A
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLAG1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLAG1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLAG1
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFFLAG1
+            LD   A,(PRGRMDTB)
+            CP   9
+            JP   NZ,PRFFLAG1
+            LD   A,(PRGRMDTB+3)
+            CP   $A5
+            JP   NZ,PRFFLAG1
+            LD   A,(GNRTDRO0+3)
+            CP   9
+            JP   NZ,PRFFLAG1
+
+            LD   A,DGNSTCR1
+            LD   BC,S7ROWH
+            LD   HL,STG7RDON
+            LD   DE,STG7RDO0
+            CALL PRFEXPC1
+            JP   C,PRFFLRDO
+            LD   A,DGNSTCR1
+            LD   BC,S7ROFL
+            LD   HL,STG7RDO1
+            LD   DE,STG7RDO2
+            CALL PRFEXPC1
+            JP   C,PRFFLRDO
+            LD   A,DGNSTCR1
+            LD   BC,S7ROAR
+            LD   HL,STG7RDO3
+            LD   DE,STG7RDO4
+            CALL PRFEXPC1
+            JP   C,PRFFLRDO
+            LD   A,DGNSTCR1
+            LD   BC,S7ROST
+            LD   HL,STG7RDO5
+            LD   DE,STG7RDO6
+            CALL PRFEXPC1
+            JP   C,PRFFLRDO
+
+            LD   A,DGNSTCI3
+            LD   BC,S7ACIN
+            LD   HL,STG7AGG5
+            LD   DE,STG7AGG6
+            CALL PRFEXPC1
+            JP   C,PRFFLAG2
+            LD   A,DGNSTCTY
+            LD   BC,S7ACWT
+            LD   HL,STG7AGG7
+            LD   DE,STG7AGG8
+            CALL PRFEXPC1
+            JP   C,PRFFLAG3
+            LD   A,DGNSTCTY
+            LD   BC,S7ACRT
+            LD   HL,STG7AGG9
+            LD   DE,STG7AGGA
+            CALL PRFEXPC1
+            JP   C,PRFFLAG4
+            LD   A,DGNSTCTY
+            LD   BC,S7ACST
+            LD   HL,STG7AGGB
+            LD   DE,STG7AGGC
+            CALL PRFEXPC1
+            JP   C,PRFFLAG5
+
+            LD   HL,STG7RDO7
+            LD   DE,STG7RDO8
+            CALL CMPLAGG0
+            JP   C,PRFFLRD0
+            LD   HL,(RDONLYIM)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLRD0
+            CALL ENCDAGGR
+            JP   C,PRFFLRD0
+            LD   HL,(GNRTDROD)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLRD0
+            LD   HL,(GNRTDDTS)
+            LD   A,H
+            OR   L
+            JP   NZ,PRFFLRD0
+            LD   A,$A5
+            LD   (GNRTDRO0),A
+            LD   A,$5A
+            LD   (GNRTDRO0+1023),A
+            LD   A,DGNSTCRD
+            LD   BC,S7RCRJ
+            LD   HL,STG7RDO9
+            LD   DE,STG7RDOA
+            CALL PRFEXPC1
+            JP   C,PRFFLRD0
+            LD   HL,(GNRTDROD)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLRD0
+            LD   A,(GNRTDRO0)
+            CP   $A5
+            JP   NZ,PRFFLRD0
+            LD   A,(GNRTDRO0+1023)
+            CP   $5A
+            JP   NZ,PRFFLRD0
+            ; The failed declaration must not poison the next compilation.
+            LD   HL,STG7AGG3
+            LD   DE,STG7AGG4
+            CALL CMPLAGG0
+            JP   C,PRFFLRD0
+            LD   B,0
+            LD   C,2
+            CALL PRFRNINV
+            JP   C,PRFFLINV
+            LD   B,2
+            LD   C,0
+            CALL PRFRNINV
+            JP   C,PRFFLIN5
+            CALL PRFCHCKE
+            JP   C,PRFFLEN0
+            CALL PRFCHCKS
+            JP   C,PRFFLSGM
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCLLGN: ;@NUC-GLOBAL ProofCallGenerated PERMANENT PRFCLLGN
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   IX,$A55A
+            CALL GNRTDBS
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,PRFCLLG0
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFCLLG0: ;@NUC-GLOBAL ProofCallGeneratedNo PERMANENT PRFCLLG0
+            SCF
+            RET
+
+; Require one exact compile-time diagnostic and source offset. A is the
+; diagnostic, BC the offset, and HL..DE the complete source range.
+;@ROUTINE IN A,BC,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFEXPC1: ;@NUC-GLOBAL ProofExpectCompileDiagnostic PERMANENT PRFEXPC1
+            LD   (PRFEXPC5),A
+            LD   (PRFEXPC3),BC
+            LD   A,160
+            CALL CMPLAGG0
+            JR   NC,PRFEXPC2
+            LD   A,(PRFEXPC5)
+            LD   HL,DGNSTCCD
+            CP   (HL)
+            JR   NZ,PRFEXPC2
+            LD   HL,(DGNSTCOF)
+            LD   DE,(PRFEXPC3)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,PRFEXPC2
+            XOR  A
+            RET
+PRFEXPC2: ;@NUC-GLOBAL ProofExpectedDiagnosticFailure PERMANENT PRFEXPC2
+            SCF
+            RET
+
+; Compile, encode, and execute one source that must return normally without a
+; generated trap. HL..DE is its complete source range.
+;@ROUTINE IN DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCMPLA: ;@NUC-GLOBAL ProofCompileAndRunSuccess PERMANENT PRFCMPLA
+            LD   A,160
+            CALL CMPLAGG0
+            RET  C
+            CALL ENCDAGGR
+            RET  C
+            CALL Reset
+            CALL PRFCLLGN
+            RET  C
+            LD   A,(RunState)
+            CP   RNSCCDD
+            RET  Z
+            SCF
+            RET
+
+; The ninth active generated call must trap before entering the final body.
+; Root unwinding restores SP/IX, clears activation depth, and leaves marker 0.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFRNRCR: ;@NUC-GLOBAL ProofRunRecursiveCapacity PERMANENT PRFRNRCR
+            LD   A,160
+            LD   HL,STG7RCRS
+            LD   DE,STG7RCR1
+            CALL CMPLAGG0
+            RET  C
+            CALL ENCDAGGR
+            RET  C
+            CALL Reset
+            CALL PRFCLLGN
+            RET  C
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JR   NZ,.L00000
+            LD   A,(TRPNMBR)
+            CP   5
+            JR   NZ,.L00000
+            LD   HL,(TRPOFFST)
+            LD   DE,71
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00000
+            LD   A,(ACTVTNDP)
+            OR   A
+            JR   NZ,.L00000
+            LD   A,(PRGRMBS0)
+            OR   A
+            RET  Z
+.L00000:
+            SCF
+            RET
+
+; Exercise every saved-type unwind phase in the aggregate suffix parser. The
+; field and index cases fail on late operands; length fails on its first byte.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFRNSFF: ;@NUC-GLOBAL ProofRunSuffixFailures PERMANENT PRFRNSFF
+            LD   A,170
+            LD   HL,STG7SFFX
+            LD   DE,STG7SFF0
+            CALL .L00000
+            LD   A,AGGRGTTN
+            LD   (AGGRGTT8),A
+            LD   A,3
+            LD   (AGGRGTT8+1),A
+            LD   HL,SMNTCBF0
+            LD   (SNKCRSR),HL
+            LD   A,AGGRGTFR
+            CALL .L00001
+            RET  C
+
+            LD   A,171
+            LD   HL,STG7SFF1
+            LD   DE,STG7SFF2
+            CALL .L00000
+            LD   A,AGGRGTTL
+            LD   (AGGRGTT8),A
+            XOR  A
+            LD   (AGGRGTT8+1),A
+            LD   (AGGRGTR7),A
+            INC  A
+            LD   (AGGRGTR7+1),A
+            LD   HL,STG7SFF1+1
+            LD   (AGGRGTF3),HL
+            LD   A,5
+            LD   (AGGRGTF3+2),A
+            LD   A,SCLRTYPU
+            LD   (AGGRGTF3+3),A
+            XOR  A
+            LD   (AGGRGTF3+4),A
+            LD   HL,SMNTCBF0-1
+            LD   (SNKCRSR),HL
+            LD   A,AGGRGTFR
+            CALL .L00001
+            RET  C
+
+            LD   A,172
+            LD   HL,STG7SFF3
+            LD   DE,STG7SFF4
+            CALL .L00000
+            LD   A,AGGRGTTO
+            LD   (AGGRGTT8),A
+            LD   A,SCLRTYPU
+            LD   (AGGRGTT8+1),A
+            LD   A,2
+            LD   (AGGRGTT8+2),A
+            LD   (AGGRGTTF),A
+            LD   HL,SMNTCBF0-7
+            LD   (SNKCRSR),HL
+            LD   A,AGGRGTFR
+            CALL .L00001
+            RET  C
+
+            LD   A,173
+            LD   HL,STG7SFF3
+            LD   DE,STG7SFF4
+            CALL .L00000
+            LD   A,AGGRGTTN
+            LD   (AGGRGTT8),A
+            LD   A,3
+            LD   (AGGRGTT8+1),A
+            LD   (AGGRGTT8+2),A
+            INC  A
+            LD   (AGGRGTTF),A
+            LD   HL,SMNTCBF0-6
+            LD   (SNKCRSR),HL
+            LD   A,AGGRGTFR
+            CALL .L00001
+            RET  C
+
+            LD   A,174
+            LD   HL,STG7SFF3
+            LD   DE,STG7SFF4
+            CALL .L00000
+            LD   A,AGGRGTTL
+            LD   (AGGRGTT8),A
+            LD   A,AGGRGTFR
+            CALL .L00002
+            RET
+
+;@ROUTINE IN A,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+.L00000:
+            CALL CMPLSLCI
+            LD   A,1
+            LD   (EXPRSSN2),A
+            LD   A,SCLRTYP0
+            LD   (EXPRSSNE),A
+            XOR  A
+            LD   (EXPRSSNS),A
+            LD   (EXPRSSN3),A
+            RET
+
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+.L00001:
+            LD   (STG7PTHT),A
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   A,(STG7PTHT)
+            CALL STG7PRSP
+            JR   NC,.L00004
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCSN
+            JR   NZ,.L00004
+            JP   .L00003
+
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+.L00002:
+            LD   (STG7PTHT),A
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   A,(STG7PTHT)
+            CALL STG7PRSP
+            JR   NC,.L00004
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCTY
+            JR   NZ,.L00004
+.L00003:
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+.L00004:
+            SCF
+            RET
+
+; Build one structurally valid Z80 stream with an intentionally invalid
+; opaque carrier. Zero selects the prepared data object; nonzero selects the
+; first address beyond the complete program-data region. The
+; complete data bytes must survive either region-check trap unchanged.
+;@ROUTINE IN B,C OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+PRFRNINV: ;@NUC-GLOBAL ProofRunInvalidCopy PERMANENT PRFRNINV
+            LD   A,2
+            LD   (STTCIMGL),A
+            LD   A,$11
+            LD   (STTCIMGB),A
+            LD   A,$22
+            LD   (STTCIMGB+1),A
+            LD   HL,SMNTCBFF
+            LD   (HL),5
+            INC  HL
+            LD   (HL),SMNTCBG3
+            INC  HL
+            LD   (HL),SMNTCLDP
+            INC  HL
+            LD   DE,PRGRMDTB
+            LD   A,B
+            OR   A
+            JR   Z,.L00000
+            LD   DE,PRGRMDTR
+.L00000:
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
+            INC  HL
+            LD   (HL),SMNTCLDP
+            INC  HL
+            LD   DE,PRGRMDTB
+            LD   A,C
+            OR   A
+            JR   Z,.L00001
+            LD   DE,PRGRMDTR
+.L00001:
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
+            INC  HL
+            LD   (HL),SMNTCCPY
+            INC  HL
+            LD   (HL),1
+            INC  HL
+            LD   (HL),0
+            INC  HL
+            LD   (HL),$34
+            INC  HL
+            LD   (HL),$12
+            INC  HL
+            LD   (HL),SMNTCEN5
+            CALL ENCDAGGR
+            JR   C,.L00002
+            CALL Reset
+            CALL PRFCLLGN
+            JR   C,.L00002
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JR   NZ,.L00002
+            LD   A,(TRPNMBR)
+            CP   1
+            JR   NZ,.L00002
+            LD   HL,(TRPOFFST)
+            LD   DE,$1234
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00002
+            LD   A,(PRGRMDTB)
+            CP   $11
+            JR   NZ,.L00002
+            LD   A,(PRGRMDTB+1)
+            CP   $22
+            JR   NZ,.L00002
+            OR   A
+            RET
+.L00002:
+            SCF
+            RET
+
+; Force failure after the staged image has diverged from the publication, then
+; compare every formerly published byte with the transaction backup.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+PRFCHCKE: ;@NUC-GLOBAL ProofCheckEncodeRollback PERMANENT PRFCHCKE
+            LD   HL,(GNRTDSZ)
+            LD   (PRFEXPC3),HL
+            LD   HL,(GNRTDROD)
+            LD   (PRFEXPC4),HL
+            LD   A,$99
+            LD   (STTCIMGB),A
+            LD   A,1
+            LD   (STTCIMGL),A
+            LD   HL,SMNTCBFF
+            LD   (HL),2
+            INC  HL
+            LD   (HL),SMNTCBG3
+            INC  HL
+            LD   (HL),SMNTCEN5
+            LD   HL,GNRTDBS+4
+            CALL ENCDAGG0
+            JR   NC,.L00004
+            LD   HL,(GNRTDSZ)
+            LD   DE,(PRFEXPC3)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00004
+            LD   HL,(GNRTDROD)
+            LD   DE,(PRFEXPC4)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00004
+            LD   BC,(GNRTDSZ)
+            LD   HL,GNRTDBS
+            LD   DE,BCKPBS
+.L00000:
+            LD   A,B
+            OR   C
+            JR   Z,.L00001
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,.L00004
+            INC  DE
+            INC  HL
+            DEC  BC
+            JR   .L00000
+.L00001:
+            LD   BC,(GNRTDROD)
+            LD   HL,GNRTDRO0
+            LD   DE,S7BRDO
+.L00002:
+            LD   A,B
+            OR   C
+            JR   Z,.L00003
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,.L00004
+            INC  DE
+            INC  HL
+            DEC  BC
+            JR   .L00002
+.L00003:
+            LD   A,(GNRTDRO0)
+            CP   $11
+            JR   NZ,.L00004
+            OR   A
+            RET
+.L00004:
+            SCF
+            RET
+
+; A malformed target adapter must be rejected before publication. The
+; compiler then restores the complete preceding code and rodata image.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCHCKS: ;@NUC-GLOBAL ProofCheckSegmentOverlap PERMANENT PRFCHCKS
+            LD   HL,GNRTDCDL
+            CALL BGNSGMNT
+            RET  C
+            LD   HL,GNRTDCDB+1
+            LD   (S7SREB),HL
+            CALL VLDTSGMN
+            JR   NC,.L00000
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCOT
+            JR   NZ,.L00000
+            CALL ABRTSGMN
+            OR   A
+            RET
+.L00000:
+            SCF
+            RET
+
+PRFFLCMP: LD A,(DGNSTCCD) ;@NUC-GLOBAL ProofFailCompile PERMANENT PRFFLCMP
+                  LD (PRFSTTS),A
+                  LD A,(DGNSTCOF)
+                  JP PRFFLD
+PRFFLENC:  LD A,2 ;@NUC-GLOBAL ProofFailEncode PERMANENT PRFFLENC
+                  JP PRFFLD
+PRFFLFRM:   LD A,3 ;@NUC-GLOBAL ProofFailFrame PERMANENT PRFFLFRM
+                  JP PRFFLD
+PRFFLRN:     LD A,4 ;@NUC-GLOBAL ProofFailRun PERMANENT PRFFLRN
+                  JP PRFFLD
+PRFFLOT8:  LD A,5 ;@NUC-GLOBAL ProofFailOutput PERMANENT PRFFLOT8
+                  JP PRFFLD
+PRFFLST3: LD A,6 ;@NUC-GLOBAL ProofFailStorage PERMANENT PRFFLST3
+                  JP PRFFLD
+PRFFLFRW: LD A,7 ;@NUC-GLOBAL ProofFailForwardCompile PERMANENT PRFFLFRW
+                  JP PRFFLD
+PRFFLFR0: LD A,8 ;@NUC-GLOBAL ProofFailForwardEncode PERMANENT PRFFLFR0
+                  JP PRFFLD
+PRFFLFR1: LD A,9 ;@NUC-GLOBAL ProofFailForwardFrame PERMANENT PRFFLFR1
+                  JP PRFFLD
+PRFFLFR2: LD A,10 ;@NUC-GLOBAL ProofFailForwardRun PERMANENT PRFFLFR2
+                  JP PRFFLD
+PRFFLFR3: LD A,11 ;@NUC-GLOBAL ProofFailForwardOutput PERMANENT PRFFLFR3
+                  JP PRFFLD
+PRFFLFR4: LD A,12 ;@NUC-GLOBAL ProofFailForwardStorage PERMANENT PRFFLFR4
+                  JP PRFFLD
+PRFFLST4: LD A,13 ;@NUC-GLOBAL ProofFailStringCompile PERMANENT PRFFLST4
+                  JP PRFFLD
+PRFFLST5: LD A,14 ;@NUC-GLOBAL ProofFailStringEncode PERMANENT PRFFLST5
+                  JP PRFFLD
+PRFFLST6: LD A,15 ;@NUC-GLOBAL ProofFailStringFrame PERMANENT PRFFLST6
+                  JP PRFFLD
+PRFFLST7: LD A,16 ;@NUC-GLOBAL ProofFailStringRun PERMANENT PRFFLST7
+                  JP PRFFLD
+PRFFLST8: LD A,17 ;@NUC-GLOBAL ProofFailStringOutput PERMANENT PRFFLST8
+                  JP PRFFLD
+PRFFLST9: LD A,18 ;@NUC-GLOBAL ProofFailStringStorage PERMANENT PRFFLST9
+                  JP PRFFLD
+PRFFLBN4: LD A,19 ;@NUC-GLOBAL ProofFailBoundsCompile PERMANENT PRFFLBN4
+                  JP PRFFLD
+PRFFLBN5: LD A,20 ;@NUC-GLOBAL ProofFailBoundsEncode PERMANENT PRFFLBN5
+                  JP PRFFLD
+PRFFLBN6: LD A,21 ;@NUC-GLOBAL ProofFailBoundsFrame PERMANENT PRFFLBN6
+                  JP PRFFLD
+PRFFLBN7: LD A,22 ;@NUC-GLOBAL ProofFailBoundsRun PERMANENT PRFFLBN7
+                  JP PRFFLD
+PRFFLBN8: LD A,23 ;@NUC-GLOBAL ProofFailBoundsStorage PERMANENT PRFFLBN8
+                  JP PRFFLD
+PRFFLCNS: LD A,24 ;@NUC-GLOBAL ProofFailConstantBounds PERMANENT PRFFLCNS
+                  JP PRFFLD
+PRFFLNMN: LD A,25 ;@NUC-GLOBAL ProofFailNominalMismatch PERMANENT PRFFLNMN
+                  JP PRFFLD
+PRFFLTR3: LD A,26 ;@NUC-GLOBAL ProofFailTransientMisuse PERMANENT PRFFLTR3
+                  JP PRFFLD
+PRFFLRTN: LD A,27 ;@NUC-GLOBAL ProofFailRoutineCapacity PERMANENT PRFFLRTN
+                  JP PRFFLD
+PRFFLPRM: LD A,28 ;@NUC-GLOBAL ProofFailParameterCapacity PERMANENT PRFFLPRM
+                  JP PRFFLD
+PRFFLCLL: LD A,29 ;@NUC-GLOBAL ProofFailCallDepth PERMANENT PRFFLCLL
+                  JP PRFFLD
+PRFFLINV: LD A,30 ;@NUC-GLOBAL ProofFailInvalidCopySource PERMANENT PRFFLINV
+                  JP PRFFLD
+PRFFLIN5: LD A,31 ;@NUC-GLOBAL ProofFailInvalidCopyDestination PERMANENT PRFFLIN5
+                  JP PRFFLD
+PRFFLEN0: LD A,32 ;@NUC-GLOBAL ProofFailEncodeRollback PERMANENT PRFFLEN0
+                  JP PRFFLD
+PRFFLPR0: LD A,33 ;@NUC-GLOBAL ProofFailParameterRoutineCollision PERMANENT PRFFLPR0
+                  JP PRFFLD
+PRFFLSTA: LD A,34 ;@NUC-GLOBAL ProofFailStringLengthWrite PERMANENT PRFFLSTA
+                           JP PRFFLD
+PRFFLSTB: LD A,40 ;@NUC-GLOBAL ProofFailStringCapacity PERMANENT PRFFLSTB
+                         JP PRFFLD
+PRFFLMNP: LD A,35 ;@NUC-GLOBAL ProofFailMainParameter PERMANENT PRFFLMNP
+                  JP PRFFLD
+PRFFLSRV: LD A,36 ;@NUC-GLOBAL ProofFailServiceRoutine PERMANENT PRFFLSRV
+                  JP PRFFLD
+PRFFLSR0: LD A,37 ;@NUC-GLOBAL ProofFailServiceParameter PERMANENT PRFFLSR0
+                  JP PRFFLD
+PRFFLSR1: LD A,38 ;@NUC-GLOBAL ProofFailServiceVariable PERMANENT PRFFLSR1
+                  JP PRFFLD
+PRFFLSCL: LD A,39 ;@NUC-GLOBAL ProofFailScalarSuffix PERMANENT PRFFLSCL
+                  JP PRFFLD
+PRFFLRC2: LD A,40 ;@NUC-GLOBAL ProofFailRecordIndex PERMANENT PRFFLRC2
+                  JP PRFFLD
+PRFFLSHR: LD A,41 ;@NUC-GLOBAL ProofFailShortCircuit PERMANENT PRFFLSHR
+                  JP PRFFLD
+PRFFLSTC: LD A,42 ;@NUC-GLOBAL ProofFailStructuredRoutines PERMANENT PRFFLSTC
+                  JP PRFFLD
+PRFFLRC3: LD A,43 ;@NUC-GLOBAL ProofFailRecursiveCapacity PERMANENT PRFFLRC3
+                  JP PRFFLD
+PRFFLSFF: LD A,44 ;@NUC-GLOBAL ProofFailSuffixCapacity PERMANENT PRFFLSFF
+                  JP PRFFLD
+PRFFLTFW: LD A,45 ;@NUC-GLOBAL ProofFailTooFewArguments PERMANENT PRFFLTFW
+                  JP PRFFLD
+PRFFLTM0: LD A,46 ;@NUC-GLOBAL ProofFailTooManyArguments PERMANENT PRFFLTM0
+                  JP PRFFLD
+PRFFLSC5: LD A,47 ;@NUC-GLOBAL ProofFailScalarForAggregate PERMANENT PRFFLSC5
+                  JP PRFFLD
+PRFFLAGG: LD A,48 ;@NUC-GLOBAL ProofFailAggregateForScalar PERMANENT PRFFLAGG
+                  JP PRFFLD
+PRFFLSC6: LD A,49 ;@NUC-GLOBAL ProofFailScalarResultAggregate PERMANENT PRFFLSC6
+                  JP PRFFLD
+PRFFLAG0: LD A,50 ;@NUC-GLOBAL ProofFailAggregateResultScalar PERMANENT PRFFLAG0
+                  JP PRFFLD
+PRFFLMN0: LD A,51 ;@NUC-GLOBAL ProofFailMainParameterSyntax PERMANENT PRFFLMN0
+                  JP PRFFLD
+PRFFLMNR: LD A,52 ;@NUC-GLOBAL ProofFailMainResult PERMANENT PRFFLMNR
+                  JP PRFFLD
+PRFFLRT0: LD A,53 ;@NUC-GLOBAL ProofFailRoutineFails PERMANENT PRFFLRT0
+                  JP PRFFLD
+PRFFLMS3: LD A,54 ;@NUC-GLOBAL ProofFailMissingMain PERMANENT PRFFLMS3
+                  JP PRFFLD
+PRFFLAFT: LD A,55 ;@NUC-GLOBAL ProofFailAfterMain PERMANENT PRFFLAFT
+                  JP PRFFLD
+PRFFLSGM: LD A,56 ;@NUC-GLOBAL ProofFailSegmentOverlap PERMANENT PRFFLSGM
+                  JP PRFFLD
+PRFFLDT0: LD A,57 ;@NUC-GLOBAL ProofFailDataCapacityAccepted PERMANENT PRFFLDT0
+                  JP PRFFLD
+PRFFLDT1: LD A,58 ;@NUC-GLOBAL ProofFailDataCapacityRejected PERMANENT PRFFLDT1
+                  JP PRFFLD
+PRFFLBSS: LD A,59 ;@NUC-GLOBAL ProofFailBssCapacityAccepted PERMANENT PRFFLBSS
+                  JP PRFFLD
+PRFFLBS0: LD A,60 ;@NUC-GLOBAL ProofFailBssCapacityRejected PERMANENT PRFFLBS0
+                  JP PRFFLD
+PRFFLWDA: LD A,61 ;@NUC-GLOBAL ProofFailWideAggregate PERMANENT PRFFLWDA
+                  JP PRFFLD
+PRFFLWDR: LD A,62 ;@NUC-GLOBAL ProofFailWideRecordCapacity PERMANENT PRFFLWDR
+                  JP PRFFLD
+PRFFLWRD: LD A,64 ;@NUC-GLOBAL ProofFailWordLengthInterning PERMANENT PRFFLWRD
+                  JR PRFFLD
+PRFFLWDI: LD A,63 ;@NUC-GLOBAL ProofFailWideInitializer PERMANENT PRFFLWDI
+                  JP PRFFLD
+PRFFLAG1: LD A,65 ;@NUC-GLOBAL ProofFailAggregateConstant PERMANENT PRFFLAG1
+                  JP PRFFLD
+PRFFLRDO: LD A,66 ;@NUC-GLOBAL ProofFailReadOnlyAssignment PERMANENT PRFFLRDO
+                  JP PRFFLD
+PRFFLAG2: LD A,67 ;@NUC-GLOBAL ProofFailAggregateConstantInitializer PERMANENT PRFFLAG2
+                  JP PRFFLD
+PRFFLRD0: LD A,68 ;@NUC-GLOBAL ProofFailReadOnlyCapacity PERMANENT PRFFLRD0
+                  JP PRFFLD
+PRFFLAG3: LD A,69 ;@NUC-GLOBAL ProofFailAggregateConstantWrongType PERMANENT PRFFLAG3
+                  JP PRFFLD
+PRFFLAG4: LD A,70 ;@NUC-GLOBAL ProofFailAggregateConstantRuntime PERMANENT PRFFLAG4
+                  JP PRFFLD
+PRFFLAG5: LD A,71 ;@NUC-GLOBAL ProofFailAggregateConstantScalarType PERMANENT PRFFLAG5
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            HALT
+
+PRFEXPC0: DW 0 ;@NUC-GLOBAL ProofExpectedSP PERMANENT PRFEXPC0
+PRFEXPC3: DW 0 ;@NUC-GLOBAL ProofExpectedOffset PERMANENT PRFEXPC3
+PRFEXPC4: DW 0 ;@NUC-GLOBAL ProofExpectedRoDataSize PERMANENT PRFEXPC4
+PRFEXPC5: DB 0 ;@NUC-GLOBAL ProofExpectedDiagnostic PERMANENT PRFEXPC5
+PRFCPYGN: DW 0 ;@NUC-GLOBAL ProofCopyGeneratedSize PERMANENT PRFCPYGN
+PRFFRWRD: DW 0 ;@NUC-GLOBAL ProofForwardGeneratedSize PERMANENT PRFFRWRD
+PRFSTRNG: DW 0 ;@NUC-GLOBAL ProofStringGeneratedSize PERMANENT PRFSTRNG
+PRFBNDSG: DW 0 ;@NUC-GLOBAL ProofBoundsGeneratedSize PERMANENT PRFBNDSG
+PRFSTTS:     DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:       DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+STG7CRRP: ;@NUC-GLOBAL Stage7CorruptStringSource PERMANENT STG7CRRP
+            DB "var text as string[3] = \"\"",10
+            DB "sub main() fails",10
+            DB "if text."
+.L00000:
+            DB "length = 0",10
+            DB "end",10
+            DB "end",10
+STG7CRR6: ;@NUC-GLOBAL Stage7CorruptStringSourceEnd PERMANENT STG7CRR6
+STG7CRR7: ;@NUC-GLOBAL Stage7CorruptStringIndexSource PERMANENT STG7CRR7
+            DB "var text as string[3] = \"\"",10
+            DB "sub main() fails",10
+            DB "if text"
+.L00000:
+            DB "[0] = 0",10
+            DB "end",10
+            DB "end",10
+STG7CRR8: ;@NUC-GLOBAL Stage7CorruptStringIndexSourceEnd PERMANENT STG7CRR8
+STG7SLDA: ;@NUC-GLOBAL Stage7SealedArraySource PERMANENT STG7SLDA
+            DB "var texts as string[25"
+STG7SLD0: ;@NUC-GLOBAL Stage7SealedArrayCapacityDigit PERMANENT STG7SLD0
+            DB "3"
+.L00000:
+            DB "][4]",10
+            DB "sub main() fails",10
+            DB "texts[3] = texts[3]",10
+            DB "if texts[3].length = 0",10
+            DB "writeOutputByte('Y') else fail",10
+            DB "end",10,"end",10
+STG7SLD1: ;@NUC-GLOBAL Stage7SealedArraySourceEnd PERMANENT STG7SLD1
+ProofEnd:

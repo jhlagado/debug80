@@ -30,6 +30,7 @@ const packageRoot = path.resolve(testDirectory, "..");
 const asmRoot = path.join(packageRoot, "asm");
 const proofRoot = path.join(packageRoot, "proofs");
 const dryRunScript = path.join(packageRoot, "scripts", "atom-migration-dry-run.mjs");
+const materializeScript = path.join(packageRoot, "scripts", "atom-migration-materialize.mjs");
 
 async function withTree(files, run) {
   const root = await mkdtemp(path.join(tmpdir(), "nucleus-atom-migration-"));
@@ -937,6 +938,69 @@ describe("Nucleus Atom migration dry-run", () => {
         "            JP LNGPBLCL ; LongPublicLabel",
         "",
       ].join("\n"));
+    });
+  });
+
+  it("materializes and checks a permanent Atom source tree through the named command", async () => {
+    await withTree({
+      "asm/main.asm": [
+        ".routine out A,carry clobbers zero",
+        "LongPublicLabel:",
+        "            .DB \"LongPublicLabel\"",
+        "            JP LongPublicLabel ; LongPublicLabel",
+        "",
+      ].join("\n"),
+      "proofs/main.json": JSON.stringify({
+        execution: { entry: "LongPublicLabel" },
+      }),
+    }, async (root) => {
+      const translatedRoot = path.join(root, "atom-asm");
+      const commonArgs = [
+        "--asm-root",
+        path.join(root, "asm"),
+        "--proof-root",
+        path.join(root, "proofs"),
+        "--out",
+        translatedRoot,
+      ];
+
+      const initialCheck = spawnSync(process.execPath, [
+        materializeScript,
+        ...commonArgs,
+        "--check",
+      ], { encoding: "utf8" });
+      expect(initialCheck.status).toBe(1);
+      expect(initialCheck.stdout).toContain("changed");
+      expect(initialCheck.stdout).toContain("missing-tree");
+
+      const write = spawnSync(process.execPath, [
+        materializeScript,
+        ...commonArgs,
+        "--write",
+      ], { encoding: "utf8" });
+      expect(write.status).toBe(0);
+      expect(write.stdout).toContain("write: ready");
+      await expect(readFile(path.join(translatedRoot, "main.asm"), "utf8")).resolves.toContain(
+        "LNGPBLCL: ;@NUC-GLOBAL LongPublicLabel PERMANENT LNGPBLCL",
+      );
+
+      const check = spawnSync(process.execPath, [
+        materializeScript,
+        ...commonArgs,
+        "--check",
+      ], { encoding: "utf8" });
+      expect(check.status).toBe(0);
+      expect(check.stdout).toContain("check: ready");
+      expect(check.stdout).toContain("differences=0");
+
+      await writeFile(path.join(translatedRoot, "extra.asm"), "RET\n");
+      const drift = spawnSync(process.execPath, [
+        materializeScript,
+        ...commonArgs,
+        "--check",
+      ], { encoding: "utf8" });
+      expect(drift.status).toBe(1);
+      expect(drift.stdout).toContain("extra-file extra.asm");
     });
   });
 

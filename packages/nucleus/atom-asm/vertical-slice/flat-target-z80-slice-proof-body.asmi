@@ -1,0 +1,1090 @@
+            ORG PRFBS
+FTADIMG EQU $98CB ; captured descriptor image-base field
+FTCTX00 EQU $98D8 ; captured context runtime-base field
+FTCTX06 EQU $98DE ; captured context state-base field
+FTCTX0E EQU $98E6 ; captured context used-length field
+FTMAP01 EQU $9905 ; captured target map bank count
+FTMAP03 EQU $9907 ; captured target map used length
+FTMAP05 EQU $9909 ; captured target map origin
+FTMAP09 EQU $990D ; captured target map source length
+FTMPWRI EQU $9911 ; captured writable-base map field
+FTMPVEC EQU $9917 ; captured vector-length map field
+FTMPINI EQU $991B ; captured initialized-length map field
+FTMPBSS EQU $991D ; captured BSS-base map field
+FTMPSTK EQU $9921 ; captured stack-requirement map field
+FTMPDLA EQU $9924 ; captured data-load-address map field
+FTMPAGG EQU $9928 ; captured aggregate-base map field
+FTIXBKC EQU TRGTDSC5 ; target descriptor bank-count field offset
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFSTTS),A
+            LD   (PRFCS),A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRMPF),A
+            LD   (ADPTRCM0),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   HL,$F000
+            LD   DE,$1000
+            LD   A,10
+            LD   (PRFCS),A
+            CALL TRGTVLDT
+            JP   C,PRFRGNFL
+            LD   HL,$FFFF
+            LD   (EMTCRSR),HL
+            LD   HL,1
+            LD   (EMTLMT),HL
+            LD   DE,1
+            LD   A,46
+            LD   (PRFCS),A
+            CALL TRGTCNSM
+            JP   C,PRFRGNFL
+            LD   HL,(EMTCRSR)
+            LD   A,H
+            OR   L
+            JP   NZ,PRFRGNFL
+            LD   HL,(EMTLMT)
+            LD   A,H
+            OR   L
+            JP   NZ,PRFRGNFL
+            LD   HL,$F001
+            LD   DE,$1000
+            LD   A,11
+            LD   (PRFCS),A
+            CALL TRGTVLDT
+            JP   NC,PRFRGNFL
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT3
+            JP   NZ,PRFRGNFL
+            LD   HL,$8000
+            LD   A,12
+            LD   (PRFCS),A
+            LD   (TRGTIMGB),HL
+            LD   HL,$1000
+            LD   (TRGTIMGC),HL
+            LD   HL,$8F00
+            LD   (TRGTWRTB),HL
+            LD   HL,$0200
+            LD   (TRGTWRT0),HL
+            CALL TRGTCLSS
+            JP   NC,PRFRGNFL
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT2
+            JP   NZ,PRFRGNFL
+            LD   HL,$2000
+            LD   A,13
+            LD   (PRFCS),A
+            LD   (TRGTIMGC),HL
+            LD   HL,$9000
+            LD   (TRGTWRTB),HL
+            LD   HL,$0100
+            LD   (TRGTWRT0),HL
+            CALL TRGTCLSS
+            JP   C,PRFRGNFL
+            LD   A,(TRGTLYTM)
+            OR   A
+            JP   NZ,PRFRGNFL
+            LD   A,14
+            LD   (PRFCS),A
+            LD   A,1
+            LD   HL,FLTTRGTP
+            LD   IX,FLTTRGTE
+            CALL CMPLTRGT
+            JP   NC,PRFLDDFL
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT3
+            JP   NZ,PRFLDDFL
+            LD   A,15
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   A,61
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,1
+            LD   HL,FLTTRGTP
+            LD   IX,FLTTRGTL
+            CALL CMPLTRGT
+            JP   NC,PRFLDDFL
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT4
+            JP   NZ,PRFLDDFL
+            LD   A,(ADPTRCMM)
+            OR   A
+            JP   NZ,PRFLDDFL
+            LD   A,(ADPTRABR)
+            CP   1
+            JP   NZ,PRFLDDFL
+            LD   A,16
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,1
+            LD   HL,FLTTRGTP
+            LD   IX,FLTTRGTL
+            CALL CMPLTRGT
+            JP   C,PRFLDDFL
+            LD   A,(TRGTLYTM)
+            OR   A
+            JP   NZ,PRFLDDFL
+            LD   HL,(FTCTX0E)
+            LD   DE,$8192
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFLDDFL
+            LD   HL,(FTMAP03)
+            LD   DE,$1048
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFLDDFL
+            LD   HL,(FTMAP05)
+            LD   A,H
+            OR   L
+            JP   NZ,PRFLDDFL
+            LD   HL,(FTMAP09)
+            LD   DE,$8192
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFLDDFL
+            LD   HL,(FTMPWRI)
+            LD   DE,$9000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFLDDFL
+            LD   HL,(FTMPINI)
+            LD   DE,72
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFLDDFL
+            LD   HL,(FTMPDLA)
+            LD   DE,$9000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFLDDFL
+            LD   HL,(FTMPAGG)
+            LD   A,H
+            OR   L
+            JP   NZ,PRFLDDFL
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRLGB
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRLDD),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,ADPTRLGB
+            LD   DE,ADPTRLD0
+            LDIR
+            LD   A,17
+            LD   (PRFCS),A
+            LD   A,1
+            LD   HL,FLTTRGTP
+            LD   IX,FLTTRGTB
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            LD   (ADPTRSVD),A
+            LD   A,(ADPTRABR)
+            OR   A
+            JP   NZ,PRFCNFGR
+            LD   A,18
+            LD   (PRFCS),A
+            LD   A,1
+            LD   HL,FLTTRGTP
+            LD   IX,FLTTRGT6
+            CALL CMPLTRGT
+            JP   C,PRFRGNFL
+            LD   A,19
+            LD   (PRFCS),A
+            LD   A,1
+            LD   HL,FLTTRGTP
+            LD   IX,FLTTRGT7
+            CALL CMPLTRGT
+            JP   NC,PRFRGNFL
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT3
+            JP   NZ,PRFRGNFL
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   A,20
+            LD   (PRFCS),A
+            LD   (ADPTRFLR),A
+            LD   A,1
+            LD   HL,FLTTRGTP
+            LD   IX,FLTTRGTD
+            CALL CMPLTRGT
+            JP   NC,PRFATMCF
+            LD   A,21
+            LD   (PRFCS),A
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT4
+            JP   NZ,PRFATMCF
+            LD   A,22
+            LD   (PRFCS),A
+            LD   A,(ADPTRCMM)
+            OR   A
+            JP   NZ,PRFATMCF
+            LD   A,23
+            LD   (PRFCS),A
+            LD   A,(ADPTRABR)
+            CP   1
+            JP   NZ,PRFATMCF
+            LD   A,24
+            LD   (PRFCS),A
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRLGB
+            OR   A
+            SBC  HL,DE
+            LD   A,H
+            OR   L
+            JP   Z,PRFATMCF
+            LD   A,30
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            INC  A
+            LD   (ADPTRMPF),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,1
+            LD   HL,FLTTRGT3
+            LD   IX,FLTTRGTD
+            CALL CMPLTRGT
+            JP   NC,PRFATMCF
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT4
+            JP   NZ,PRFATMCF
+            LD   A,(ADPTRCMM)
+            OR   A
+            JP   NZ,PRFATMCF
+            LD   A,(ADPTRABR)
+            CP   1
+            JP   NZ,PRFATMCF
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRLGB
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRFLD),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,ADPTRLGB
+            LD   DE,ADPTRFL0
+            LDIR
+            LD   A,25
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   (ADPTRMPF),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,1
+            LD   HL,FLTTRGTP
+            LD   IX,FLTTRGTD
+            CALL CMPLTRGT
+            JP   C,PRFCMPLF
+            LD   A,(ADPTRCMM)
+            CP   1
+            JP   NZ,PRFCMMTF
+            LD   A,(ADPTRABR)
+            OR   A
+            JP   NZ,PRFCMMTF
+            LD   HL,(FTADIMG)
+            LD   DE,$8000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFBGNFL
+            LD   A,(TRGTLYTM)
+            CP   TRGTLYTR
+            JP   NZ,PRFRGNFL
+            LD   HL,(FTCTX00)
+            LD   DE,$8003
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFCNTXT
+            LD   HL,(FTCTX06)
+            LD   DE,$4021
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFCNTXT
+            LD   HL,(FTMAP01)
+            LD   DE,$8000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFMPFLR
+            LD   HL,(FTMAP05)
+            LD   DE,$81AA
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFMPFLR
+            LD   HL,(FTMPWRI)
+            LD   DE,$4000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFMPFLR
+            LD   HL,(FTMPVEC)
+            LD   DE,NCLSRNT2
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFMPFLR
+            LD   HL,(FTMPINI)
+            LD   DE,72
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFMPFLR
+            LD   HL,(FTMPBSS)
+            LD   DE,$4048
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFMPFLR
+            LD   HL,(FTMPSTK)
+            LD   DE,TRGTSTCK
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFMPFLR
+            LD   HL,(FTMPDLA)
+            LD   DE,$81AA
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFMPFLR
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRLGB
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRLGL),HL
+            LD   A,H
+            OR   L
+            JP   Z,PRFLGFLR
+            LD   B,H
+            LD   C,L
+            LD   HL,ADPTRLGB
+            LD   DE,ADPTRSC0
+            LDIR
+            LD   HL,ADPTRCPA
+            LD   DE,ADPTRSCC
+            LD   BC,TRGTMPSZ
+            LDIR
+            LD   HL,(SRCPRVN0)
+            LD   (SRCPRVN1),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,SRCPRVN6
+            LD   DE,SRCPRVN7
+            LDIR
+
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,1
+            LD   HL,FLTTRGT3
+            LD   IX,FLTTRGTD
+            CALL CMPLTRGT
+            JP   C,PRFCMPLF
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRLGB
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRTRP),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,ADPTRLGB
+            LD   DE,ADPTRTR3
+            LDIR
+            LD   HL,ADPTRCPA
+            LD   DE,ADPTRTR0
+            LD   BC,TRGTMPSZ
+            LDIR
+
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,1
+            LD   HL,FLTTRGT5
+            LD   IX,FLTTRGTD
+            CALL CMPLTRGT
+            JP   C,PRFCMPLF
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRLGB
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRUNH),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,ADPTRLGB
+            LD   DE,ADPTRUN3
+            LDIR
+            LD   HL,ADPTRCPA
+            LD   DE,ADPTRUN0
+            LD   BC,TRGTMPSZ
+            LDIR
+
+            LD   A,(DGNSTCCD)
+            LD   (ADPTRSVD),A
+
+            LD   A,40
+            LD   (PRFCS),A
+            LD   A,2
+            LD   HL,BNKDTRG3
+            LD   IX,BNKDINV0
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT2
+            JP   NZ,PRFCNFGR
+
+            LD   A,41
+            LD   (PRFCS),A
+            LD   A,2
+            LD   HL,BNKDTRG3
+            LD   IX,BNKDWRNG
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT2
+            JP   NZ,PRFCNFGR
+
+            LD   A,42
+            LD   (PRFCS),A
+            LD   A,2
+            LD   HL,BNKDCNS3
+            LD   IX,BNKDFLRD
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT2
+            JP   NZ,PRFCNFGR
+
+            LD   A,43
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,2
+            LD   HL,BNKDTRG3
+            LD   IX,BNKDENTR
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT3
+            JP   NZ,PRFCNFGR
+            LD   A,(ADPTRABR)
+            DEC  A
+            JP   NZ,PRFATMCF
+            LD   A,(ADPTRCMM)
+            OR   A
+            JP   NZ,PRFATMCF
+
+            LD   A,44
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,2
+            LD   HL,BNKDLRG3
+            LD   IX,BNKDOTHR
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT3
+            JP   NZ,PRFFL
+            LD   A,(ADPTRABR)
+            DEC  A
+            JP   NZ,PRFATMCF
+            LD   A,(ADPTRCMM)
+            OR   A
+            JP   NZ,PRFATMCF
+
+            LD   A,45
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,2
+            LD   HL,BNKDPRM3
+            LD   IX,BNKDFLRD
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT2
+            JP   NZ,PRFFL
+
+            LD   A,46
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,2
+            LD   HL,BNKDRSL3
+            LD   IX,BNKDFLRD
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT2
+            JP   NZ,PRFFL
+
+            LD   A,47
+            LD   (PRFCS),A
+            XOR  A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,2
+            LD   HL,BNKDFRW3
+            LD   IX,BNKDFLRD
+            CALL CMPLTRGT
+            JP   NC,PRFCNFGR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCT2
+            JP   NZ,PRFFL
+
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRBN1
+            LD   (ADPTRCRS),HL
+            LD   A,2
+            LD   HL,BNKDTRP3
+            LD   IX,BNKDTRG9
+            CALL CMPLTRGT
+            JP   C,PRFCMPLF
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRBN1
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRBN0),HL
+
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTREN0
+            LD   (ADPTRCRS),HL
+            LD   A,1
+            LD   HL,BNKDTRG7
+            LD   IX,BNKDTRGA
+            CALL CMPLTRGT
+            JR   C,PRFCMPLF
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTREN0
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRENT),HL
+
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRLGB
+            LD   (ADPTRCRS),HL
+            LD   A,2
+            LD   HL,BNKDTRG3
+            LD   IX,BNKDTRG9
+            CALL CMPLTRGT
+            JR   C,PRFCMPLF
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRLGB
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRBNK),HL
+
+            XOR  A
+            LD   (ADPTRCMM),A
+            LD   (ADPTRABR),A
+            LD   (ADPTRFLR),A
+            LD   HL,ADPTRCH0
+            LD   (ADPTRCRS),HL
+            LD   A,2
+            LD   HL,CHPTR213
+            LD   IX,CHPTR215
+            CALL CMPLTRGT
+            JR   C,PRFCMPLF
+            LD   HL,(ADPTRCRS)
+            LD   DE,ADPTRCH0
+            OR   A
+            SBC  HL,DE
+            LD   (ADPTRCHP),HL
+            LD   A,(ADPTRSVD)
+            LD   (DGNSTCCD),A
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            XOR  A
+            LD   (PRFCS),A
+            HALT
+
+PRFCMPLF: LD A,1 ;@NUC-GLOBAL ProofCompileFailure PERMANENT PRFCMPLF
+            JR   PRFFL
+PRFCMMTF:  LD A,2 ;@NUC-GLOBAL ProofCommitFailure PERMANENT PRFCMMTF
+            JR   PRFFL
+PRFBGNFL:   LD A,3 ;@NUC-GLOBAL ProofBeginFailure PERMANENT PRFBGNFL
+            JR   PRFFL
+PRFCNTXT: LD A,4 ;@NUC-GLOBAL ProofContextFailure PERMANENT PRFCNTXT
+            JR   PRFFL
+PRFMPFLR:     LD A,5 ;@NUC-GLOBAL ProofMapFailure PERMANENT PRFMPFLR
+            JR   PRFFL
+PRFLGFLR:     LD A,6 ;@NUC-GLOBAL ProofLogFailure PERMANENT PRFLGFLR
+            JR   PRFFL
+PRFRGNFL:  LD A,(PRFCS) ;@NUC-GLOBAL ProofRegionFailure PERMANENT PRFRGNFL
+            JR   PRFFL
+PRFLDDFL:  LD A,(PRFCS) ;@NUC-GLOBAL ProofLoadedFailure PERMANENT PRFLDDFL
+            JR   PRFFL
+PRFATMCF:  LD A,(PRFCS) ;@NUC-GLOBAL ProofAtomicFailure PERMANENT PRFATMCF
+            JR   PRFFL
+PRFCNFGR: LD A,(PRFCS) ;@NUC-GLOBAL ProofConfigurationFailure PERMANENT PRFCNFGR
+PRFFL: ;@NUC-GLOBAL ProofFail PERMANENT PRFFL
+            LD   (PRFCS),A
+            LD   A,$E1
+            LD   (PRFSTTS),A
+            HALT
+
+; Reserve A bytes atomically in the bounded proof-only operation log.
+;@ROUTINE IN A OUT A,IY,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,DE,HL
+ADPTRRSR: ;@NUC-GLOBAL AdapterReserve PERMANENT ADPTRRSR
+            LD   E,A
+            LD   A,(ADPTRFLR)
+            OR   A
+            JR   Z,.L00000
+            DEC  A
+            LD   (ADPTRFLR),A
+            JR   NZ,.L00000
+            LD   A,DGNSTCT4
+            SCF
+            RET
+.L00000:
+            LD   A,E
+            LD   D,0
+            LD   IY,(ADPTRCRS)
+            PUSH IY
+            POP  HL
+            ADD  HL,DE
+            LD   DE,ADPTRLG0
+            OR   A
+            SBC  HL,DE
+            JR   C,.L00001
+            JR   Z,.L00001
+            LD   A,DGNSTCT4
+            SCF
+            RET
+.L00001:
+            ADD  HL,DE
+            LD   (ADPTRCRS),HL
+            OR   A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,HL
+TRGTSNKS: ;@NUC-GLOBAL TargetSinkSourceProvenanceReset PERMANENT TRGTSNKS
+            LD   HL,SRCPRVN6
+            LD   (SRCPRVNN),HL
+            XOR  A
+            LD   (SRCPRVN0),A
+            LD   (SRCPRVN0+1),A
+            RET
+
+; A is the one-based source part, C is the output bank, and DE..HL is the
+; generated code range. This first resident emission is intentionally coarse:
+; line and column are fixed at 1 and confidence is low until the semantic
+; transcript carries per-operation source positions.
+;@ROUTINE IN A,C,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL,IY
+TRGTSNK0: ;@NUC-GLOBAL TargetSinkSourceProvenanceSinglePartCode PERMANENT TRGTSNK0
+            LD   (SRCPRVN2),A
+            LD   A,C
+            LD   (SRCPRVN3),A
+            LD   (SRCPRVN4),DE
+            LD   (SRCPRVN5),HL
+            LD   IY,(SRCPRVNN)
+            PUSH IY
+            POP  HL
+            LD   DE,12
+            ADD  HL,DE
+            LD   DE,SRCPRVN8
+            OR   A
+            SBC  HL,DE
+            JR   C,.L00000
+            JR   Z,.L00000
+            LD   A,DGNSTCT4
+            SCF
+            RET
+.L00000:
+            ADD  HL,DE
+            LD   (SRCPRVNN),HL
+            LD   DE,SRCPRVN6
+            OR   A
+            SBC  HL,DE
+            LD   (SRCPRVN0),HL
+            LD   A,(SRCPRVN2)
+            LD   (IY+0),A
+            LD   A,(SRCPRVN3)
+            LD   (IY+1),A
+            LD   (IY+2),1
+            LD   (IY+3),0
+            LD   (IY+4),1
+            LD   (IY+5),0
+            LD   HL,(SRCPRVN4)
+            LD   (IY+6),L
+            LD   (IY+7),H
+            LD   HL,(SRCPRVN5)
+            LD   (IY+8),L
+            LD   (IY+9),H
+            LD   (IY+10),1
+            LD   (IY+11),0
+            OR   A
+            RET
+
+;@ROUTINE IN IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IY
+TRGTSNKB: ;@NUC-GLOBAL TargetSinkBegin PERMANENT TRGTSNKB
+            LD   HL,ADPTRCPT
+            LD   B,TRGTDSC8
+.L00000:
+            LD   A,(IX+0)
+            LD   (HL),A
+            INC  IX
+            INC  HL
+            DJNZ .L00000
+            LD   A,1
+            LD   (ADPTROPN),A
+            OR   A
+            RET
+
+;@ROUTINE IN A,C,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,DE
+TRGTSNKI: ;@NUC-GLOBAL TargetSinkImageByte PERMANENT TRGTSNKI
+            PUSH IY
+            PUSH AF
+            PUSH BC
+            PUSH HL
+            LD   A,7
+            CALL ADPTRRSR
+            JR   C,.L00001
+            POP  HL
+            POP  BC
+            POP  AF
+            LD   (IY+0),1
+            LD   (IY+1),C
+            LD   (IY+2),L
+            LD   (IY+3),H
+            LD   (IY+4),1
+            LD   (IY+5),0
+            LD   (IY+6),A
+            POP  IY
+            OR   A
+            RET
+.L00000:
+            POP  IY
+            RET
+.L00001:
+            LD   E,A
+            POP  HL
+            POP  BC
+            POP  AF
+            POP  IY
+            LD   A,E
+            SCF
+            RET
+
+;@ROUTINE IN A,BC,DE,HL,IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+TRGTSNKR: ;@NUC-GLOBAL TargetSinkRuntimeImage PERMANENT TRGTSNKR
+            PUSH AF
+            LD   A,3
+            LD   (ADPTRRN0),A
+            POP  AF
+            JR   TRGTSNK2
+;@ROUTINE IN A,BC,DE,HL,IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+TRGTSNK1: ;@NUC-GLOBAL TargetSinkRuntimeInitialImage PERMANENT TRGTSNK1
+            PUSH AF
+            LD   A,4
+            LD   (ADPTRRN0),A
+            POP  AF
+TRGTSNK2: ;@NUC-GLOBAL TargetSinkRuntimeSelected PERMANENT TRGTSNK2
+            LD   (ADPTRRNT),A
+            LD   (ADPTRRN1),BC
+            LD   (ADPTRRN2),DE
+            LD   (ADPTRRN3),HL
+            LD   (ADPTRRN4),IX
+            LD   A,8+TRGTCNT8
+            CALL ADPTRRSR
+            RET  C
+            LD   A,(ADPTRRNT)
+            LD   BC,(ADPTRRN1)
+            LD   DE,(ADPTRRN2)
+            LD   HL,(ADPTRRN3)
+            LD   IX,(ADPTRRN4)
+            LD   A,(ADPTRRN0)
+            LD   (IY+0),A
+            LD   A,(ADPTRRNT)
+            LD   (IY+1),A
+            LD   (IY+2),L
+            LD   (IY+3),H
+            LD   (IY+4),C
+            LD   (IY+5),B
+            LD   (IY+6),E
+            LD   (IY+7),D
+            LD   (ADPTRRN5),IY
+            PUSH IY
+            POP  HL
+            LD   DE,8
+            ADD  HL,DE
+            EX   DE,HL
+            PUSH IX
+            POP  HL
+            LD   BC,TRGTCNT8
+            LDIR
+            LD   IY,(ADPTRRN5)
+            PUSH IY
+            POP  HL
+            LD   DE,8
+            ADD  HL,DE
+            LD   DE,ADPTRCP0
+            LD   BC,TRGTCNT8
+            LDIR
+            LD   IY,(ADPTRRN5)
+            OR   A
+            RET
+
+;@ROUTINE IN A,C,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,DE
+TRGTSNKP: ;@NUC-GLOBAL TargetSinkPatchByte PERMANENT TRGTSNKP
+            PUSH IY
+            PUSH AF
+            PUSH BC
+            PUSH HL
+            LD   A,7
+            CALL ADPTRRSR
+            JR   C,.L00001
+            POP  HL
+            POP  BC
+            POP  AF
+            LD   (IY+0),2
+            LD   (IY+1),C
+            LD   (IY+2),L
+            LD   (IY+3),H
+            LD   (IY+4),1
+            LD   (IY+5),0
+            LD   (IY+6),A
+            POP  IY
+            OR   A
+            RET
+.L00000:
+            POP  IY
+            RET
+.L00001:
+            LD   E,A
+            POP  HL
+            POP  BC
+            POP  AF
+            POP  IY
+            LD   A,E
+            SCF
+            RET
+
+;@ROUTINE IN C,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TRGTSNK3: ;@NUC-GLOBAL TargetSinkPatchWord PERMANENT TRGTSNK3
+            PUSH IY
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            LD   A,8
+            CALL ADPTRRSR
+            POP  HL
+            POP  DE
+            POP  BC
+            JR   C,.L00000
+            LD   (IY+0),2
+            LD   (IY+1),C
+            LD   (IY+2),E
+            LD   (IY+3),D
+            LD   (IY+4),2
+            LD   (IY+5),0
+            LD   (IY+6),L
+            LD   (IY+7),H
+            POP  IY
+            OR   A
+            RET
+.L00000:
+            POP  IY
+            RET
+
+;@ROUTINE IN IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IY
+TRGTSNKM: ;@NUC-GLOBAL TargetSinkMapFlat PERMANENT TRGTSNKM
+            LD   A,(ADPTRMPF)
+            OR   A
+            JR   Z,.L00000
+            LD   A,DGNSTCT4
+            SCF
+            RET
+.L00000:
+            LD   HL,ADPTRCPA
+            LD   B,TRGTMPSZ
+.L00001:
+            LD   A,(IX+0)
+            LD   (HL),A
+            INC  IX
+            INC  HL
+            DJNZ .L00001
+            OR   A
+            RET
+
+;@ROUTINE IN HL,IX,IY OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+TRGTSNK4: ;@NUC-GLOBAL TargetSinkMapBanked PERMANENT TRGTSNK4
+            LD   (ADPTRMPR),HL
+            LD   A,(IX+FTIXBKC)
+            LD   B,A
+            LD   C,A
+            LD   HL,ADPTRCP1
+            LD   DE,ADPTRCP4
+.L00000:
+            LD   A,(IY+0)
+            LD   (HL),A
+            INC  HL
+            LD   A,(IY+1)
+            LD   (HL),A
+            INC  HL
+            LD   A,(IY+2)
+            LD   (DE),A
+            INC  DE
+            LD   A,(IY+3)
+            LD   (DE),A
+            INC  DE
+            PUSH DE
+            LD   DE,TRGTBNK3
+            ADD  IY,DE
+            POP  DE
+            DJNZ .L00000
+            LD   HL,(ADPTRMPR)
+            LD   DE,ADPTRCP7
+            LD   A,C
+            ADD  A,A
+            LD   B,A
+.L00001:
+            LD   A,(HL)
+            LD   (DE),A
+            INC  HL
+            INC  DE
+            DJNZ .L00001
+            OR   A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TRGTSNKC: ;@NUC-GLOBAL TargetSinkCommit PERMANENT TRGTSNKC
+            LD   A,(ADPTRCM0)
+            OR   A
+            JR   Z,.L00000
+            LD   A,DGNSTCT4
+            SCF
+            RET
+.L00000:
+            LD   A,1
+            LD   (ADPTRCMM),A
+            OR   A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TRGTSNKA: ;@NUC-GLOBAL TargetSinkAbort PERMANENT TRGTSNKA
+            LD   A,1
+            LD   (ADPTRABR),A
+            OR   A
+            RET
+
+PRFSTTS: DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:   DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+ADPTROPN: DB 0 ;@NUC-GLOBAL AdapterOpen PERMANENT ADPTROPN
+ADPTRCMM: DB 0 ;@NUC-GLOBAL AdapterCommitted PERMANENT ADPTRCMM
+ADPTRABR:   DB 0 ;@NUC-GLOBAL AdapterAborted PERMANENT ADPTRABR
+ADPTRCRS:    DW 0 ;@NUC-GLOBAL AdapterCursor PERMANENT ADPTRCRS
+ADPTRLGL: DW 0 ;@NUC-GLOBAL AdapterLogLength PERMANENT ADPTRLGL
+ADPTRLDD: DW 0 ;@NUC-GLOBAL AdapterLoadedLogLength PERMANENT ADPTRLDD
+ADPTRTRP: DW 0 ;@NUC-GLOBAL AdapterTrapLogLength PERMANENT ADPTRTRP
+ADPTRUNH: DW 0 ;@NUC-GLOBAL AdapterUnhandledLogLength PERMANENT ADPTRUNH
+ADPTRBNK: DW 0 ;@NUC-GLOBAL AdapterBankedLogLength PERMANENT ADPTRBNK
+ADPTRENT: DW 0 ;@NUC-GLOBAL AdapterEntry1LogLength PERMANENT ADPTRENT
+ADPTRBN0: DW 0 ;@NUC-GLOBAL AdapterBankedTrapLogLength PERMANENT ADPTRBN0
+ADPTRCHP: DW 0 ;@NUC-GLOBAL AdapterChapter21LogLength PERMANENT ADPTRCHP
+ADPTRFLD: DW 0 ;@NUC-GLOBAL AdapterFailedLogLength PERMANENT ADPTRFLD
+ADPTRFLR: DB 0 ;@NUC-GLOBAL AdapterFailureCountdown PERMANENT ADPTRFLR
+ADPTRMPF:       DB 0 ;@NUC-GLOBAL AdapterMapFailure PERMANENT ADPTRMPF
+ADPTRCM0:    DB 0 ;@NUC-GLOBAL AdapterCommitFailure PERMANENT ADPTRCM0
+ADPTRSVD:  DB 0 ;@NUC-GLOBAL AdapterSavedDiagnostic PERMANENT ADPTRSVD
+ADPTRCPT:   DS TRGTDSC8 ;@NUC-GLOBAL AdapterCapturedBegin PERMANENT ADPTRCPT
+ADPTRCP0: DS TRGTCNT8 ;@NUC-GLOBAL AdapterCapturedContext PERMANENT ADPTRCP0
+ADPTRCP1: DS TRGTBNKC*2 ;@NUC-GLOBAL AdapterCapturedBankCursors PERMANENT ADPTRCP1
+ADPTRCP2 EQU ADPTRCP1 ;@NUC-GLOBAL AdapterCapturedBank0Cursor PERMANENT ADPTRCP2
+ADPTRCP3 EQU ADPTRCP1+2 ;@NUC-GLOBAL AdapterCapturedBank1Cursor PERMANENT ADPTRCP3
+ADPTRCP4: DS TRGTBNKC*2 ;@NUC-GLOBAL AdapterCapturedBankRemaining PERMANENT ADPTRCP4
+ADPTRCP5 EQU ADPTRCP4 ;@NUC-GLOBAL AdapterCapturedBank0Remaining PERMANENT ADPTRCP5
+ADPTRCP6 EQU ADPTRCP4+2 ;@NUC-GLOBAL AdapterCapturedBank1Remaining PERMANENT ADPTRCP6
+ADPTRCP7: DS TRGTBNKC*2 ;@NUC-GLOBAL AdapterCapturedBankRoLengths PERMANENT ADPTRCP7
+ADPTRCP8 EQU ADPTRCP7 ;@NUC-GLOBAL AdapterCapturedBank0RoLength PERMANENT ADPTRCP8
+ADPTRCP9 EQU ADPTRCP7+2 ;@NUC-GLOBAL AdapterCapturedBank1RoLength PERMANENT ADPTRCP9
+ADPTRMPR: DW 0 ;@NUC-GLOBAL AdapterMapRoPointer PERMANENT ADPTRMPR
+ADPTRCPA:     DS TRGTMPSZ ;@NUC-GLOBAL AdapterCapturedMap PERMANENT ADPTRCPA
+.L00000: DW 0
+.L00001: DS 1
+ADPTRSCC:      DS TRGTMPSZ ;@NUC-GLOBAL AdapterSuccessMap PERMANENT ADPTRSCC
+ADPTRTR0:         DS TRGTMPSZ ;@NUC-GLOBAL AdapterTrapMap PERMANENT ADPTRTR0
+ADPTRUN0:    DS TRGTMPSZ ;@NUC-GLOBAL AdapterUnhandledMap PERMANENT ADPTRUN0
+ADPTRTR1       EQU ADPTRTR0+$03 ;@NUC-GLOBAL AdapterTrapUsedLength PERMANENT ADPTRTR1
+ADPTRTR2       EQU ADPTRTR0+$0B ;@NUC-GLOBAL AdapterTrapCodeLength PERMANENT ADPTRTR2
+ADPTRUN1  EQU ADPTRUN0+$03 ;@NUC-GLOBAL AdapterUnhandledUsedLength PERMANENT ADPTRUN1
+ADPTRUN2  EQU ADPTRUN0+$0B ;@NUC-GLOBAL AdapterUnhandledCodeLength PERMANENT ADPTRUN2
+ADPTRCPB EQU FTCTX00 ;@NUC-GLOBAL AdapterCapturedRuntimeBase PERMANENT ADPTRCPB
+ADPTRCPC   EQU FTCTX06 ;@NUC-GLOBAL AdapterCapturedStateBase PERMANENT ADPTRCPC
+ADPTRCPD  EQU FTMAP03 ;@NUC-GLOBAL AdapterCapturedUsedLength PERMANENT ADPTRCPD
+ADPTRCPE  EQU ADPTRCPA+$0B ;@NUC-GLOBAL AdapterCapturedCodeLength PERMANENT ADPTRCPE
+ADPTRRNT:     DB 0 ;@NUC-GLOBAL AdapterRuntimeBank PERMANENT ADPTRRNT
+ADPTRRN0:     DB 0 ;@NUC-GLOBAL AdapterRuntimeKind PERMANENT ADPTRRN0
+ADPTRRN1:   DW 0 ;@NUC-GLOBAL AdapterRuntimeLength PERMANENT ADPTRRN1
+ADPTRRN2: DW 0 ;@NUC-GLOBAL AdapterRuntimeIdentity PERMANENT ADPTRRN2
+ADPTRRN3:  DW 0 ;@NUC-GLOBAL AdapterRuntimeAddress PERMANENT ADPTRRN3
+ADPTRRN4:  DW 0 ;@NUC-GLOBAL AdapterRuntimeContext PERMANENT ADPTRRN4
+ADPTRRN5:      DW 0 ;@NUC-GLOBAL AdapterRuntimeLog PERMANENT ADPTRRN5
+ADPTRRN6 EQU ADPTRRN4 ;@NUC-GLOBAL AdapterRuntimeContextPointer PERMANENT ADPTRRN6
+SRCPRVNN: DW 0 ;@NUC-GLOBAL SourceProvenanceCursor PERMANENT SRCPRVNN
+SRCPRVN0: DW 0 ;@NUC-GLOBAL SourceProvenanceLength PERMANENT SRCPRVN0
+SRCPRVN1: DW 0 ;@NUC-GLOBAL SourceProvenanceSuccessLength PERMANENT SRCPRVN1
+SRCPRVN2:   DB 0 ;@NUC-GLOBAL SourceProvenancePart PERMANENT SRCPRVN2
+SRCPRVN3:   DB 0 ;@NUC-GLOBAL SourceProvenanceBank PERMANENT SRCPRVN3
+SRCPRVN4:  DW 0 ;@NUC-GLOBAL SourceProvenanceStart PERMANENT SRCPRVN4
+SRCPRVN5:    DW 0 ;@NUC-GLOBAL SourceProvenanceEnd PERMANENT SRCPRVN5
+ProofEnd:
+
+SRCPRVN6 EQU $99C0 ;@NUC-GLOBAL SourceProvenanceLogBase PERMANENT SRCPRVN6
+SRCPRVN7 EQU $99D0 ;@NUC-GLOBAL SourceProvenanceSuccessLogBase PERMANENT SRCPRVN7
+SRCPRVN8 EQU $99F0 ;@NUC-GLOBAL SourceProvenanceLogLimit PERMANENT SRCPRVN8
+ADPTRLD0    EQU $9A00 ;@NUC-GLOBAL AdapterLoadedLogBase PERMANENT ADPTRLD0
+ADPTRSC0   EQU $9D00 ;@NUC-GLOBAL AdapterSuccessLogBase PERMANENT ADPTRSC0
+ADPTRTR3      EQU $A100 ;@NUC-GLOBAL AdapterTrapLogBase PERMANENT ADPTRTR3
+ADPTRUN3 EQU $A600 ;@NUC-GLOBAL AdapterUnhandledLogBase PERMANENT ADPTRUN3
+ADPTRBN1 EQU $AD00 ;@NUC-GLOBAL AdapterBankedTrapLogBase PERMANENT ADPTRBN1
+ADPTRLGB          EQU $B500 ;@NUC-GLOBAL AdapterLogBase PERMANENT ADPTRLGB
+ADPTRFL0    EQU $C700 ;@NUC-GLOBAL AdapterFailedLogBase PERMANENT ADPTRFL0
+ADPTREN0    EQU $CC00 ;@NUC-GLOBAL AdapterEntry1LogBase PERMANENT ADPTREN0
+ADPTRCH0 EQU $D100 ;@NUC-GLOBAL AdapterChapter21LogBase PERMANENT ADPTRCH0
+ADPTRLG0         EQU $F000 ;@NUC-GLOBAL AdapterLogLimit PERMANENT ADPTRLG0

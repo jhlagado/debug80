@@ -1,0 +1,193 @@
+            ORG PRFBS
+CLTRNEN EQU SMNTCBFF+$10 ; semantic transcript end check address
+CLBDOFS EQU 136 ; bad completion diagnostic offset
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFCS),A
+            LD   (PRFSTTS),A
+            LD   A,60
+            LD   HL,CLLPRFSR
+            LD   DE,CLLPRFS0
+            CALL CMPLCLLS
+            JP   C,PRFFLCMP
+            LD   A,(SMNTCBFF)
+            CP   9
+            JP   NZ,PRFFLOPR
+            CALL ENCDCLLP
+            JP   C,PRFFLENC
+            LD   HL,(GNRTDSZ)
+            LD   DE,CLLPRGRM
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLSZ
+            LD   HL,(SMNTCRDC)
+            LD   DE,CLTRNEN
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLTRN
+
+            CALL Reset
+            CALL GNRTDBS
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLSCC
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLSC0
+            LD   A,(SRVCOTP0)
+            OR   A
+            JP   NZ,PRFFLSC2
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFFLSC3
+            LD   A,(ACTVTNAR+3)
+            CP   1
+            JP   NZ,PRFFLSC4
+
+            CALL Reset
+            LD   A,$A5
+            LD   (ACTVTNAR+3),A
+            LD   A,3
+            LD   (ACTVTNLM),A
+            CALL GNRTDBS
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLCP2
+            LD   A,(TRPNMBR)
+            CP   5
+            JP   NZ,PRFFLCP3
+            LD   A,(SRVCOTPT)
+            OR   A
+            JP   NZ,PRFFLCP4
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFFLCP5
+            LD   HL,(TRPOFFST)
+            LD   DE,CLLCPCTY
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLCP6
+            LD   A,(ACTVTNAR+2)
+            CP   2
+            JP   NZ,PRFFLCP7
+            LD   A,(ACTVTNAR+3)
+            CP   $A5
+            JP   NZ,PRFFLCP8
+
+            CALL Reset
+            LD   A,1
+            LD   (SRVCFLRC),A
+            CALL GNRTDBS
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLOTP
+            LD   A,(TRPNMBR)
+            CP   6
+            JP   NZ,PRFFLOT0
+            LD   A,(TRPERRR)
+            CP   3
+            JP   NZ,PRFFLOT1
+            LD   HL,(TRPOFFST)
+            LD   DE,CLLFLROF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLOT2
+            LD   A,(SRVCOTPT)
+            OR   A
+            JP   NZ,PRFFLOT4
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFFLOT5
+
+            LD   A,61
+            LD   HL,BDCMPLTN
+            LD   DE,BDCMPLT0
+            CALL CMPLCLLS
+            JP   NC,PRFFLBDA
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCFR
+            JP   NZ,PRFFLBDC
+            LD   HL,(DGNSTCOF)
+            LD   DE,CLBDOFS
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLBDP
+
+            ; Leave the complete successful program available to host tests.
+            LD   A,60
+            LD   HL,CLLPRFSR
+            LD   DE,CLLPRFS0
+            CALL CMPLCLLS
+            JP   C,PRFFLCMP
+            CALL ENCDCLLP
+            JP   C,PRFFLENC
+
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+PRFFLCMP:             LD A,1 ;@NUC-GLOBAL ProofFailCompile PERMANENT PRFFLCMP
+                              JR PRFFLD
+PRFFLOPR:          LD A,2 ;@NUC-GLOBAL ProofFailOperations PERMANENT PRFFLOPR
+                              JR PRFFLD
+PRFFLENC:              LD A,3 ;@NUC-GLOBAL ProofFailEncode PERMANENT PRFFLENC
+                              JR PRFFLD
+PRFFLSZ:                LD A,15 ;@NUC-GLOBAL ProofFailSize PERMANENT PRFFLSZ
+                              JR PRFFLD
+PRFFLSCC:        LD A,4 ;@NUC-GLOBAL ProofFailSuccessState PERMANENT PRFFLSCC
+                              JR PRFFLD
+PRFFLSC0:       LD A,5 ;@NUC-GLOBAL ProofFailSuccessOutput PERMANENT PRFFLSC0
+                              JR PRFFLD
+PRFFLSC2:         LD A,6 ;@NUC-GLOBAL ProofFailSuccessByte PERMANENT PRFFLSC2
+                              JR PRFFLD
+PRFFLSC3:   LD A,7 ;@NUC-GLOBAL ProofFailSuccessActivation PERMANENT PRFFLSC3
+                              JR PRFFLD
+PRFFLCP2:       LD A,8 ;@NUC-GLOBAL ProofFailCapacityState PERMANENT PRFFLCP2
+                              JR PRFFLD
+PRFFLCP3:        LD A,9 ;@NUC-GLOBAL ProofFailCapacityTrap PERMANENT PRFFLCP3
+                              JR PRFFLD
+PRFFLCP4:      LD A,10 ;@NUC-GLOBAL ProofFailCapacityOutput PERMANENT PRFFLCP4
+                              JR PRFFLD
+PRFFLCP5:  LD A,11 ;@NUC-GLOBAL ProofFailCapacityActivation PERMANENT PRFFLCP5
+                              JR PRFFLD
+PRFFLBDA:         LD A,12 ;@NUC-GLOBAL ProofFailBadAccepted PERMANENT PRFFLBDA
+                              JR PRFFLD
+PRFFLBDC:             LD A,13 ;@NUC-GLOBAL ProofFailBadCode PERMANENT PRFFLBDC
+                              JR PRFFLD
+PRFFLBDP:         LD A,14 ;@NUC-GLOBAL ProofFailBadPosition PERMANENT PRFFLBDP
+                              JR PRFFLD
+PRFFLTRN:       LD A,16 ;@NUC-GLOBAL ProofFailTranscriptEnd PERMANENT PRFFLTRN
+                              JR PRFFLD
+PRFFLSC4:         LD A,17 ;@NUC-GLOBAL ProofFailSuccessPeak PERMANENT PRFFLSC4
+                              JR PRFFLD
+PRFFLCP6:      LD A,18 ;@NUC-GLOBAL ProofFailCapacityOffset PERMANENT PRFFLCP6
+                              JR PRFFLD
+PRFFLCP7:        LD A,19 ;@NUC-GLOBAL ProofFailCapacityPeak PERMANENT PRFFLCP7
+                              JR PRFFLD
+PRFFLCP8:      LD A,20 ;@NUC-GLOBAL ProofFailCapacityAtomic PERMANENT PRFFLCP8
+                              JR PRFFLD
+PRFFLOTP:         LD A,21 ;@NUC-GLOBAL ProofFailOutputState PERMANENT PRFFLOTP
+                              JR PRFFLD
+PRFFLOT0:          LD A,22 ;@NUC-GLOBAL ProofFailOutputTrap PERMANENT PRFFLOT0
+                              JR PRFFLD
+PRFFLOT1:         LD A,23 ;@NUC-GLOBAL ProofFailOutputError PERMANENT PRFFLOT1
+                              JR PRFFLD
+PRFFLOT2:        LD A,24 ;@NUC-GLOBAL ProofFailOutputOffset PERMANENT PRFFLOT2
+                              JR PRFFLD
+PRFFLOT4:         LD A,25 ;@NUC-GLOBAL ProofFailOutputBytes PERMANENT PRFFLOT4
+                              JR PRFFLD
+PRFFLOT5:   LD A,26 ;@NUC-GLOBAL ProofFailOutputActivation PERMANENT PRFFLOT5
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            LD   A,$E0
+            LD   (PRFSTTS),A
+            HALT
+
+PRFSTTS:            DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:              DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+ProofEnd:
+
+            ;@AZM-END

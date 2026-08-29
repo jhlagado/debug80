@@ -1,0 +1,23 @@
+            ORG SPRBS
+STRCTR1D: ;@NUC-GLOBAL StructuredLabelCapacitySource PERMANENT STRCTR1D
+            DB "sub main() fails",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    if true",10,"    end",10
+            DB "    "
+.L00000:
+            DB "if true",10,"    end",10
+            DB "end",10
+STRCTR1E: ;@NUC-GLOBAL StructuredLabelCapacitySourceEnd PERMANENT STRCTR1E

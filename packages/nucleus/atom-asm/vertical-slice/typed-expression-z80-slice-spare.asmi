@@ -1,0 +1,109 @@
+            ORG SPRBS
+TYPDDYNM: ;@NUC-GLOBAL TypedDynamicZeroSource PERMANENT TYPDDYNM
+            DB "var out as u8 = 1",10
+            DB "sub main() fails",10
+            DB "    out = out / 0",10
+            DB "end",10
+TYPDDYN0: ;@NUC-GLOBAL TypedDynamicZeroSourceEnd PERMANENT TYPDDYN0
+
+TYPDUNR2: ;@NUC-GLOBAL TypedUnaryMinusOverflowSource PERMANENT TYPDUNR2
+            DB "var bad as u8 = -256",10
+TYPDUNR3: ;@NUC-GLOBAL TypedUnaryMinusOverflowSourceEnd PERMANENT TYPDUNR3
+TYPDNTOV: ;@NUC-GLOBAL TypedNotOverflowSource PERMANENT TYPDNTOV
+            DB "var bad as u8 = not 256",10
+TYPDNTO0: ;@NUC-GLOBAL TypedNotOverflowSourceEnd PERMANENT TYPDNTO0
+TYPDMLFR: ;@NUC-GLOBAL TypedMalformedHexSource PERMANENT TYPDMLFR
+            DB "var bad as u16 = 0x2a",10
+TYPDMLF0: ;@NUC-GLOBAL TypedMalformedHexSourceEnd PERMANENT TYPDMLF0
+TYPDMLF1: ;@NUC-GLOBAL TypedMalformedSuffixSource PERMANENT TYPDMLF1
+            DB "var bad as u16 = 12u8",10
+TYPDMLF2: ;@NUC-GLOBAL TypedMalformedSuffixSourceEnd PERMANENT TYPDMLF2
+
+TYPDSPPR: ;@NUC-GLOBAL TypedSuppressedDivideTypeSource PERMANENT TYPDSPPR
+            DB "var byte as u8 = 1",10
+            DB "var flag as boolean = false",10
+            DB "sub main() fails",10
+            DB "    flag = false and (byte / 0 = 300)",10
+            DB "end",10
+TYPDSPP0: ;@NUC-GLOBAL TypedSuppressedDivideTypeSourceEnd PERMANENT TYPDSPP0
+
+TYPDSPP1: ;@NUC-GLOBAL TypedSuppressedNarrowTypeSource PERMANENT TYPDSPP1
+            DB "var flag as boolean = false",10
+            DB "sub main() fails",10
+            DB "    flag = false and (u8(300) = 300)",10
+            DB "end",10
+TYPDSPP2: ;@NUC-GLOBAL TypedSuppressedNarrowTypeSourceEnd PERMANENT TYPDSPP2
+
+TYPDMSSN: ;@NUC-GLOBAL TypedMissingConversionRightSource PERMANENT TYPDMSSN
+            DB "var out as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    out = u8(1",10
+            DB "end",10
+TYPDMSS0: ;@NUC-GLOBAL TypedMissingConversionRightSourceEnd PERMANENT TYPDMSS0
+
+TYPDMSS1: ;@NUC-GLOBAL TypedMissingParenRightSource PERMANENT TYPDMSS1
+            DB "var out as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    out = (1",10
+            DB "end",10
+TYPDMSS2: ;@NUC-GLOBAL TypedMissingParenRightSourceEnd PERMANENT TYPDMSS2
+
+TYPDMLF3: ;@NUC-GLOBAL TypedMalformedAfterLeftSource PERMANENT TYPDMLF3
+            DB "var out as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    out = 1 0x2a",10
+            DB "end",10
+TYPDMLF4: ;@NUC-GLOBAL TypedMalformedAfterLeftSourceEnd PERMANENT TYPDMLF4
+
+TYPDDFL1: ;@NUC-GLOBAL TypedDefaultLocalCapacitySource PERMANENT TYPDDFL1
+            DB "local as u16",10
+TYPDDFL2: ;@NUC-GLOBAL TypedDefaultLocalCapacitySourceEnd PERMANENT TYPDDFL2
+
+TYPDCVRG: ;@NUC-GLOBAL TypedCoverageSource PERMANENT TYPDCVRG
+            DB "const byteMask = u8(255)",10
+            DB "const truth = true",10
+            DB "const quotient = 8 / 2",10
+            DB "var out as u8 = 0",10
+            DB "var flag as boolean = false",10
+            DB "sub main() fails",10
+            DB "    var value as u8 = +1",10
+            DB "    out = not 255",10
+            DB "    out = -255",10
+            DB "    out = value or byteMask",10
+            DB "    flag = truth",10
+            DB "    flag = (value < quotient) and (flag = truth) and (flag <> false)",10
+            DB "    writeOutputByte(out) else fail",10
+            DB "end",10
+TYPDCVR0: ;@NUC-GLOBAL TypedCoverageSourceEnd PERMANENT TYPDCVR0
+
+TYPDCNVR: ;@NUC-GLOBAL TypedConversionContextSource PERMANENT TYPDCNVR
+            DB "var out as u8 = 0",10
+            DB "var word as u16 = 0",10
+            DB "sub main() fails",10
+            DB "    word = u8(200 + 100)",10
+            DB "    out = u8(word)",10
+            DB "    writeOutputByte(out) else fail",10
+            DB "end",10
+TYPDCNV0: ;@NUC-GLOBAL TypedConversionContextSourceEnd PERMANENT TYPDCNV0
+
+TYPDNSTD: ;@NUC-GLOBAL TypedNestedDivideTrapSource PERMANENT TYPDNSTD
+            DB "var result as u16 = 10",10
+            DB "var left as u16 = 1",10
+            DB "var right as u16 = 2",10
+            DB "sub main() fails",10
+            DB "    result = result "
+.L00000:
+            DB "/ (left / right)",10
+            DB "end",10
+TYPDNST0: ;@NUC-GLOBAL TypedNestedDivideTrapSourceEnd PERMANENT TYPDNST0
+
+TYPDNST1: ;@NUC-GLOBAL TypedNestedNarrowTrapSource PERMANENT TYPDNST1
+            DB "var out as u8 = 7",10
+            DB "var wide as u16 = 300",10
+            DB "var small as u16 = 1",10
+            DB "sub main() fails",10
+            DB "    out = "
+.L00000:
+            DB "u8(wide + u8(small))",10
+            DB "end",10
+TYPDNST2: ;@NUC-GLOBAL TypedNestedNarrowTrapSourceEnd PERMANENT TYPDNST2

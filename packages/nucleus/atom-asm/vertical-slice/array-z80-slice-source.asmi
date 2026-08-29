@@ -1,0 +1,19 @@
+            ORG SRCBS
+ARRYPRFS: ;@NUC-GLOBAL ArrayProofSource PERMANENT ARRYPRFS
+            DB "var bytes as u8[4] = [65, 66, 67, 68]",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    var index as u8 = readInputByte() else fail",10
+            DB "    writeOutputByte(bytes[index]) else fail",10
+            DB "end",10
+ARRYPRF0: ;@NUC-GLOBAL ArrayProofSourceEnd PERMANENT ARRYPRF0
+
+BDARRYSR: ;@NUC-GLOBAL BadArraySource PERMANENT BDARRYSR
+            DB "var bytes as u8[4] = [65, 66 "
+BDARRYVL: ;@NUC-GLOBAL BadArrayValue PERMANENT BDARRYVL
+            DB "67, 68]",10
+            DB "sub main() fails",10
+            DB "    var index as u8 = readInputByte() else fail",10
+            DB "    writeOutputByte(bytes[index]) else fail",10
+            DB "end",10
+BDARRYS0: ;@NUC-GLOBAL BadArraySourceEnd PERMANENT BDARRYS0

@@ -1,0 +1,4 @@
+RNTMCDEN: ;@NUC-GLOBAL RuntimeCodeEnd PERMANENT RNTMCDEN
+
+            ; Stage 8's combined proof needs more than the original 2 KiB
+            ; proof partition but remains below the machine stack.

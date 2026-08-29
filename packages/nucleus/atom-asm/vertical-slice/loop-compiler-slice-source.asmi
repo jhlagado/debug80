@@ -1,0 +1,36 @@
+            ORG SRCBS
+ACCPTDLP: ;@NUC-GLOBAL AcceptedLoopSource PERMANENT ACCPTDLP
+            DB "sub main() fails",10
+            DB "    var index as u8 = 0",10
+            DB "    for index = 0 until 3",10
+            DB "        writeOutputByte('A') else fail",10
+            DB "    end",10
+            DB "end",10
+ACCPTDL0: ;@NUC-GLOBAL AcceptedLoopSourceEnd PERMANENT ACCPTDL0
+
+ZRLPSRC: ;@NUC-GLOBAL ZeroLoopSource PERMANENT ZRLPSRC
+            DB "sub main() fails",10
+            DB "    var index as u8 = 0",10
+            DB "    for index = 0 until 0",10
+            DB "        writeOutputByte('A') else fail",10
+            DB "    end",10
+            DB "end",10
+ZRLPSRCE: ;@NUC-GLOBAL ZeroLoopSourceEnd PERMANENT ZRLPSRCE
+
+CNTRWRTS: ;@NUC-GLOBAL CounterWriteSource PERMANENT CNTRWRTS
+            DB "sub main() fails",10
+            DB "    var index as u8 = 0",10
+            DB "    for index = 0 until 3",10
+.L00000:
+            DB "        index = 1",10
+            DB "    end",10
+            DB "end",10
+CNTRWRT0: ;@NUC-GLOBAL CounterWriteSourceEnd PERMANENT CNTRWRT0
+
+MSSNGEND: ;@NUC-GLOBAL MissingEndSource PERMANENT MSSNGEND
+            DB "sub main() fails",10
+            DB "    var index as u8 = 0",10
+            DB "    for index = 0 until 3",10
+            DB "        writeOutputByte('A') else fail",10
+            DB "    end",10
+MSSNGEN0: ;@NUC-GLOBAL MissingEndSourceEnd PERMANENT MSSNGEN0

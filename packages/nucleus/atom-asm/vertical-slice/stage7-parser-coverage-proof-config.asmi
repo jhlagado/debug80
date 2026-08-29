@@ -1,0 +1,5 @@
+
+%DEFINE LegacyCompilerSlices 0
+%DEFINE AggregateCallSlices 1
+%DEFINE HybridLL1Full 1
+%DEFINE LegacyEncoders 0

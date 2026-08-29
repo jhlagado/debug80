@@ -1,0 +1,1643 @@
+ACPTDBC EQU 11
+ACPTDEB EQU 12
+ACPTDP1 EQU 14
+ACPTDPP EQU 13
+ACPRLEN EQU 8
+ACPWSZ EQU 157
+ACPSAPR EQU $8C
+ACPSCU8 EQU $81
+
+; Predictive aggregate paths, bounded routine signatures, forwards, and the
+; predefined Stage 8 service surface. Runtime carriers are never entered in
+; the source symbol model as integers.
+
+
+;@ROUTINE IN A OUT A,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,DE
+STG7RTNA: ;@NUC-GLOBAL Stage7RoutineAddress PERMANENT STG7RTNA
+            LD   L,A
+            LD   H,0
+            ADD  HL,HL
+            ADD  HL,HL
+            ADD  HL,HL
+            LD   DE,STG7RTNT
+            ADD  HL,DE
+            OR   A
+            RET
+
+;@ROUTINE IN A OUT A,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,DE
+STG7PRMT: ;@NUC-GLOBAL Stage7ParameterAddress PERMANENT STG7PRMT
+            LD   L,A
+            LD   H,0
+            ADD  HL,HL
+            ADD  HL,HL
+            LD   DE,STG7PRM1
+            ADD  HL,DE
+            OR   A
+            RET
+
+; Z returns one exact routine match and A its table index. NZ means that the
+; current name is not a retained routine; it is not itself a diagnostic.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG7FNDR: ;@NUC-GLOBAL Stage7FindRoutineCurrent PERMANENT STG7FNDR
+            LD   A,(STG7RTNC)
+            OR   A
+            JR   Z,.L00001
+            LD   C,A
+            LD   B,0
+.L00000:
+            LD   A,B
+            CALL STG7RTNA
+            CALL TKNNMRCR
+            JR   C,.L00003
+            INC  B
+            DEC  C
+            JR   NZ,.L00000
+.L00001:
+            LD   A,(STG8FRWR)
+            AND  STG7RTNM
+            JR   Z,.L00002
+            CALL TYPDNMEQ
+            JR   NC,.L00002
+            LD   A,STG7MNRT
+            CP   A
+            RET
+.L00002:
+            LD   A,$FF
+            OR   A
+            RET
+.L00003:
+            LD   A,B
+            CP   A
+            RET
+
+STG7CRRN EQU TKNNMRCR ;@NUC-GLOBAL Stage7CurrentNameMatchesAtHL PERMANENT STG7CRRN
+
+; Carry identifies a predefined service or error constant and A returns its
+; dense ordinal. No match returns carry clear.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG8MTCH: ;@NUC-GLOBAL Stage8MatchPredefinedCurrent PERMANENT STG8MTCH
+            LD   HL,STG8PRD0
+            LD   C,STG8PRD1
+.L00000:
+            LD   B,(HL)
+            INC  HL
+            LD   A,(TKNLNGTH)
+            CP   B
+            JR   NZ,.L00002
+            LD   DE,(TKNLXMPN)
+.L00001:
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,.L00002
+            INC  DE
+            INC  HL
+            DJNZ .L00001
+            LD   A,STG8PRD1
+            SUB  C
+            SCF
+            RET
+.L00002:
+            LD   E,B
+            LD   D,0
+            ADD  HL,DE
+            DEC  C
+            JR   NZ,.L00000
+            OR   A
+            RET
+
+%IF TargetStreamingOutput
+; Compile one multipart source stream and publish one append-only object.
+; IX points at the stable compact target descriptor; A/HL retain the existing
+; bounded source-part descriptor ABI.
+;@ROUTINE IN A,HL,IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLTRGT: ;@NUC-GLOBAL CompileTargetAggregateCallParts PERMANENT CMPLTRGT
+            LD   (TRGTDSCA),IX
+            LD   (TRGTSRCP),A
+            PUSH AF
+            PUSH HL
+            CALL TRGTSNKS
+            CALL CMPLSLCR
+            POP  HL
+            POP  AF
+            PUSH AF
+            CALL SRCINTL0
+            POP  BC
+            RET  C
+            LD   A,B
+            ; Validate every bank-bearing descriptor field before source
+            ; semantics can retain a bank ordinal. A is the bounded part count.
+            LD   B,A
+            LD   IX,(TRGTDSCA)
+            LD   A,(IX+ACPTDBC)
+            OR   A
+            JR   Z,.L00002
+            CP   TRGTBNKC+1
+            JR   NC,.L00002
+            LD   (TRGTDSCB),A
+            LD   C,A
+            LD   A,(IX+ACPTDEB)
+            CP   C
+            JR   NC,.L00002
+            LD   (TRGTDSCC),A
+            LD   L,(IX+ACPTDPP)
+            LD   H,(IX+ACPTDP1)
+.L00000:
+            LD   A,(HL)
+            CP   C
+            JR   NC,.L00002
+            INC  HL
+            DJNZ .L00000
+            LD   HL,TRGTBNK0
+            LD   B,ACPRLEN
+            XOR  A
+.L00001:
+            LD   (HL),A
+            INC  HL
+            DJNZ .L00001
+            CALL CMPLAGG1
+            RET  C
+            JP   ENCDAGGR
+.L00002:
+            JP   TRGTCNFG
+
+; Return the bank mapped to the current manifest source-part ordinal.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,D,DE,HL,IX
+TRGTCRRN: ;@NUC-GLOBAL TargetCurrentSourceBank PERMANENT TRGTCRRN
+            LD   A,(SRCPRTID)
+            DEC  A
+            LD   E,A
+            LD   D,0
+            LD   IX,(TRGTDSCA)
+            LD   L,(IX+ACPTDPP)
+            LD   H,(IX+ACPTDP1)
+            ADD  HL,DE
+            LD   A,(HL)
+            OR   A
+            RET
+
+; Add the current source bank to flag byte A without disturbing low flags.
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL,IX
+TRGTPCKC: ;@NUC-GLOBAL TargetPackCurrentBank PERMANENT TRGTPCKC
+            LD   B,A
+            CALL TRGTCRRN
+            RLCA
+            RLCA
+            RLCA
+            RLCA
+            OR   B
+            RET
+
+; Extract the target bank stored in flag bits 4..5. The final rotate shifts a
+; known zero bit through carry, so success returns carry clear.
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TRGTUNPC: ;@NUC-GLOBAL TargetUnpackBank PERMANENT TRGTUNPC
+            AND  TRGTBNKM
+            RRCA
+            RRCA
+            RRCA
+            RRCA
+            RET
+
+;@ROUTINE IN A OUT A,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,D,DE
+TRGTBNKR: ;@NUC-GLOBAL TargetBankRoLengthAddress PERMANENT TRGTBNKR
+            LD   L,A
+            LD   H,0
+            ADD  HL,HL
+            LD   DE,TRGTBNK0
+            ADD  HL,DE
+            OR   A
+            RET
+
+; Compare packed bank bits in D with the current source-part bank.
+;@ROUTINE IN D OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL,IX
+TRGTCRR0: ;@NUC-GLOBAL TargetCurrentBankMatches PERMANENT TRGTCRR0
+            LD   B,D
+            CALL TRGTCRRN
+            RLCA
+            RLCA
+            RLCA
+            RLCA
+            XOR  B
+            AND  TRGTBNKM
+            RET
+;@ROUTINE IN D OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TRGTRQRC: ;@NUC-GLOBAL TargetRequireCurrentBank PERMANENT TRGTRQRC
+            CALL TRGTCRR0
+            RET  Z
+            JP   TRGTCNFG
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TRGTRQRE: ;@NUC-GLOBAL TargetRequireEntrySourceBank PERMANENT TRGTRQRE
+            CALL TRGTCRRN
+            LD   D,A
+            LD   A,(TRGTDSCC)
+            CP   D
+            RET  Z
+            JP   TRGTCNFG
+%ENDIF
+
+;@ROUTINE IN A,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLAGGR: ;@NUC-GLOBAL CompileAggregateCallParts PERMANENT CMPLAGGR
+            PUSH AF
+            PUSH HL
+            CALL CMPLSLCR
+            POP  HL
+            POP  AF
+            CALL SRCINTL0
+            RET  C
+            JR   CMPLAGG1
+;@ROUTINE IN A,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLAGG0: ;@NUC-GLOBAL CompileAggregateCallSlice PERMANENT CMPLAGG0
+            CALL CMPLSLCI
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLAGG1: ;@NUC-GLOBAL CompileAggregateCallReady PERMANENT CMPLAGG1
+            INC  A
+            LD   (AGGRGTMD),A
+            LD   HL,STG7STTB
+            LD   B,ACPWSZ
+            XOR  A
+.L00000:
+            LD   (HL),A
+            INC  HL
+            DJNZ .L00000
+            LD   (CNTRLNXT),A
+%IF Stage7LL1
+            CALL HYBRDL3B
+%ELSE
+            CALL STG7PRST
+%ENDIF
+            RET  C
+            JP   SMNTCSN6
+
+; Reject a routine name that collides with an ordinary name or an earlier
+; routine. The current token remains the name being checked.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG7RJCT: ;@NUC-GLOBAL Stage7RejectCurrentDeclarationName PERMANENT STG7RJCT
+            CALL SYMBLFND
+            JP   C,TYPDDPLC
+            CALL STG7FNDR
+            JP   Z,TYPDDPLC
+            CALL STG8MTCH
+            JP   C,TYPDDPLC
+            OR   A
+            RET
+
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG7PRST: ;@NUC-GLOBAL Stage7ParseTopLevel PERMANENT STG7PRST
+            CALL PRSRPK
+            RET  C
+            CP   TKNRCRD
+            JR   Z,.L00000
+            CP   TokenVar
+            JR   Z,.L00001
+            CP   TKNCNST
+            JR   Z,.L00002
+            CP   TokenSub
+            JR   Z,.L00003
+            LD   A,DGNSTCEC
+            JP   CMPLRSTD
+.L00000:
+            CALL PRSRTK
+            RET  C
+            JP   AGGRGTP2
+.L00001:
+            CALL PRSRTK
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            JP   AGGRGTP4
+.L00002:
+            CALL PRSRTK
+            RET  C
+            CALL TYPDPRS5
+            RET  C
+            JP   STG7PRST
+.L00003:
+            CALL PRSRTK
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            LD   HL,NameMain
+            LD   B,4
+            CALL TKNNMEQL
+            JP   C,STG7PRSM
+            JP   STG7PRSR
+%ENDIF
+
+; Check the current parameter name against the current signature prefix.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG7CHCK: ;@NUC-GLOBAL Stage7CheckParameterDuplicate PERMANENT STG7CHCK
+            LD   A,(STG7CRR4)
+            OR   A
+            RET  Z
+            LD   C,A
+            LD   A,(STG7CRR3)
+            LD   B,A
+.L00000:
+            LD   A,B
+            CALL STG7PRMT
+            CALL TKNNMRCR
+            JP   C,TYPDDPLC
+            INC  B
+            DEC  C
+            JR   NZ,.L00000
+            OR   A
+            RET
+
+; Reject a parameter name that collides with an ordinary declaration, an
+; earlier routine, the routine whose signature is being parsed, or an earlier
+; parameter in that signature.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG7CHC0: ;@NUC-GLOBAL Stage7CheckParameterDeclarationName PERMANENT STG7CHC0
+            CALL TYPDRJCT
+            RET  C
+            CALL STG7RJCT
+            RET  C
+            LD   A,(STG7CRR1)
+            CALL STG7RTNA
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            INC  HL
+            LD   A,(HL)
+            LD   B,A
+            EX   DE,HL
+            CALL TKNNMEQL
+            JP   C,TYPDDPLC
+            JR   STG7CHCK
+
+; Append the current parameter name and its parsed type A.
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG7APPN: ;@NUC-GLOBAL Stage7AppendParameter PERMANENT STG7APPN
+            LD   (STG7PTHT),A
+            LD   A,(STG7PRM0)
+            CP   STG7PRM3
+            JR   NC,.L00000
+            CALL STG7PRMT
+            CALL TKNRTNNM
+            INC  HL
+            LD   A,(STG7PTHT)
+            LD   (HL),A
+            LD   HL,STG7PRM0
+            INC  (HL)
+            LD   HL,STG7CRR4
+            INC  (HL)
+            LD   A,(STG7PTHT)
+            OR   A
+            RET
+.L00000:
+            LD   A,DGNSTCPR
+            JP   CMPLRSTD
+
+; Parse the parameter list and optional result of the provisional routine.
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+STG7PRSS: ;@NUC-GLOBAL Stage7ParseSignature PERMANENT STG7PRSS
+            CALL PRSREXP1
+            RET  C
+            CALL PRSRPK
+            RET  C
+            CP   TKNRGHTP
+            JR   Z,.L00001
+.L00000:
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            CALL STG7CHC0
+            RET  C
+            PUSH HL
+            LD   HL,(TKNLXMPN)
+            LD   (DCLRTNNM),HL
+            LD   A,(TKNLNGTH)
+            LD   (DCLRTNN0),A
+            POP  HL
+            CALL PRSREXP3
+            RET  C
+            CALL AGGRGTP1
+            RET  C
+            PUSH AF
+            CALL TYPDRSTR
+            POP  AF
+            CALL STG7APPN
+            RET  C
+            CALL PRSRPK
+            RET  C
+            CP   TKNCMM
+            JR   NZ,.L00001
+            CALL PRSRTK
+            RET  C
+            JR   .L00000
+.L00001:
+            CALL PRSREXP2
+            RET  C
+            XOR  A
+            LD   (STG7CRR2),A
+            CALL PRSRPK
+            RET  C
+            CP   TokenAs
+            JR   NZ,.L00002
+            CALL PRSRTK
+            RET  C
+            CALL AGGRGTP1
+            RET  C
+            LD   (STG7CRR2),A
+.L00002:
+            JP   PRSREXP0
+%ENDIF
+
+; Install one retained parameter as an activation symbol and emit the copy
+; from its caller-stack carrier into the routine's negative IX frame.
+;@ROUTINE IN A,C OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+STG7INST: ;@NUC-GLOBAL Stage7InstallParameter PERMANENT STG7INST
+            LD   (STG7CRR3),A
+            LD   A,C
+            LD   (STG7ARGM),A
+            LD   A,(STG7CRR3)
+            CALL STG7PRMT
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            INC  HL
+            LD   B,(HL)
+            INC  HL
+            LD   A,(HL)
+            LD   (STG7PTHT),A
+            LD   (TKNLXMPN),DE
+            LD   A,B
+            LD   (TKNLNGTH),A
+            LD   A,(NXTLCLSL)
+            LD   (STG7PTHO),A
+            LD   C,A
+            LD   B,0
+            LD   A,(STG7PTHT)
+            CP   AGGRGTFR
+            JR   C,.L00000
+            LD   D,ACPSAPR
+            JR   .L00001
+.L00000:
+            OR   SYMBLCL2
+            LD   D,A
+.L00001:
+            CALL SYMBLPR0
+            RET  C
+            LD   A,(SYMBLCNT)
+            LD   E,A
+            LD   D,0
+            LD   HL,AGGRGTSY
+            ADD  HL,DE
+            LD   A,(STG7PTHT)
+            LD   (HL),A
+            CALL SYMBLCMM
+            RET  C
+            LD   A,SMNTCBND
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(STG7PTHT)
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(STG7PTHO)
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(STG7ARGM)
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(STG7PTHT)
+            CP   AGGRGTFR
+            LD   A,2
+            JR   NC,.L00002
+            LD   A,(STG7PTHT)
+            CALL TYPDTYPW
+.L00002:
+            LD   HL,NXTLCLSL
+            ADD  A,(HL)
+            LD   (HL),A
+            OR   A
+            RET
+
+; Current token is a non-main routine name.
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+STG7PRSR: ;@NUC-GLOBAL Stage7ParseRoutineAfterName PERMANENT STG7PRSR
+            LD   A,(STG7RTNC)
+            CP   STG7RTN0
+            JP   NC,.L00005
+            CALL STG7RJCT
+            RET  C
+            LD   A,(STG7RTNC)
+            LD   (STG7CRR1),A
+            CALL STG7RTNA
+            CALL TKNRTNNM
+            INC  HL
+            LD   A,(STG7PRM0)
+            LD   (HL),A
+            LD   (STG7CRR3),A
+            XOR  A
+            LD   (STG7CRR4),A
+            CALL STG7PRSS
+            RET  C
+            LD   A,(STG7CRR1)
+            CALL STG7RTNA
+            LD   DE,STG7RTN3
+            ADD  HL,DE
+            LD   A,(STG7CRR4)
+            LD   (HL),A
+            INC  HL
+            LD   A,(STG7CRR2)
+            LD   (HL),A
+            INC  HL
+            LD   A,(STG7CRR1)
+            ADD  A,STG7RTN4
+            LD   (HL),A
+            LD   (STG7CLLL),A
+            LD   HL,STG7RTNC
+            INC  (HL)
+            LD   A,(SYMBLCNT)
+            LD   (STG7GLBL),A
+            XOR  A
+            LD   (NXTLCLSL),A
+            CALL CNTRLRST
+            LD   A,(STG7CRR2)
+            OR   A
+            LD   A,CNTRLRT1
+            JR   NZ,.L00000
+            XOR  A
+.L00000:
+            LD   (CNTRLRTN),A
+            LD   A,(STG7CRR2)
+            LD   (CNTRLRSL),A
+            LD   A,1
+            LD   (CNTRLSQN),A
+            LD   A,SMNTCBGN
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(STG7CLLL)
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(STG7CRR4)
+            CALL SMNTCSN2
+            RET  C
+            LD   B,A
+            LD   A,(STG7CRR3)
+            LD   D,A
+            XOR  A
+            LD   E,A
+.L00001:
+            LD   A,B
+            OR   A
+            JR   Z,.L00002
+            DEC  A
+            ADD  A,A
+            ADD  A,4
+            LD   C,A
+            LD   A,D
+            PUSH DE
+            PUSH BC
+            CALL STG7INST
+            POP  BC
+            POP  DE
+            RET  C
+            INC  D
+            INC  E
+            DEC  B
+            JR   .L00001
+.L00002:
+            CALL TYPDPRS8
+            RET  C
+.L00003:
+            CALL TYPDPRSS
+            RET  C
+            LD   A,(STG7CRR2)
+            OR   A
+            JR   Z,.L00004
+            LD   A,(CNTRLSQN)
+            OR   A
+            JP   NZ,TYPDRTNF
+.L00004:
+            LD   E,TokenEnd
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCEND
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(STG7CRR2)
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(STG7GLBL)
+            LD   (SYMBLCNT),A
+            XOR  A
+            LD   (NXTLCLSL),A
+            JP   STG7PRST
+.L00005:
+            LD   A,DGNSTCRT
+            JP   CMPLRSTD
+
+; Main is the final declaration in this increment. `fails` is accepted but
+; its full call/failure surface remains Stage 8.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+STG7PRSM: ;@NUC-GLOBAL Stage7ParseMainAfterName PERMANENT STG7PRSM
+            CALL STG7RJCT
+            RET  C
+            CALL PRSREXP1
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            CALL PRSRPK
+            RET  C
+            CP   TKNFLS
+            JR   NZ,.L00000
+            CALL PRSRTK
+            RET  C
+.L00000:
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCBG3
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(SYMBLCNT)
+            LD   (STG7GLBL),A
+            XOR  A
+            LD   (NXTLCLSL),A
+            LD   (STG7CRR2),A
+            LD   (CNTRLRTN),A
+            CALL CNTRLRST
+            LD   A,1
+            LD   (CNTRLSQN),A
+.L00001:
+            CALL TYPDPRS8
+            RET  C
+.L00002:
+            CALL TYPDPRSS
+            RET  C
+            LD   E,TokenEnd
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCEN5
+            CALL SMNTCSN5
+            RET  C
+            LD   E,TokenEof
+            JP   PRSREXPC
+%ENDIF
+
+; Return aggregate symbol info in D, byte payload in BC, and exact type ID in
+; A. The ordinary symbol-table address determines the parallel type entry.
+;@ROUTINE OUT A,BC,D,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,E,HL
+STG7LKPA: ;@NUC-GLOBAL Stage7LookupAggregateCurrent PERMANENT STG7LKPA
+            CALL SYMBLFND
+            JP   NC,SYMBLLK0
+            PUSH HL
+            INC  HL
+            INC  HL
+            INC  HL
+            LD   D,(HL)
+            LD   A,D
+            LD   (STG7ARG0),A
+            INC  HL
+            LD   C,(HL)
+            INC  HL
+            LD   B,(HL)
+            POP  HL
+            LD   DE,SYMBLTBL
+            OR   A
+            SBC  HL,DE
+            LD   A,L
+            LD   E,0
+.L00000:
+            CP   SYMBLENT
+            JR   C,.L00001
+            SUB  SYMBLENT
+            INC  E
+            JR   .L00000
+.L00001:
+            LD   A,E
+            LD   E,A
+            LD   H,0
+            LD   L,E
+            LD   DE,AGGRGTSY
+            ADD  HL,DE
+            LD   A,(HL)
+            LD   E,A
+            LD   A,(STG7ARG0)
+            LD   D,A
+            LD   A,E
+            OR   A
+            RET
+
+;@ROUTINE IN A,C OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG7EMTO: ;@NUC-GLOBAL Stage7EmitOperationByte PERMANENT STG7EMTO
+            PUSH BC
+            CALL SMNTCSN5
+            POP  BC
+            RET  C
+            LD   A,C
+            JP   SMNTCSN2
+
+; Stage 7 structural operands are emitted whenever their owning operation is
+; emitted. They are not expression values and therefore do not consult the
+; constant-folding emission flag used by TypedEmitWord.
+;@ROUTINE IN HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+STG7EMTW: ;@NUC-GLOBAL Stage7EmitWord PERMANENT STG7EMTW
+            PUSH HL
+            LD   A,L
+            CALL SMNTCSN2
+            POP  HL
+            RET  C
+            LD   A,H
+            JP   SMNTCSN2
+
+; D is the symbol class and BC its byte offset. Emit its opaque root carrier
+; and return the exact aggregate type in A.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+STG7EMTA: ;@NUC-GLOBAL Stage7EmitAggregateSymbolRoot PERMANENT STG7EMTA
+            CALL STG7LKPA
+            RET  C
+            LD   (STG7PTHT),A
+            LD   A,D
+            AND  SYMBLCL3
+            JR   Z,.L00001
+            CP   SYMBLCL0
+            JR   NZ,.L00002
+            LD   A,SMNTCLDP
+.L00000:
+            PUSH BC
+            CALL SMNTCSN5
+            POP  HL
+            RET  C
+            CALL STG7EMTW
+            JR   .L00004
+.L00001:
+%IF TargetStreamingOutput
+            PUSH BC
+            CALL TRGTRQRC
+            POP  BC
+            RET  C
+%ENDIF
+            LD   A,SMNTCLDR
+            JR   .L00000
+.L00002:
+            CP   SYMBLCL2
+            JP   NZ,TYPDTYPF
+            LD   A,SMNTCLD0
+.L00003:
+            CALL STG7EMTO
+.L00004:
+            RET  C
+            LD   A,(STG7PTHT)
+            OR   A
+            RET
+
+; Emit one checked postfix chain. A is the current aggregate type and one
+; carrier is live on the generated evaluation stack. D returns zero for an
+; address path or one when `.length` has already produced a scalar value.
+;@ROUTINE IN A OUT A,D,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,E,HL,IX,IY
+STG7PRSP: ;@NUC-GLOBAL Stage7ParsePathSuffix PERMANENT STG7PRSP
+            LD   D,0
+.L00000:
+            PUSH AF
+            CALL PRSRPK
+            JP   C,.L0000B
+            CP   TokenDot
+            JR   Z,.L00001
+            CP   TKNLFTBR
+            JP   Z,.L00007
+            POP  AF
+            LD   D,0
+            OR   A
+            RET
+.L00001:
+            POP  AF
+            LD   (STG7PTHT),A
+            CALL STG8RQRN
+            RET  C
+            LD   A,(STG7PTHT)
+            PUSH AF
+.L00002:
+            CALL PRSRTK
+            JP   C,.L0000B
+            LD   E,TKNNM
+            CALL PRSREXPC
+            JP   C,.L0000B
+            POP  AF
+            PUSH AF
+            CP   AGGRGTFR
+            JP   C,.L0000G
+            CALL AGGRGTTY
+            LD   A,(HL)
+            CP   AGGRGTTN
+            JR   NZ,.L00004
+            LD   HL,NMLNGTH
+            LD   B,6
+            CALL TKNNMEQL
+            JP   NC,.L0000G
+            LD   A,(STG7PTHT)
+            CALL AGGRGTTY
+            INC  HL
+            LD   C,(HL)                  ; capacity for L <= N validation
+            LD   A,SMNTCST1
+            CALL STG7EMTO
+            JP   C,.L0000B
+            LD   HL,(TKNSTRTO)
+            CALL STG7EMTW
+            JP   C,.L0000B
+            POP  AF
+            LD   A,SCLRTYPU
+            LD   D,1
+            OR   A
+            RET
+.L00003:
+            LD   A,DGNSTCUN
+            JP   CMPLRSTD
+.L00004:
+            POP  AF
+            CALL AGGRGTTY
+            LD   A,(HL)
+            CP   AGGRGTTL
+            JP   NZ,TYPDTYPF
+            INC  HL
+            LD   A,(HL)
+            ADD  A,A
+            LD   E,A
+            LD   D,0
+            LD   HL,AGGRGTR7
+            ADD  HL,DE
+            LD   B,(HL)
+            INC  HL
+            LD   D,(HL)
+.L00005:
+            LD   A,D
+            OR   A
+            JR   Z,.L00003
+            LD   A,B
+            CALL AGGRGTFL
+            PUSH DE
+            CALL TKNNMRCR
+            POP  DE
+            JR   C,.L00006
+            INC  B
+            DEC  D
+            JR   .L00005
+.L00006:
+            LD   A,B
+            CALL AGGRGTFL
+            LD   DE,AGGRGTF9
+            ADD  HL,DE
+            LD   A,(HL)
+            INC  HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            OR   A
+            PUSH AF
+            LD   (STG7PTHO),DE
+            LD   A,SMNTCSLC
+            CALL SMNTCSN5
+            JP   C,.L0000B
+            LD   HL,(STG7PTHO)
+            CALL STG7EMTW
+            JP   C,.L0000B
+            POP  AF
+            JP   .L00000
+.L00007:
+            POP  AF
+            LD   (STG7PTHT),A
+            CALL STG8RQRN
+            RET  C
+            LD   A,(STG7PTHT)
+            PUSH AF
+.L00008:
+            LD   HL,(TKNSTRTO)
+            PUSH HL
+            CALL PRSRTK
+            JP   C,.L0000D
+            LD   A,(EXPRSSNE)
+            PUSH AF
+            LD   A,(EXPRSSN2)
+            PUSH AF
+            LD   A,1
+            LD   (EXPRSSN2),A
+            LD   A,SCLRTYP0
+            LD   (EXPRSSNE),A
+            CALL TYPDPRSO
+            JP   C,.L0000E
+            CALL TYPDRQRC
+            JP   C,.L0000E
+            LD   (EXPRSSNR),A
+            LD   (EXPRSSN4),HL
+            POP  AF
+            LD   (EXPRSSN2),A
+            POP  AF
+            LD   (EXPRSSNE),A
+            LD   A,(EXPRSSNR)
+            AND  SCLRMTTY
+            CP   SCLRTYPB
+            JP   Z,.L0000C
+            LD   E,TKNRGHTB
+            CALL PRSREXPC
+            JP   C,.L0000D
+            POP  HL
+            LD   (STG7CLLO),HL
+            POP  AF
+            CP   AGGRGTFR
+            JP   C,TYPDTYPF
+            PUSH AF
+            CALL AGGRGTTY
+            LD   A,(HL)
+            CP   AGGRGTTN
+            JR   Z,.L0000A
+            CP   AGGRGTTO
+            JP   NZ,.L0000G
+            INC  HL
+            LD   A,(HL)                  ; element type
+            LD   (STG7PTHT),A
+            INC  HL
+            LD   C,(HL)                  ; fixed length
+            INC  HL
+            LD   B,(HL)
+            LD   A,(EXPRSSNR)
+            AND  SCLRMTCN
+            JR   Z,.L00009
+            LD   HL,(EXPRSSN4)
+            OR   A
+            SBC  HL,BC
+            JR   NC,.L0000F
+.L00009:
+            LD   (STG7PTHO),BC
+            LD   A,(STG7PTHT)
+            CALL AGGRGTGT
+            LD   (STG7PTHE),HL
+            LD   A,SMNTCSL0
+            CALL SMNTCSN5
+            JR   C,.L0000B
+            LD   HL,(STG7PTHO)
+            CALL STG7EMTW
+            JR   C,.L0000B
+            LD   HL,(STG7PTHE)
+            CALL STG7EMTW
+            JR   C,.L0000B
+            LD   HL,(STG7CLLO)
+            CALL STG7EMTW
+            JR   C,.L0000B
+            POP  AF
+            CALL AGGRGTTY
+            INC  HL
+            LD   A,(HL)
+            JP   .L00000
+.L0000A:
+            INC  HL
+            LD   C,(HL)                  ; capacity
+            LD   A,SMNTCST2
+            CALL STG7EMTO
+            JR   C,.L0000B
+            LD   HL,(STG7CLLO)
+            CALL STG7EMTW
+            JR   C,.L0000B
+            POP  AF
+            LD   A,SCLRTYPU
+            JP   .L00000
+.L0000B:
+            POP  AF
+            SCF
+            RET
+.L0000C:
+            POP  HL
+            POP  AF
+            JP   TYPDTYPF
+.L0000D:
+            POP  HL
+            JR   .L0000B
+.L0000E:
+            POP  AF
+            LD   (EXPRSSN2),A
+            POP  AF
+            LD   (EXPRSSNE),A
+            JR   .L0000D
+.L0000F:
+            LD   A,(EXPRSSNS)
+            OR   A
+            JR   NZ,.L00009
+            LD   HL,(STG7CLLO)
+            LD   (TKNSTRTO),HL
+            POP  AF
+            JP   TYPDRNG0
+.L0000G:
+            POP  AF
+            JP   TYPDTYPF
+
+; Address one bounded nested-call frame. Eight bytes retain the source-call
+; metadata that nested argument calls may overwrite. The scalar parser keeps
+; only its balanced expression context, a source frame keeps its result flag,
+; and a service keeps only its source offset temporarily on the compiler
+; hardware stack.
+;@ROUTINE IN A OUT A,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,D,DE
+STG7CLLF: ;@NUC-GLOBAL Stage7CallFrameAddress PERMANENT STG7CLLF
+            LD   L,A
+            LD   H,0
+            ADD  HL,HL
+            ADD  HL,HL
+            ADD  HL,HL
+            LD   DE,STG7CLL1
+            ADD  HL,DE
+            OR   A
+            RET
+
+;@ROUTINE OUT A,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,D,DE
+STG7CRR0: ;@NUC-GLOBAL Stage7CurrentCallFrame PERMANENT STG7CRR0
+            LD   A,(STG7CLLD)
+            DEC  A
+            JR   STG7CLLF
+
+; Parse and validate one scalar argument against the expected type in A while
+; preserving the enclosing expression context across nested calls.
+;@ROUTINE IN A OUT A,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,IX,IY
+STG7PRS0: ;@NUC-GLOBAL Stage7ParseScalarArgument PERMANENT STG7PRS0
+            LD   D,A
+            LD   A,(EXPRSSNE)
+            LD   B,A
+            LD   A,(EXPRSSN2)
+            LD   C,A
+            PUSH BC
+            PUSH DE
+            LD   A,D
+            LD   (EXPRSSNE),A
+            LD   A,1
+            LD   (EXPRSSN2),A
+            CALL TYPDPRSO
+            JR   C,.L00000
+            LD   (STG7PTHT),A
+            LD   (EXPRSSN4),HL
+            POP  DE
+            POP  BC
+            LD   A,C
+            LD   (EXPRSSN2),A
+            LD   A,B
+            LD   (EXPRSSNE),A
+            LD   E,D
+            LD   A,(STG7PTHT)
+            LD   HL,(EXPRSSN4)
+            CALL TYPDCHC0
+            RET  C
+            JP   STG8RQRN
+.L00000:
+            LD   L,A
+            POP  DE
+            POP  BC
+            LD   A,C
+            LD   (EXPRSSN2),A
+            LD   A,B
+            LD   (EXPRSSNE),A
+            LD   A,L
+            SCF
+            RET
+
+; Parse one call to a retained routine. A is the routine-table index and C is
+; zero when the result is discarded or one when its carrier remains live.
+;@ROUTINE IN A,C OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+STG7PRSC: ;@NUC-GLOBAL Stage7ParseCall PERMANENT STG7PRSC
+            LD   B,A
+            LD   A,(STG7CLLD)
+            CP   STG7CLL3
+            JR   C,.L00000
+            LD   A,DGNSTCEK
+            JP   CMPLRSTD
+.L00000:
+            CALL STG7CLLF
+            LD   A,C
+            PUSH AF
+            PUSH HL
+            LD   A,B
+            CP   STG7MNRT
+            JR   Z,.L00001
+            CALL STG7RTNA
+            INC  HL
+            INC  HL
+            INC  HL
+            LD   D,(HL)                  ; parameter start
+            INC  HL
+            LD   E,(HL)                  ; parameter count
+            INC  HL
+            LD   B,(HL)                  ; result
+            INC  HL
+            LD   A,(HL)                  ; label
+            INC  HL
+            LD   C,(HL)                  ; failure flags
+            JR   .L00002
+.L00001:
+            LD   D,0                     ; parameter start
+            LD   E,0                     ; parameter count
+            LD   B,0                     ; result-free
+            LD   A,(STG8FRWR)
+            LD   C,A
+            LD   A,STG7MNLB
+.L00002:
+            POP  HL
+            LD   (HL),A
+            POP  AF
+            OR   A
+            JR   Z,.L00003
+            SET  6,(HL)
+.L00003:
+            INC  HL
+            LD   (HL),B
+            INC  HL
+            LD   (HL),D
+            INC  HL
+            LD   (HL),E
+            INC  HL
+            LD   (HL),E                  ; original argument count
+            INC  HL
+            LD   DE,(TKNSTRTO)
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
+            INC  HL
+            LD   (HL),C
+            LD   HL,STG7CLLD
+            INC  (HL)
+            CALL PRSREXP1
+            JP   C,STG7CLL0
+.L00004:
+            CALL STG7CRR0
+            INC  HL
+            INC  HL
+            INC  HL
+            LD   A,(HL)
+            OR   A
+            JR   Z,.L00008
+            DEC  HL
+            LD   A,(HL)                  ; current parameter table index
+            CALL STG7PRMT
+            INC  HL
+            INC  HL
+            INC  HL
+            LD   A,(HL)
+            LD   D,A
+            XOR  A
+            LD   (STG8DRCT),A
+            LD   A,D
+            CP   AGGRGTFR
+            JR   NC,.L00005
+            CALL STG7PRS0
+            JP   C,STG7CLL0
+            JR   .L00007
+.L00005:
+            CALL STG7PRSA
+            JP   C,STG7CLL0
+            PUSH AF
+            CALL STG7CRR0
+            INC  HL
+            INC  HL
+            LD   A,(HL)
+            CALL STG7PRMT
+            INC  HL
+            INC  HL
+            INC  HL
+            LD   D,(HL)
+            POP  AF
+            CP   D
+            JP   NZ,STG7CLLT
+%IF TargetStreamingOutput
+            ; A cross-bank aggregate parameter must originate at a direct
+            ; program root. Diagnose through the ordinary call-frame unwind.
+            CALL STG7CRR0
+            LD   DE,STG7CLLB
+            ADD  HL,DE
+            LD   D,(HL)
+            CALL TRGTCRR0
+            JR   Z,.L00006
+            LD   A,C
+            OR   A
+            JR   NZ,.L00006
+            LD   A,DGNSTCT2
+            CALL CMPLRSTD
+            JP   STG7CLL0
+.L00006:
+%ENDIF
+            CALL STG8RQRN
+            JP   C,STG7CLL0
+.L00007:
+            CALL STG7CRR0
+            INC  HL
+            INC  HL
+            INC  (HL)
+            INC  HL
+            DEC  (HL)
+            JR   Z,.L00008
+            LD   E,TKNCMM
+            CALL PRSREXPC
+%IF TargetStreamingOutput
+            JP   C,STG7CLL0
+%ELSE
+            JR   C,STG7CLL0
+%ENDIF
+            JR   .L00004
+.L00008:
+            CALL PRSREXP2
+%IF TargetStreamingOutput
+            JP   C,STG7CLL0
+%ELSE
+            JR   C,STG7CLL0
+%ENDIF
+            CALL STG7CRR0
+            LD   A,(HL)
+            LD   (STG7CLLL),A
+            INC  HL
+            LD   A,(HL)
+            LD   (STG7CLLR),A
+            INC  HL
+            INC  HL
+            INC  HL
+            LD   A,(HL)
+            LD   (STG7ARG0),A
+            INC  HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            LD   (STG7CLLO),DE
+            INC  HL
+            LD   A,(HL)
+            LD   (STG8CLLF),A
+            LD   HL,STG7CLLD
+            DEC  (HL)
+%IF TargetStreamingOutput
+            LD   A,(STG7CLLR)
+            CP   AGGRGTFR
+            JR   C,.L00009
+            LD   A,(STG8CLLF)
+            LD   D,A
+            CALL TRGTRQRC
+            RET  C
+.L00009:
+%ENDIF
+            LD   A,(STG8CLLF)
+            AND  STG7RTN5
+            JR   Z,.L0000A
+            LD   A,(STG7CLLD)
+            OR   A
+            JP   NZ,HYBRDL1S
+.L0000A:
+; Publish one completed call description. Stage7CallLabel contains the packed
+; target, kind, and keep-result choice. Target-specific signature fields are
+; present only for source routines.
+STG7PBLS: ;@NUC-GLOBAL Stage7PublishCallable PERMANENT STG7PBLS
+            LD   A,SMNTCCLL
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(STG7CLLL)
+            CALL SMNTCSN2
+            RET  C
+            AND  STG8CLLB
+            JR   NZ,.L00000
+            LD   A,(STG7ARG0)
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(STG7CLLR)
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(STG8CLLF)
+            CALL SMNTCSN2
+            RET  C
+.L00000:
+            LD   HL,(STG7CLLO)
+            CALL STG7EMTW
+            RET  C
+            CALL STG8EMTF
+            RET  C
+            LD   A,(STG8CLLF)
+            AND  STG7RTN5
+            LD   (STG8DRCT),A
+            LD   A,(STG7CLLR)
+            OR   A
+            RET
+STG7CLLT: ;@NUC-GLOBAL Stage7CallTypeFailure PERMANENT STG7CLLT
+            LD   HL,STG7CLLD
+            DEC  (HL)
+            JP   TYPDTYPF
+STG7CLL0: ;@NUC-GLOBAL Stage7CallFailure PERMANENT STG7CLL0
+            LD   HL,STG7CLLD
+            DEC  (HL)
+            SCF
+            RET
+
+; Parse a name-rooted aggregate path or aggregate-returning call. The result
+; must still be an address path; scalar selection is rejected by this entry.
+%IF TargetStreamingOutput
+;@ROUTINE OUT A,C,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL,IX,IY
+%ELSE
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+%ENDIF
+STG7PRSA: ;@NUC-GLOBAL Stage7ParseAggregateValue PERMANENT STG7PRSA
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            CALL STG7FNDR
+            JR   NZ,.L00000
+            LD   C,1
+            CALL STG7PRSC
+            RET  C
+            CP   AGGRGTFR
+            JP   C,TYPDTYPF
+%IF TargetStreamingOutput
+            LD   C,0
+%ENDIF
+            JR   .L00003
+.L00000:
+            CALL STG7LKPA
+            RET  C
+            LD   A,D
+            AND  SYMBLAGG
+            JP   Z,TYPDTYPF
+%IF TargetStreamingOutput
+            LD   A,D
+            AND  SYMBLCL3
+            LD   C,0
+            CP   SYMBLCL0
+            JR   NZ,.L00001
+            INC  C
+.L00001:
+            PUSH BC
+            CALL STG7EMTA
+            JR   C,.L00002
+            POP  BC
+            LD   A,(STG7PTHT)
+            JR   .L00003
+.L00002:
+            POP  BC
+            SCF
+            RET
+%ELSE
+            CALL STG7EMTA
+            RET  C
+%ENDIF
+.L00003:
+%IF TargetStreamingOutput
+            PUSH BC
+            CALL STG7PRSP
+            JR   C,.L00004
+            POP  BC
+%ELSE
+            CALL STG7PRSP
+            RET  C
+%ENDIF
+            LD   E,A
+            LD   A,D
+            OR   A
+            JP   NZ,TYPDTYPF
+            LD   A,E
+            CP   AGGRGTFR
+            JP   C,TYPDTYPF
+            OR   A
+            RET
+%IF TargetStreamingOutput
+.L00004:
+            POP  BC
+            SCF
+            RET
+%ENDIF
+
+; Convert a scalar address path to an ordinary typed expression carrier.
+;@ROUTINE IN A,D OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+STG7FNSH: ;@NUC-GLOBAL Stage7FinishScalarPath PERMANENT STG7FNSH
+            CP   AGGRGTFR
+            JP   NC,TYPDTYPF
+            LD   (STG7PTHT),A
+            LD   A,D
+            LD   (STG7ARG0),A
+            OR   A
+            JR   NZ,.L00001
+            LD   A,(STG7PTHT)
+            CP   SCLRTYP0
+            LD   A,SMNTCLDI
+            JR   NZ,.L00000
+            LD   A,SMNTCLD1
+.L00000:
+            CALL SMNTCSN5
+            JR   C,.L00002
+.L00001:
+            LD   A,(STG7PTHT)
+            OR   A
+            RET
+.L00002:
+            SCF
+            RET
+
+; Hooks entered by the scalar primary parser after it has consumed the NAME.
+STG7TYPD: ;@NUC-GLOBAL Stage7TypedPrimaryRoutine PERMANENT STG7TYPD
+            LD   C,1
+            CALL STG7PRSC
+            RET  C
+            OR   A
+            JP   Z,TYPDTYPF
+            CP   AGGRGTFR
+            JR   NC,STG7TYP0
+            OR   A
+            RET
+STG7TYP0: ;@NUC-GLOBAL Stage7TypedPrimaryRoutineAggregate PERMANENT STG7TYP0
+            CALL STG7PRSP
+            RET  C
+            JR   STG7FNSH
+
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+STG8TYPD: ;@NUC-GLOBAL Stage8TypedPrimaryService PERMANENT STG8TYPD
+            LD   HL,(TKNSTRTO)
+            LD   (STG7CLLO),HL
+            LD   C,1
+            JR   STG8PRSS
+
+;@ROUTINE IN A OUT A,B,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,C,D,DE,IX,IY
+STG8TYP0: ;@NUC-GLOBAL Stage8TypedPrimaryConstant PERMANENT STG8TYP0
+            SUB  STG8PRDF-1
+            LD   L,A
+            LD   H,0
+            LD   B,ACPSCU8
+            JP   TYPDPRMR
+
+; A is the dense service ID and C says whether a successful u8 result is kept.
+;@ROUTINE IN A,C OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+STG8PRSS: ;@NUC-GLOBAL Stage8ParseServiceCall PERMANENT STG8PRSS
+            LD   E,A
+            LD   D,0
+            LD   HL,STG8SRV9
+            ADD  HL,DE
+            LD   A,(HL)
+            DEC  C
+            JR   NZ,.L00000
+            OR   STG8CLL4
+.L00000:
+            LD   (STG8SRVC),A
+            CALL PRSREXP1
+            RET  C
+            LD   A,(STG8SRVC)
+            RRCA
+            RRCA
+            RRCA
+            AND  $03
+            JR   Z,.L00002
+            LD   D,A
+.L00001:
+            LD   HL,(STG7CLLO)
+            PUSH HL
+            LD   A,D
+            CALL STG7PRS0
+            POP  HL
+            LD   (STG7CLLO),HL
+            RET  C
+.L00002:
+            CALL PRSREXP2
+            RET  C
+            LD   A,(STG8SRVC)
+            LD   (STG7CLLL),A
+            AND  STG8SRV8
+            RLCA
+            RLCA
+            RLCA
+.L00003:
+            LD   (STG7CLLR),A
+            LD   A,STG7RTN5
+            LD   (STG8CLLF),A
+            JP   STG7PBLS
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+STG8EMTF: ;@NUC-GLOBAL Stage8EmitFailurePlaceholders PERMANENT STG8EMTF
+            LD   HL,(SNKCRSR)
+            LD   (STG8CLLM),HL
+            LD   C,3
+            XOR  A
+.L00000:
+            CALL SMNTCSN2
+            RET  C
+            DEC  C
+            JR   NZ,.L00000
+            RET
+
+STG7TYP1: ;@NUC-GLOBAL Stage7TypedPrimaryAggregateSymbol PERMANENT STG7TYP1
+            CALL STG7EMTA
+            RET  C
+            JR   STG7TYP0
+
+; Current routine name has already been consumed as a complete statement.
+%IF HybridLL1Full
+%ELSE
+STG7PRS1: ;@NUC-GLOBAL Stage7ParseCallStatement PERMANENT STG7PRS1
+            LD   C,0
+            CALL STG7PRSC
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            JP   TYPDPRS9
+
+; Return one exact aggregate alias and mark the structured path non-fallthrough.
+STG7PRS2: ;@NUC-GLOBAL Stage7ParseAggregateReturn PERMANENT STG7PRS2
+            LD   A,(STG7CRR2)
+            PUSH AF
+            CALL STG7PRSA
+            JR   C,.L00000
+            LD   D,A
+            POP  AF
+            CP   D
+            JP   NZ,TYPDTYPF
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCRTR
+            CALL SMNTCSN5
+            RET  C
+            XOR  A
+            LD   (CNTRLSQN),A
+            JP   TYPDPRS9
+.L00000:
+            POP  AF
+            SCF
+            RET
+%ENDIF
+
+; D contains the aggregate symbol info and DeclarationPayload its root offset.
+STG7PRS3: ;@NUC-GLOBAL Stage7ParseAggregateAssignment PERMANENT STG7PRS3
+            LD   A,D
+            AND  SYMBLCL3
+            JR   NZ,.L00000
+            LD   A,DGNSTCR1
+            JP   CMPLRSTD
+.L00000:
+            CALL STG7EMTA
+            RET  C
+            CALL STG7PRSP
+            RET  C
+            LD   E,A
+            LD   A,D
+            OR   A
+            JP   NZ,TYPDTYPF
+            LD   A,E
+            LD   (STG7PTHT),A
+            CALL PRSREXP6
+            RET  C
+            LD   HL,(TKNSTRTO)
+            LD   (STG7CLLO),HL
+            LD   A,(STG7PTHT)
+            CP   AGGRGTFR
+            JR   NC,.L00002
+            LD   E,A
+            CALL TYPDEXP2
+            RET  C
+            LD   D,A
+            LD   A,(STG7PTHT)
+            LD   E,A
+            LD   A,D
+            CALL TYPDCHC0
+            RET  C
+            LD   A,1
+            LD   (STG8RTND),A
+            CALL STG8SLCT
+            RET  C
+            LD   A,(STG7PTHT)
+            CP   SCLRTYP0
+            LD   A,SMNTCSTR
+            JR   NZ,.L00001
+            LD   A,SMNTCST0
+.L00001:
+            CALL SMNTCSN5
+            RET  C
+%IF Stage7LL1
+            RET
+%ELSE
+            JP   PRSREXP0
+%ENDIF
+.L00002:
+            PUSH AF
+            CALL STG7PRSA
+            JR   C,.L00003
+            LD   D,A
+            POP  AF
+            CP   D
+            JP   NZ,TYPDTYPF
+            CALL AGGRGTGT
+            LD   (STG7PTHE),HL
+            LD   A,1
+            LD   (STG8RTND),A
+            CALL STG8SLCT
+            RET  C
+            LD   A,SMNTCCPY
+            CALL SMNTCSN5
+            RET  C
+            LD   HL,(STG7PTHE)
+            CALL STG7EMTW
+            RET  C
+            LD   HL,(STG7CLLO)
+            CALL STG7EMTW
+            RET  C
+%IF Stage7LL1
+            RET
+%ELSE
+            JP   PRSREXP0
+%ENDIF
+.L00003:
+            POP  AF
+            SCF
+            RET

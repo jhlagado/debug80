@@ -1,0 +1,35 @@
+            ORG SRCBS
+CLLPRFSR: ;@NUC-GLOBAL CallProofSource PERMANENT CLLPRFSR
+            DB "forward sub descend(value as u8) as u8",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    var result as u8 = "
+.L00000:
+            DB "descend(3)",10
+            DB "    "
+.L00001:
+            DB "writeOutputByte(result) else fail",10
+            DB "end",10
+            DB 10
+            DB "sub descend",10
+            DB "    if value = 0",10
+            DB "        return value",10
+            DB "    end",10
+            DB "    return "
+.L00002:
+            DB "descend(value - 1)",10
+            DB "end",10
+CLLPRFS0: ;@NUC-GLOBAL CallProofSourceEnd PERMANENT CLLPRFS0
+
+BDCMPLTN: ;@NUC-GLOBAL BadCompletionSource PERMANENT BDCMPLTN
+            DB "forward sub descend(value as u8) as u8",10
+            DB "sub main() fails",10
+            DB "    var result as u8 = descend(3)",10
+            DB "    writeOutputByte(result) else fail",10
+            DB "end",10
+            DB "sub "
+.L00000:
+            DB "descent",10
+            DB "    return descend(value - 1)",10
+            DB "end",10
+BDCMPLT0: ;@NUC-GLOBAL BadCompletionSourceEnd PERMANENT BDCMPLT0

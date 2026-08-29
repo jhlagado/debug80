@@ -1,0 +1,5 @@
+            ORG CMPLRCRB
+CMPLRCDS: ;@NUC-GLOBAL CompilerCodeStart PERMANENT CMPLRCDS
+S9RDOF  EQU GNRTDRO0-GNRTDBS ; read-only data offset from generated image base
+S9BRDO  EQU BCKPBS+S9RDOF ; backup address corresponding to generated read-only data
+SRCADPT0: ;@NUC-GLOBAL SourceAdapterCodeStart PERMANENT SRCADPT0

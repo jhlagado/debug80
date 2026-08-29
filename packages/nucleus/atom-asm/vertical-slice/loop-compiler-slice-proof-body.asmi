@@ -1,0 +1,124 @@
+            ORG PRFBS
+LPCTWOF EQU 75  ; counter write diagnostic offset
+LPMESZ  EQU 114 ; missing end source byte length
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFCS),A
+            LD   (PRFSTTS),A
+
+            LD   A,10
+            LD   HL,ACCPTDLP
+            LD   DE,ACCPTDL0
+            CALL CMPLLPSL
+            JP   C,PRFFLAC3
+            LD   HL,SMNTCBFF
+            LD   DE,EXPCTDLP
+            LD   B,11
+            CALL PRFCMPRB
+            JP   C,PRFFLOPR
+
+            LD   A,11
+            LD   HL,ZRLPSRC
+            LD   DE,ZRLPSRCE
+            CALL CMPLLPSL
+            JP   C,PRFFLZR
+            LD   A,(SMNTCBFF+5)
+            OR   A
+            JP   NZ,PRFFLZRB
+
+            LD   A,12
+            LD   HL,CNTRWRTS
+            LD   DE,CNTRWRT0
+            CALL CMPLLPSL
+            JP   NC,PRFFLCN0
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCAC
+            JP   NZ,PRFFLCN1
+            LD   HL,(DGNSTCOF)
+            LD   DE,LPCTWOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLCN2
+
+            LD   A,13
+            LD   HL,MSSNGEND
+            LD   DE,MSSNGEN0
+            CALL CMPLLPSL
+            JP   NC,PRFFLMSS
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCE9
+            JP   NZ,PRFFLMS0
+            LD   A,(DGNSTCP0)
+            CP   13
+            JP   NZ,PRFFLMS1
+            LD   HL,(DGNSTCOF)
+            LD   DE,LPMESZ
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLMS2
+            LD   HL,(DGNSTCLN)
+            LD   DE,6
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLMS2
+            LD   HL,(DGNSTCCL)
+            LD   DE,1
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLMS2
+
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+;@ROUTINE IN B,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+PRFCMPRB: ;@NUC-GLOBAL ProofCompareBytes PERMANENT PRFCMPRB
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,PRFCMPR0
+            INC  DE
+            INC  HL
+            DJNZ PRFCMPRB
+            OR   A
+            RET
+PRFCMPR0: ;@NUC-GLOBAL ProofCompareBytesNo PERMANENT PRFCMPR0
+            SCF
+            RET
+
+PRFFLAC3:       LD A,1 ;@NUC-GLOBAL ProofFailAccepted PERMANENT PRFFLAC3
+                         JR PRFFLD
+PRFFLOPR:     LD A,2 ;@NUC-GLOBAL ProofFailOperations PERMANENT PRFFLOPR
+                         JR PRFFLD
+PRFFLZR:           LD A,3 ;@NUC-GLOBAL ProofFailZero PERMANENT PRFFLZR
+                         JR PRFFLD
+PRFFLZRB:      LD A,4 ;@NUC-GLOBAL ProofFailZeroBound PERMANENT PRFFLZRB
+                         JR PRFFLD
+PRFFLCN0: LD A,5 ;@NUC-GLOBAL ProofFailCounterAccepted PERMANENT PRFFLCN0
+                         JR PRFFLD
+PRFFLCN1:    LD A,6 ;@NUC-GLOBAL ProofFailCounterCode PERMANENT PRFFLCN1
+                         JR PRFFLD
+PRFFLCN2:  LD A,7 ;@NUC-GLOBAL ProofFailCounterOffset PERMANENT PRFFLCN2
+                         JR PRFFLD
+PRFFLMSS: LD A,8 ;@NUC-GLOBAL ProofFailMissingAccepted PERMANENT PRFFLMSS
+                         JR PRFFLD
+PRFFLMS0:    LD A,9 ;@NUC-GLOBAL ProofFailMissingCode PERMANENT PRFFLMS0
+                         JR PRFFLD
+PRFFLMS1:    LD A,10 ;@NUC-GLOBAL ProofFailMissingPart PERMANENT PRFFLMS1
+                         JR PRFFLD
+PRFFLMS2: LD A,11 ;@NUC-GLOBAL ProofFailMissingPosition PERMANENT PRFFLMS2
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            LD   A,$E0
+            LD   (PRFSTTS),A
+            HALT
+
+EXPCTDLP: ;@NUC-GLOBAL ExpectedLoopOperations PERMANENT EXPCTDLP
+            DB 6,SMNTCDCL,0,SMNTCFRU,0,3
+            DB SMNTCWRT,"A",SMNTCPRP
+            DB SMNTCEN2,SMNTCRT2
+PRFSTTS:             DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:               DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+ProofEnd:

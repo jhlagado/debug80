@@ -1,0 +1,140 @@
+            ORG SRCBS
+STG7CPYS: ;@NUC-GLOBAL Stage7CopySource PERMANENT STG7CPYS
+            DB "record Counter",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var source as Counter = (1)",10
+            DB "var destination as Counter",10
+            DB "sub copyAndIncrement(input as Counter, output as Counter)",10
+            DB "output = input",10
+            DB "output.value = output.value + 1",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "source = source",10
+            DB "copyAndIncrement(source, destination)",10
+            DB "if source.value = 1 and destination.value = 2",10
+            DB "writeOutputByte('Y') else fail",10
+            DB "end",10
+            DB "end",10
+STG7CPY0: ;@NUC-GLOBAL Stage7CopySourceEnd PERMANENT STG7CPY0
+
+STG7FRWR: ;@NUC-GLOBAL Stage7ForwardSource PERMANENT STG7FRWR
+            DB "record Sample",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var samples as Sample[2] = [(3), (7)]",10
+            DB "sub select(items as Sample[2], index as u8) as Sample",10
+            DB "return items[index]",10
+            DB "end",10
+            DB "sub forwardSelection(items as Sample[2], index as u8) as Sample",10
+            DB "return select(items, index)",10
+            DB "end",10
+            DB "sub nine() as u8",10
+            DB "return 9",10
+            DB "end",10
+            DB "sub replace(item as Sample, value as u8)",10
+            DB "item.value = value",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "replace(forwardSelection(samples, 1), nine())",10
+            DB "if samples[1].value = 9",10
+            DB "writeOutputByte('Y') else fail",10
+            DB "end",10
+            DB "end",10
+STG7FRW0: ;@NUC-GLOBAL Stage7ForwardSourceEnd PERMANENT STG7FRW0
+
+STG7STR9: ;@NUC-GLOBAL Stage7StringSource PERMANENT STG7STR9
+            DB "var text as string[3] = \"ABC\"",10
+            DB "sub mutate(item as string[3], index as u8)",10
+            DB "item[index] = 'Y'",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "mutate(text, 1)",10
+            DB "if text.length = 3 and text[1] = 'Y'",10
+            DB "writeOutputByte('Y') else fail",10
+            DB "end",10
+            DB "end",10
+STG7STRA: ;@NUC-GLOBAL Stage7StringSourceEnd PERMANENT STG7STRA
+
+STG7BND0: ;@NUC-GLOBAL Stage7BoundsSource PERMANENT STG7BND0
+            DB "record Sample",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var samples as Sample[2] = [(3), (7)]",10
+            DB "sub select(items as Sample[2], index as u8) as Sample",10
+            DB "return items[index]",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "select(samples, 2)",10
+            DB "writeOutputByte('N') else fail",10
+            DB "end",10
+STG7BND1: ;@NUC-GLOBAL Stage7BoundsSourceEnd PERMANENT STG7BND1
+
+STG7CNST: ;@NUC-GLOBAL Stage7ConstantBoundsSource PERMANENT STG7CNST
+            DB "record Sample",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var samples as Sample[2] = [(3), (7)]",10
+            DB "sub main()",10
+            DB "samples[2].value = 9",10
+            DB "end",10
+STG7CNS0: ;@NUC-GLOBAL Stage7ConstantBoundsSourceEnd PERMANENT STG7CNS0
+
+STG7NMNL: ;@NUC-GLOBAL Stage7NominalMismatchSource PERMANENT STG7NMNL
+            DB "record Left",10
+            DB "value as u8",10
+            DB "end",10
+            DB "record Right",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var left as Left",10
+            DB "var right as Right",10
+            DB "sub main()",10
+            DB "right = left",10
+            DB "end",10
+STG7NMN0: ;@NUC-GLOBAL Stage7NominalMismatchSourceEnd PERMANENT STG7NMN0
+
+STG7TRNS: ;@NUC-GLOBAL Stage7TransientMisuseSource PERMANENT STG7TRNS
+            DB "record Sample",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var samples as Sample[2] = [(3), (7)]",10
+            DB "sub select(items as Sample[2], index as u8) as Sample",10
+            DB "return items[index]",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "writeOutputByte(u8(select(samples, 0))) else fail",10
+            DB "end",10
+STG7TRN0: ;@NUC-GLOBAL Stage7TransientMisuseSourceEnd PERMANENT STG7TRN0
+
+STG7RTN8: ;@NUC-GLOBAL Stage7RoutineCapacitySource PERMANENT STG7RTN8
+            DB "sub a()",10,"end",10
+            DB "sub b()",10,"end",10
+            DB "sub c()",10,"end",10
+            DB "sub d()",10,"end",10
+            DB "sub e()",10,"end",10
+STG7RTN9: ;@NUC-GLOBAL Stage7RoutineCapacitySourceEnd PERMANENT STG7RTN9
+
+STG7PRMA: ;@NUC-GLOBAL Stage7ParameterCapacitySource PERMANENT STG7PRMA
+            DB "sub many(a as u8, b as u8, c as u8, d as u8, e as u8, f as u8, g as u8, h as u8, i as u8, j as u8, k as u8, l as u8, m as u8, n as u8, o as u8, p as u8, "
+            DB "q as u8"
+.L00000:
+            DB ")",10
+            DB "end",10
+STG7PRMB: ;@NUC-GLOBAL Stage7ParameterCapacitySourceEnd PERMANENT STG7PRMB
+
+STG7CLLC: ;@NUC-GLOBAL Stage7CallDepthSource PERMANENT STG7CLLC
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var box as Box",10
+            DB "sub keep(item as Box) as Box",10
+            DB "return item",10
+            DB "end",10
+            DB "sub main()",10
+            DB "keep(keep(keep(keep(keep(box)))))",10
+            DB "end",10
+STG7CLLE: ;@NUC-GLOBAL Stage7CallDepthSourceEnd PERMANENT STG7CLLE
+
+            ; Additional adversarial source fixtures live after the Z80
+            ; transaction backup rather than consuming the 2 KiB source bank.

@@ -1,0 +1,677 @@
+            ORG $B000
+CRPSSRCS: ;@NUC-GLOBAL CorpusSourceStart PERMANENT CRPSSRCS
+CHPTR216: ;@NUC-GLOBAL Chapter21_1Part1 PERMANENT CHPTR216
+            DB "record Cell",10
+            DB "    value as u8",10
+            DB "end",10
+            DB 10
+            DB "var template as Cell = (1)",10
+            DB "var cells as Cell[4] = [(0), (0), (0), (0)]",10
+            DB 10
+CHPTR217: ;@NUC-GLOBAL Chapter21_1Part1End PERMANENT CHPTR217
+CHPTR218: ;@NUC-GLOBAL Chapter21_1Part2 PERMANENT CHPTR218
+            DB "sub cellAt(index as u8) as Cell",10
+            DB "    return cells[index]",10
+            DB "end",10
+            DB 10
+            DB "sub setCell(cell as Cell, value as u8)",10
+            DB "    cell.value = value",10
+            DB "end",10
+            DB 10
+            DB "sub main()",10
+            DB "    var index as u8",10
+            DB "    var code as u8",10
+            DB 10
+            DB "    for index = 0 until 4",10
+            DB "        cells[index] = template",10
+            DB "        setCell(template, index + 1)",10
+            DB "    end",10
+            DB 10
+            DB "    cells[0].value = cellAt(0).value",10
+            DB "    if cells[0].value = 1",10
+            DB "        writeOutputByte('Y') handle code",10
+            DB "            return",10
+            DB "        end",10
+            DB "    elseif cells[0].value = 0",10
+            DB "        writeOutputByte('N') handle code",10
+            DB "            return",10
+            DB "        end",10
+            DB "    end",10
+            DB "end",10
+CHPTR219: ;@NUC-GLOBAL Chapter21_1Part2End PERMANENT CHPTR219
+CHPTR21A: ;@NUC-GLOBAL Chapter21_1Descriptors PERMANENT CHPTR21A
+            DB 1
+            DW CHPTR216,CHPTR217
+            DB 2
+            DW CHPTR218,CHPTR219
+
+CHPTR21B: ;@NUC-GLOBAL Chapter21_2Source PERMANENT CHPTR21B
+            DB "const badByte = 10",10
+            DB 10
+            DB "sub checkedByte() as u8 fails",10
+            DB "    var value as u8 = readInputByte() else fail",10
+            DB "    if value = 0",10
+            DB "        fail badByte",10
+            DB "    end",10
+            DB "    return value",10
+            DB "end",10
+            DB 10
+            DB "sub emitByte() fails",10
+            DB "    var value as u8 = checkedByte() else fail",10
+            DB "    writeOutputByte(value) else fail",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    emitByte() else fail",10
+            DB "end",10
+CHPTR21C: ;@NUC-GLOBAL Chapter21_2SourceEnd PERMANENT CHPTR21C
+
+CHPTR21D: ;@NUC-GLOBAL Chapter21_3Source PERMANENT CHPTR21D
+            DB "forward sub odd(value as u16) as boolean",10
+            DB 10
+            DB "sub even(value as u16) as boolean",10
+            DB "    if value = 0",10
+            DB "        return true",10
+            DB "    end",10
+            DB "    return odd(value - 1)",10
+            DB "end",10
+            DB 10
+            DB "sub odd",10
+            DB "    if value = 0",10
+            DB "        return false",10
+            DB "    end",10
+            DB "    return even(value - 1)",10
+            DB "end",10
+            DB 10
+            DB "sub main()",10
+            DB "    var index as u16",10
+            DB "    var code as u8",10
+            DB 10
+            DB "    for index = 0 to 5",10
+            DB "        if odd(index)",10
+            DB "            continue",10
+            DB "        elseif index = 4",10
+            DB "            exit",10
+            DB "        end",10
+            DB "    end",10
+            DB 10
+            DB "    writeOutputByte(u8(index)) handle code",10
+            DB "        return",10
+            DB "    end",10
+            DB "end",10
+CHPTR21E: ;@NUC-GLOBAL Chapter21_3SourceEnd PERMANENT CHPTR21E
+
+CHPTR21F: ;@NUC-GLOBAL Chapter21_4Source PERMANENT CHPTR21F
+            DB "var text as string[4] = \"A\\0B\"",10
+            DB "var snapshot as string[4]",10
+            DB 10
+            DB "sub textAlias() as string[4]",10
+            DB "    return text",10
+            DB "end",10
+            DB 10
+            DB "sub mutate(value as string[4])",10
+            DB "    value[1] = 'Z'",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    snapshot = textAlias()",10
+            DB 10
+            DB "    if snapshot.length = 3 and snapshot[1] = 0",10
+            DB "        mutate(textAlias())",10
+            DB "    end",10
+            DB 10
+            DB "    if text[1] = 'Z' and snapshot[1] = 0",10
+            DB "        writeOutputByte('Y') else fail",10
+            DB "    end",10
+            DB "end",10
+CHPTR21G: ;@NUC-GLOBAL Chapter21_4SourceEnd PERMANENT CHPTR21G
+
+CHPTR21H: ;@NUC-GLOBAL Chapter21_5Source PERMANENT CHPTR21H
+            DB "sub emitMarker() fails",10
+            DB "    writeOutputByte('R') else fail",10
+            DB "end",10
+            DB 10
+            DB "sub relayMarker() fails",10
+            DB "    emitMarker() else fail",10
+            DB "    return",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    relayMarker() else fail",10
+            DB "end",10
+CHPTR21I: ;@NUC-GLOBAL Chapter21_5SourceEnd PERMANENT CHPTR21I
+
+CHPTR21J: ;@NUC-GLOBAL Chapter21_6Source PERMANENT CHPTR21J
+            DB "const sampleFailure = 7",10
+            DB 10
+            DB "sub alwaysFails() as u8 fails",10
+            DB "    fail sampleFailure",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    var code as u8",10
+            DB 10
+            DB "    code = alwaysFails() handle code",10
+            DB "        writeOutputByte(code) else fail",10
+            DB "        return",10
+            DB "    end",10
+            DB 10
+            DB "    writeOutputByte(0) else fail",10
+            DB "end",10
+CHPTR21K: ;@NUC-GLOBAL Chapter21_6SourceEnd PERMANENT CHPTR21K
+
+CHPTR21L: ;@NUC-GLOBAL Chapter21_7Source PERMANENT CHPTR21L
+            DB "sub main() fails",10
+            DB "    writeStorageByte('A') else fail",10
+            DB "    writeStorageByte('B') else fail",10
+            DB "    seekStorageOutput(0) else fail",10
+            DB "    writeStorageByte('Z') else fail",10
+            DB "end",10
+CHPTR21M: ;@NUC-GLOBAL Chapter21_7SourceEnd PERMANENT CHPTR21M
+
+CHPTR21N: ;@NUC-GLOBAL Chapter21_8Source PERMANENT CHPTR21N
+            DB "sub main()",10
+            DB "    var index as u8",10
+            DB 10
+            DB "    for index = 250 to 300 step 10",10
+            DB "        exit",10
+            DB "    end",10
+            DB "end",10
+CHPTR21O: ;@NUC-GLOBAL Chapter21_8SourceEnd PERMANENT CHPTR21O
+
+CHPTR21P: ;@NUC-GLOBAL Chapter21_9BoundsSource PERMANENT CHPTR21P
+            DB "var bytes as u8[2]",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    var index as u8 = readInputByte() else fail",10
+            DB "    bytes"
+CHPTR21Q: ;@NUC-GLOBAL Chapter21_9BoundsPoint PERMANENT CHPTR21Q
+            DB "[index] = 1",10
+            DB "end",10
+CHPTR21R: ;@NUC-GLOBAL Chapter21_9BoundsSourceEnd PERMANENT CHPTR21R
+
+CHPTR21S: ;@NUC-GLOBAL Chapter21_9DivideSource PERMANENT CHPTR21S
+            DB "sub divide(value as u16, divisor as u16) as u16",10
+            DB "    return value "
+CHPTR21U: ;@NUC-GLOBAL Chapter21_9DividePoint PERMANENT CHPTR21U
+            DB "/ divisor",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    var divisor as u16 = readInputByte() else fail",10
+            DB "    var result as u16 = divide(8, divisor)",10
+            DB "end",10
+CHPTR21V: ;@NUC-GLOBAL Chapter21_9DivideSourceEnd PERMANENT CHPTR21V
+
+CHPTR21W: ;@NUC-GLOBAL Chapter21_9ModuloSource PERMANENT CHPTR21W
+            DB "sub remainder(value as u16, divisor as u16) as u16",10
+            DB "    return value "
+CHPTR21X: ;@NUC-GLOBAL Chapter21_9ModuloPoint PERMANENT CHPTR21X
+            DB "mod divisor",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    var divisor as u16 = readInputByte() else fail",10
+            DB "    var result as u16 = remainder(8, divisor)",10
+            DB "end",10
+CHPTR21Y: ;@NUC-GLOBAL Chapter21_9ModuloSourceEnd PERMANENT CHPTR21Y
+
+CHPTR21Z: ;@NUC-GLOBAL Chapter21_12Source PERMANENT CHPTR21Z
+            DB "forward sub render(Player as u8) as u8",10
+            DB 10
+            DB "var player as u8 = 1",10
+            DB "var PLAYER as u8 = 2",10
+            DB 10
+            DB "sub render",10
+            DB "    return Player + player + PLAYER",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    writeOutputByte(render(3)) else fail",10
+            DB "end",10
+CHPTR220: ;@NUC-GLOBAL Chapter21_12SourceEnd PERMANENT CHPTR220
+
+CHPTR221: ;@NUC-GLOBAL Chapter21_13Source PERMANENT CHPTR221
+            DB "record Counter",10
+            DB "    value as u8",10
+            DB "end",10
+            DB 10
+            DB "var source as Counter = (1)",10
+            DB "var destination as Counter",10
+            DB 10
+            DB "sub copyAndIncrement(input as Counter, output as Counter)",10
+            DB "    output = input",10
+            DB "    output.value = output.value + 1",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    copyAndIncrement(source, destination)",10
+            DB "    if source.value = 1 and destination.value = 2",10
+            DB "        writeOutputByte('Y') else fail",10
+            DB "    end",10
+            DB "end",10
+CHPTR222: ;@NUC-GLOBAL Chapter21_13SourceEnd PERMANENT CHPTR222
+
+CHPTR223: ;@NUC-GLOBAL Chapter21_14Source PERMANENT CHPTR223
+            DB "record Sample",10
+            DB "    value as u8",10
+            DB "end",10
+            DB 10
+            DB "var samples as Sample[2] = [(3), (7)]",10
+            DB 10
+            DB "sub select(items as Sample[2], index as u8) as Sample",10
+            DB "    return items[index]",10
+            DB "end",10
+            DB 10
+            DB "sub forwardSelection(items as Sample[2], index as u8) as Sample",10
+            DB "    return select(items, index)",10
+            DB "end",10
+            DB 10
+            DB "sub replace(item as Sample, value as u8)",10
+            DB "    item.value = value",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    replace(forwardSelection(samples, 1), 9)",10
+            DB "    if samples[1].value = 9",10
+            DB "        writeOutputByte('Y') else fail",10
+            DB "    end",10
+            DB "end",10
+CHPTR224: ;@NUC-GLOBAL Chapter21_14SourceEnd PERMANENT CHPTR224
+
+CHPTR225: ;@NUC-GLOBAL Chapter21_15Source PERMANENT CHPTR225
+            DB "const sharedValue = 200",10
+            DB "const enabled = true",10
+            DB "var byteUse as u8 = sharedValue",10
+            DB "var wordUse as u16 = sharedValue",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    if enabled and byteUse = 200 and wordUse = 200",10
+            DB "        writeOutputByte('Y') else fail",10
+            DB "    end",10
+            DB "end",10
+CHPTR226: ;@NUC-GLOBAL Chapter21_15SourceEnd PERMANENT CHPTR226
+
+CHPTR227: ;@NUC-GLOBAL Chapter21_16Source PERMANENT CHPTR227
+            DB "const hexMask = $FF",10
+            DB "const binaryMask = %10110000",10
+            DB "const hexMaximum = $ffff",10
+            DB "const binaryMaximum = %1111111111111111",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    if hexMask = 255 and binaryMask = 176 and hexMaximum = 65535 and binaryMaximum = 65535",10
+            DB "        writeOutputByte(binaryMask) else fail",10
+            DB "    end",10
+            DB "end",10
+CHPTR228: ;@NUC-GLOBAL Chapter21_16SourceEnd PERMANENT CHPTR228
+
+CHPTR229: ;@NUC-GLOBAL Chapter21_17Source PERMANENT CHPTR229
+            DB "const folded = 3 xor 1 or 1",10
+            DB "var byteValue as u8 = $a5",10
+            DB "var wordValue as u16 = $f0f0",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    byteValue = byteValue xor $ff",10
+            DB "    wordValue = wordValue xor $ffff",10
+            DB "    if folded = 3 and byteValue = $5a and wordValue = $0f0f",10
+            DB "        writeOutputByte(byteValue) else fail",10
+            DB "    end",10
+            DB "end",10
+CHPTR22A: ;@NUC-GLOBAL Chapter21_17SourceEnd PERMANENT CHPTR22A
+
+CHPTR22B: ;@NUC-GLOBAL Chapter21_17BooleanSource PERMANENT CHPTR22B
+            DB "sub main()",10
+            DB "    if true "
+CHPTR22C: ;@NUC-GLOBAL Chapter21_17BooleanPoint PERMANENT CHPTR22C
+            DB "xor false",10
+            DB "    end",10
+            DB "end",10
+CHPTR22D: ;@NUC-GLOBAL Chapter21_17BooleanSourceEnd PERMANENT CHPTR22D
+
+CHPTR22E: ;@NUC-GLOBAL Chapter21_18Source PERMANENT CHPTR22E
+            DB "const folded = 100 mod 7",10
+            DB "var byteValue as u8 = 250",10
+            DB "var wordValue as u16 = 1000",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    byteValue = byteValue mod 16",10
+            DB "    wordValue = wordValue mod 256",10
+            DB "    if folded = 2 and byteValue = 10 and wordValue = 232",10
+            DB "        writeOutputByte(byteValue) else fail",10
+            DB "    end",10
+            DB "end",10
+CHPTR22F: ;@NUC-GLOBAL Chapter21_18SourceEnd PERMANENT CHPTR22F
+
+CHPTR22G: ;@NUC-GLOBAL Chapter21_18ZeroSource PERMANENT CHPTR22G
+            DB "const bad = 1 mod "
+CHPTR22H: ;@NUC-GLOBAL Chapter21_18ZeroPoint PERMANENT CHPTR22H
+            DB "0",10
+            DB 10
+            DB "sub main()",10
+            DB "end",10
+CHPTR22I: ;@NUC-GLOBAL Chapter21_18ZeroSourceEnd PERMANENT CHPTR22I
+
+CHPTR22J: ;@NUC-GLOBAL Chapter21_19Source PERMANENT CHPTR22J
+            DB "const Rows = 8",10
+            DB "const Columns = 16",10
+            DB "assert Rows * Columns = 128",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    writeOutputByte(Rows * Columns) else fail",10
+            DB "end",10
+CHPTR22K: ;@NUC-GLOBAL Chapter21_19SourceEnd PERMANENT CHPTR22K
+
+CHPTR22L: ;@NUC-GLOBAL Chapter21_19ControlSource PERMANENT CHPTR22L
+            DB "const Rows = 8",10
+            DB "const Columns = 16",10
+            DB "// assertion placeholder   ",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    writeOutputByte(Rows * Columns) else fail",10
+            DB "end",10
+CHPTR22M: ;@NUC-GLOBAL Chapter21_19ControlSourceEnd PERMANENT CHPTR22M
+
+CHPTR22N: ;@NUC-GLOBAL Chapter21_19FalseSource PERMANENT CHPTR22N
+            DB "const Rows = 17",10
+CHPTR22O: ;@NUC-GLOBAL Chapter21_19FalsePoint PERMANENT CHPTR22O
+            DB "assert Rows <= 16",10
+            DB 10
+            DB "sub main()",10
+            DB "end",10
+CHPTR22P: ;@NUC-GLOBAL Chapter21_19FalseSourceEnd PERMANENT CHPTR22P
+
+CHPTR22Q: ;@NUC-GLOBAL Chapter21_19TypeSource PERMANENT CHPTR22Q
+            DB "const Rows = 8",10
+CHPTR22R: ;@NUC-GLOBAL Chapter21_19TypePoint PERMANENT CHPTR22R
+            DB "assert Rows",10
+            DB 10
+            DB "sub main()",10
+            DB "end",10
+CHPTR22S: ;@NUC-GLOBAL Chapter21_19TypeSourceEnd PERMANENT CHPTR22S
+
+CHPTR22T: ;@NUC-GLOBAL Chapter21_20Source PERMANENT CHPTR22T
+            DB "record Pair",10
+            DB "    left as u8",10
+            DB "    right as u16",10
+            DB "end",10
+            DB 10
+            DB "const Origin as Pair = (7, 300)",10
+            DB "const Values as u8[3] = [1, 2, 3]",10
+            DB "const Text as string[3] = \"A\\0B\"",10
+            DB "var target as Pair",10
+            DB 10
+            DB "sub mutate(item as Pair)",10
+            DB "    item.left = 9",10
+            DB "end",10
+            DB 10
+            DB "sub main() fails",10
+            DB "    target = Origin",10
+            DB "    if target.left = 7 and Values[1] = 2 and Text.length = 3 and Text[2] = 'B'",10
+            DB "        mutate(Origin)",10
+            DB "        if Origin.left = 9 and target.left = 7",10
+            DB "            writeOutputByte('Y') else fail",10
+            DB "        end",10
+            DB "    end",10
+            DB "end",10
+CHPTR22U: ;@NUC-GLOBAL Chapter21_20SourceEnd PERMANENT CHPTR22U
+
+CHPTR22V: ;@NUC-GLOBAL Chapter21_20ReadOnlySource PERMANENT CHPTR22V
+            DB "record Pair",10
+            DB "    value as u8",10
+            DB "end",10
+            DB 10
+            DB "const Origin as Pair = (1)",10
+            DB 10
+            DB "sub main()",10
+            DB "    "
+CHPTR22W: ;@NUC-GLOBAL Chapter21_20ReadOnlyPoint PERMANENT CHPTR22W
+            DB "Origin.value = 2",10
+            DB "end",10
+CHPTR22X: ;@NUC-GLOBAL Chapter21_20ReadOnlySourceEnd PERMANENT CHPTR22X
+
+CHPTR22Y: ;@NUC-GLOBAL Chapter21_10UnconsumedSource PERMANENT CHPTR22Y
+            DB "sub readOne() as u8 fails",10
+            DB "    var value as u8 = readInputByte() else fail",10
+            DB "    return value",10
+            DB "end",10
+            DB 10
+            DB "sub main()",10
+            DB "    var value as u8",10
+            DB "    value = readOne()"
+CHPTR22Z: ;@NUC-GLOBAL Chapter21_10UnconsumedPoint PERMANENT CHPTR22Z
+            DB 10
+            DB "end",10
+CHPTR230: ;@NUC-GLOBAL Chapter21_10UnconsumedSourceEnd PERMANENT CHPTR230
+
+CHPTR231: ;@NUC-GLOBAL Chapter21_10NominalSource PERMANENT CHPTR231
+            DB "record LeftCell",10
+            DB "    value as u8",10
+            DB "end",10
+            DB 10
+            DB "record RightCell",10
+            DB "    value as u8",10
+            DB "end",10
+            DB 10
+            DB "var left as LeftCell",10
+            DB "var right as RightCell",10
+            DB 10
+            DB "sub main()",10
+            DB "    left = "
+CHPTR232: ;@NUC-GLOBAL Chapter21_10NominalPoint PERMANENT CHPTR232
+            DB "right",10
+            DB "end",10
+CHPTR233: ;@NUC-GLOBAL Chapter21_10NominalSourceEnd PERMANENT CHPTR233
+
+CHPTR234: ;@NUC-GLOBAL Chapter21_10InitializerSource PERMANENT CHPTR234
+            DB "record Color",10
+            DB "    red as u8",10
+            DB "    green as u8",10
+            DB "    blue as u8",10
+            DB "end",10
+            DB 10
+            DB "var color as Color = (1, 2"
+CHPTR235: ;@NUC-GLOBAL Chapter21_10InitializerPoint PERMANENT CHPTR235
+            DB ")",10
+            DB 10
+            DB "sub main()",10
+            DB "end",10
+CHPTR236: ;@NUC-GLOBAL Chapter21_10InitializerSourceEnd PERMANENT CHPTR236
+
+CHPTR237: ;@NUC-GLOBAL Chapter21_10AggregateLocalSource PERMANENT CHPTR237
+            DB "record Cell",10
+            DB "    value as u8",10
+            DB "end",10
+            DB 10
+            DB "var cell as Cell",10
+            DB 10
+            DB "sub cellAlias() as Cell",10
+            DB "    return cell",10
+            DB "end",10
+            DB 10
+            DB "sub main()",10
+            DB "    var held as "
+CHPTR238: ;@NUC-GLOBAL Chapter21_10AggregateLocalPoint PERMANENT CHPTR238
+            DB "Cell = cellAlias()",10
+            DB "end",10
+CHPTR239: ;@NUC-GLOBAL Chapter21_10AggregateLocalSourceEnd PERMANENT CHPTR239
+
+CHPTR23A: ;@NUC-GLOBAL Chapter21_10RoutineFlowSource PERMANENT CHPTR23A
+            DB "sub choose(flag as boolean) as u8",10
+            DB "    if flag",10
+            DB "        return 1",10
+            DB "    end",10
+CHPTR23B: ;@NUC-GLOBAL Chapter21_10RoutineFlowPoint PERMANENT CHPTR23B
+            DB "end",10
+            DB 10
+            DB "sub main()",10
+            DB "end",10
+CHPTR23C: ;@NUC-GLOBAL Chapter21_10RoutineFlowSourceEnd PERMANENT CHPTR23C
+
+CHPTR23D: ;@NUC-GLOBAL Chapter21_10LaterSource PERMANENT CHPTR23D
+            DB "sub main()",10
+            DB "    "
+CHPTR23E: ;@NUC-GLOBAL Chapter21_10LaterPoint PERMANENT CHPTR23E
+            DB "later()",10
+            DB "end",10
+            DB 10
+            DB "sub later()",10
+            DB "end",10
+CHPTR23F: ;@NUC-GLOBAL Chapter21_10LaterSourceEnd PERMANENT CHPTR23F
+
+CHPTR23G: ;@NUC-GLOBAL Chapter21_10MainSignatureSource PERMANENT CHPTR23G
+            DB "sub main("
+CHPTR23H: ;@NUC-GLOBAL Chapter21_10MainSignaturePoint PERMANENT CHPTR23H
+            DB "argument as u8)",10
+            DB "end",10
+CHPTR23I: ;@NUC-GLOBAL Chapter21_10MainSignatureSourceEnd PERMANENT CHPTR23I
+
+CHPTR23J: ;@NUC-GLOBAL Chapter21_10ActiveCounterSource PERMANENT CHPTR23J
+            DB "sub main()",10
+            DB "    var index as u8",10
+            DB 10
+            DB "    for index = 0 until 4",10
+.L00000:
+            DB "        "
+CHPTR23K: ;@NUC-GLOBAL Chapter21_10ActiveCounterName PERMANENT CHPTR23K
+            DB "index = index + 1",10
+            DB "    end",10
+            DB "end",10
+CHPTR23L: ;@NUC-GLOBAL Chapter21_10ActiveCounterSourceEnd PERMANENT CHPTR23L
+
+CHPTR23M: ;@NUC-GLOBAL Chapter21_10ExactUseSource PERMANENT CHPTR23M
+            DB "const Big = 300",10
+            DB "var x as u8",10
+            DB 10
+            DB "sub main()",10
+            DB "    x = "
+CHPTR23N: ;@NUC-GLOBAL Chapter21_10ExactUsePoint PERMANENT CHPTR23N
+            DB "Big",10
+            DB "end",10
+CHPTR23O: ;@NUC-GLOBAL Chapter21_10ExactUseSourceEnd PERMANENT CHPTR23O
+
+CHPTR23P: ;@NUC-GLOBAL Chapter21_10ExactNestedSource PERMANENT CHPTR23P
+            DB "const Big = 300",10
+            DB "var x as u8",10
+            DB 10
+            DB "sub main()",10
+            DB "    x = ("
+CHPTR23Q: ;@NUC-GLOBAL Chapter21_10ExactNestedPoint PERMANENT CHPTR23Q
+            DB "Big + 1)",10
+            DB "end",10
+CHPTR23R: ;@NUC-GLOBAL Chapter21_10ExactNestedSourceEnd PERMANENT CHPTR23R
+
+CHPTR23S: ;@NUC-GLOBAL Chapter21_10BooleanAsIntegerSource PERMANENT CHPTR23S
+            DB "const flag = true",10
+            DB "var x as u8",10
+            DB "sub main()",10
+            DB "    x = flag"
+CHPTR23T: ;@NUC-GLOBAL Chapter21_10BooleanAsIntegerPoint PERMANENT CHPTR23T
+            DB 10,"end",10
+CHPTR23U: ;@NUC-GLOBAL Chapter21_10BooleanAsIntegerSourceEnd PERMANENT CHPTR23U
+
+CHPTR23V: ;@NUC-GLOBAL Chapter21_10IntegerAsBooleanSource PERMANENT CHPTR23V
+            DB "const value = 1",10
+            DB "var flag as boolean",10
+            DB "sub main()",10
+            DB "    flag = value"
+CHPTR23W: ;@NUC-GLOBAL Chapter21_10IntegerAsBooleanPoint PERMANENT CHPTR23W
+            DB 10,"end",10
+CHPTR23X: ;@NUC-GLOBAL Chapter21_10IntegerAsBooleanSourceEnd PERMANENT CHPTR23X
+
+CHPTR23Y: ;@NUC-GLOBAL Chapter21_10HexSource PERMANENT CHPTR23Y
+            DB "const value = "
+CHPTR23Z: ;@NUC-GLOBAL Chapter21_10HexPoint PERMANENT CHPTR23Z
+            DB "$10000",10
+            DB 10
+            DB "sub main()",10
+            DB "end",10
+CHPTR240: ;@NUC-GLOBAL Chapter21_10HexSourceEnd PERMANENT CHPTR240
+
+CHPTR241: ;@NUC-GLOBAL Chapter21_10BinarySource PERMANENT CHPTR241
+            DB "const value = "
+CHPTR242: ;@NUC-GLOBAL Chapter21_10BinaryPoint PERMANENT CHPTR242
+            DB "%10000000000000000",10
+            DB 10
+            DB "sub main()",10
+            DB "end",10
+CHPTR243: ;@NUC-GLOBAL Chapter21_10BinarySourceEnd PERMANENT CHPTR243
+
+CHPTR244: ;@NUC-GLOBAL Chapter21_11BadPart2 PERMANENT CHPTR244
+            DB "sub cellAt(index as u8) as Cell",10
+            DB "    return cells[index]",10
+            DB "end",10
+            DB 10
+            DB "sub setCell(cell as Cell, value as u8)",10
+            DB "    cell.value = value",10
+            DB "end",10
+            DB 10
+            DB "sub main()",10
+            DB "    var index as u8",10
+            DB "    var code as u8",10
+CHPTR245: ;@NUC-GLOBAL Chapter21_11BadPoint PERMANENT CHPTR245
+            DB "    missing = 1",10
+            DB "end",10
+CHPTR246: ;@NUC-GLOBAL Chapter21_11BadPart2End PERMANENT CHPTR246
+CHPTR247: ;@NUC-GLOBAL Chapter21_11BadDescriptors PERMANENT CHPTR247
+            DB 1
+            DW CHPTR216,CHPTR217
+            DB 2
+            DW CHPTR244,CHPTR246
+
+; This split omits a physical line ending at the first part boundary. The
+; adapter must synthesize exactly one logical NEWLINE before entering part 42.
+CHPTR248: ;@NUC-GLOBAL Chapter21BoundaryPart1 PERMANENT CHPTR248
+            DB "var value as u8 = 1"
+CHPTR249: ;@NUC-GLOBAL Chapter21BoundaryPart1End PERMANENT CHPTR249
+CHPTR24A: ;@NUC-GLOBAL Chapter21BoundaryPart2 PERMANENT CHPTR24A
+            DB "sub main() fails",10
+            DB "    writeOutputByte(value) else fail",10
+            DB "end",10
+CHPTR24B: ;@NUC-GLOBAL Chapter21BoundaryPart2End PERMANENT CHPTR24B
+CHPTR24C: ;@NUC-GLOBAL Chapter21BoundaryDescriptors PERMANENT CHPTR24C
+            DB 41
+            DW CHPTR248,CHPTR249
+            DB 42
+            DW CHPTR24A,CHPTR24B
+
+; Eight ordered parts are the implementation capacity boundary. Seven blank
+; declarations precede the final complete main routine.
+CHPTR24D: ;@NUC-GLOBAL Chapter21BlankPart PERMANENT CHPTR24D
+            DB 10
+CHPTR24E: ;@NUC-GLOBAL Chapter21BlankPartEnd PERMANENT CHPTR24E
+CHPTR24F: ;@NUC-GLOBAL Chapter21CapacityProgram PERMANENT CHPTR24F
+            DB "sub main()",10
+            DB "end",10
+CHPTR24G: ;@NUC-GLOBAL Chapter21CapacityProgramEnd PERMANENT CHPTR24G
+CHPTR24H: ;@NUC-GLOBAL Chapter21CapacityDescriptors PERMANENT CHPTR24H
+            DB 61
+            DW CHPTR24D,CHPTR24E
+            DB 62
+            DW CHPTR24D,CHPTR24E
+            DB 63
+            DW CHPTR24D,CHPTR24E
+            DB 64
+            DW CHPTR24D,CHPTR24E
+            DB 65
+            DW CHPTR24D,CHPTR24E
+            DB 66
+            DW CHPTR24D,CHPTR24E
+            DB 67
+            DW CHPTR24D,CHPTR24E
+CHPTR24I: ;@NUC-GLOBAL Chapter21SingleDescriptor PERMANENT CHPTR24I
+            DB 68
+            DW CHPTR24F,CHPTR24G
+
+CHPTR24J: ;@NUC-GLOBAL Chapter21OpenDelimiterPart1 PERMANENT CHPTR24J
+            DB "sub main("
+CHPTR24K: ;@NUC-GLOBAL Chapter21OpenDelimiterPart1End PERMANENT CHPTR24K
+CHPTR24L: ;@NUC-GLOBAL Chapter21OpenDelimiterPart2 PERMANENT CHPTR24L
+            DB ")",10
+            DB "end",10
+CHPTR24M: ;@NUC-GLOBAL Chapter21OpenDelimiterPart2End PERMANENT CHPTR24M
+CHPTR24N: ;@NUC-GLOBAL Chapter21OpenDelimiterDescriptors PERMANENT CHPTR24N
+            DB 71
+            DW CHPTR24J,CHPTR24K
+            DB 72
+            DW CHPTR24L,CHPTR24M
+CRPSSRCE: ;@NUC-GLOBAL CorpusSourceEnd PERMANENT CRPSSRCE

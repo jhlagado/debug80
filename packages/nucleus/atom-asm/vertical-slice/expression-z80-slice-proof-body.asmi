@@ -1,0 +1,251 @@
+            ORG PRFBS
+EXOUTOF EQU EXPRSSNO-EXPRSSN0 ; output-call diagnostic offset
+EXDUPOF EQU DPLCTSC0-DPLCTSCL ; duplicate-scalar diagnostic offset
+EXUNNOF EQU UNKNWNS0-UNKNWNSC ; unknown-scalar diagnostic offset
+EXMALOF EQU MLFRMDE0-MLFRMDEX ; malformed-expression diagnostic offset
+EXFULOF EQU FLLSCLRN-FLLSCLRS ; full-symbol-table diagnostic offset
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFCS),A
+            LD   (PRFSTTS),A
+            LD   (SRVCFLRC),A
+
+            LD   A,70
+            LD   HL,EXPRSSN0
+            LD   DE,EXPRSSN1
+            CALL CMPLSLC
+            JP   C,PRFFLCMP
+            CALL ENCDTYPD
+            JP   C,PRFFLENC
+
+            CALL Reset
+            XOR  A
+            LD   (SRVCFLRC),A
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLSCC
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLSC0
+            LD   A,(SRVCOTP0)
+            CP   14
+            JP   NZ,PRFFLSC2
+            LD   A,(GNRTDBS+3)
+            CP   14
+            JP   NZ,PRFFLASS
+
+            CALL Reset
+            LD   A,1
+            LD   (SRVCFLRC),A
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLOTP
+            LD   A,(TRPNMBR)
+            CP   6
+            JP   NZ,PRFFLOT0
+            LD   A,(TRPERRR)
+            CP   3
+            JP   NZ,PRFFLOT1
+            LD   HL,(TRPOFFST)
+            LD   DE,EXOUTOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLOT2
+            LD   A,(SRVCOTPT)
+            OR   A
+            JP   NZ,PRFFLOT3
+
+            LD   A,71
+            LD   HL,DPLCTSCL
+            LD   DE,DPLCTSC1
+            CALL CMPLSLC
+            JP   NC,PRFFLDP0
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCDP
+            JP   NZ,PRFFLDP1
+            LD   HL,(DGNSTCOF)
+            LD   DE,EXDUPOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLDP2
+
+            LD   A,72
+            LD   HL,UNKNWNSC
+            LD   DE,UNKNWNS1
+            CALL CMPLSLC
+            JP   NC,PRFFLUNK
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCUN
+            JP   NZ,PRFFLUN0
+            LD   HL,(DGNSTCOF)
+            LD   DE,EXUNNOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLUN1
+
+            LD   A,73
+            LD   HL,MLFRMDEX
+            LD   DE,MLFRMDE1
+            CALL CMPLSLC
+            JP   NC,PRFFLML0
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCEI
+            JP   NZ,PRFFLML1
+            LD   HL,(DGNSTCOF)
+            LD   DE,EXMALOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLML7
+
+            LD   A,74
+            LD   HL,FLLSCLRS
+            LD   DE,FLLSCLR0
+            CALL CMPLSLC
+            JP   NC,PRFFLFLL
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCSY
+            JP   NZ,PRFFLFL0
+            LD   HL,(DGNSTCOF)
+            LD   DE,EXFULOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLFL1
+
+            ; Leave the successful program and transcript for host inspection.
+            LD   A,70
+            LD   HL,EXPRSSN0
+            LD   DE,EXPRSSN1
+            CALL CMPLSLC
+            JP   C,PRFFLCMP
+            CALL ENCDTYPD
+            JP   C,PRFFLENC
+
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+;@ROUTINE IN B,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+PRFCMPRB: ;@NUC-GLOBAL ProofCompareBytes PERMANENT PRFCMPRB
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,PRFCMPR0
+            INC  DE
+            INC  HL
+            DJNZ PRFCMPRB
+            OR   A
+            RET
+PRFCMPR0: ;@NUC-GLOBAL ProofCompareBytesNo PERMANENT PRFCMPR0
+            SCF
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCLLGN: ;@NUC-GLOBAL ProofCallGenerated PERMANENT PRFCLLGN
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   IX,$A55A
+            CALL GNRTDBS
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,PRFCLLG0
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFCLLG0: ;@NUC-GLOBAL ProofCallGeneratedNo PERMANENT PRFCLLG0
+            SCF
+            RET
+
+PRFFLCMP:             LD A,1 ;@NUC-GLOBAL ProofFailCompile PERMANENT PRFFLCMP
+                              JR PRFFLD
+PRFFLOPR:          LD A,2 ;@NUC-GLOBAL ProofFailOperations PERMANENT PRFFLOPR
+                              JR PRFFLD
+PRFFLENC:              LD A,3 ;@NUC-GLOBAL ProofFailEncode PERMANENT PRFFLENC
+                              JR PRFFLD
+PRFFLSCC:        LD A,4 ;@NUC-GLOBAL ProofFailSuccessState PERMANENT PRFFLSCC
+                              JR PRFFLD
+PRFFLSC0:       LD A,5 ;@NUC-GLOBAL ProofFailSuccessOutput PERMANENT PRFFLSC0
+                              JR PRFFLD
+PRFFLSC2:         LD A,6 ;@NUC-GLOBAL ProofFailSuccessByte PERMANENT PRFFLSC2
+                              JR PRFFLD
+PRFFLASS:          LD A,7 ;@NUC-GLOBAL ProofFailAssignment PERMANENT PRFFLASS
+                              JR PRFFLD
+PRFFLOTP:         LD A,8 ;@NUC-GLOBAL ProofFailOutputState PERMANENT PRFFLOTP
+                              JR PRFFLD
+PRFFLOT0:          LD A,9 ;@NUC-GLOBAL ProofFailOutputTrap PERMANENT PRFFLOT0
+                              JR PRFFLD
+PRFFLOT1:         LD A,10 ;@NUC-GLOBAL ProofFailOutputError PERMANENT PRFFLOT1
+                              JR PRFFLD
+PRFFLOT2:        LD A,11 ;@NUC-GLOBAL ProofFailOutputOffset PERMANENT PRFFLOT2
+                              JR PRFFLD
+PRFFLOT3:        LD A,12 ;@NUC-GLOBAL ProofFailOutputAtomic PERMANENT PRFFLOT3
+                              JR PRFFLD
+PRFFLDP0:   LD A,13 ;@NUC-GLOBAL ProofFailDuplicateAccepted PERMANENT PRFFLDP0
+                              JR PRFFLD
+PRFFLDP1:       LD A,14 ;@NUC-GLOBAL ProofFailDuplicateCode PERMANENT PRFFLDP1
+                              JR PRFFLD
+PRFFLDP2:   LD A,15 ;@NUC-GLOBAL ProofFailDuplicatePosition PERMANENT PRFFLDP2
+                              JR PRFFLD
+PRFFLUNK:     LD A,16 ;@NUC-GLOBAL ProofFailUnknownAccepted PERMANENT PRFFLUNK
+                              JR PRFFLD
+PRFFLUN0:         LD A,17 ;@NUC-GLOBAL ProofFailUnknownCode PERMANENT PRFFLUN0
+                              JR PRFFLD
+PRFFLUN1:     LD A,18 ;@NUC-GLOBAL ProofFailUnknownPosition PERMANENT PRFFLUN1
+                              JR PRFFLD
+.L00000:       LD A,19
+                              JR PRFFLD
+PRFFLFLL:        LD A,20 ;@NUC-GLOBAL ProofFailFullAccepted PERMANENT PRFFLFLL
+                              JR PRFFLD
+PRFFLFL0:            LD A,21 ;@NUC-GLOBAL ProofFailFullCode PERMANENT PRFFLFL0
+                              JR PRFFLD
+PRFFLFL1:        LD A,22 ;@NUC-GLOBAL ProofFailFullPosition PERMANENT PRFFLFL1
+                              JR PRFFLD
+PRFFLML0:   LD A,23 ;@NUC-GLOBAL ProofFailMalformedAccepted PERMANENT PRFFLML0
+                              JR PRFFLD
+PRFFLML1:       LD A,24 ;@NUC-GLOBAL ProofFailMalformedCode PERMANENT PRFFLML1
+                              JR PRFFLD
+PRFFLML7:   LD A,25 ;@NUC-GLOBAL ProofFailMalformedPosition PERMANENT PRFFLML7
+                              JR PRFFLD
+PRFFLFRM:               LD A,26 ;@NUC-GLOBAL ProofFailFrame PERMANENT PRFFLFRM
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            LD   A,$E0
+            LD   (PRFSTTS),A
+            HALT
+
+.L00000:
+            DB 17
+            DB SMNTCDFN,0,0
+            DB SMNTCBG3
+            DB SMNTCDC0,0,SMNTCLTR,2
+            DB SMNTCST5,0
+            DB SMNTCDC0,1,SMNTCLTR,3
+            DB SMNTCST5,1
+            DB SMNTCLDL,0,SMNTCLDL,1
+            DB SMNTCLTR,4,SMNTCMLT,SMNTCADD
+            DB SMNTCST4,0
+            DB SMNTCLD2,0
+            DB SMNTCWR2
+            DW EXOUTOF
+            DB SMNTCEN5
+PRFSTTS:                 DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:                   DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+PRFEXPC0:             DW 0 ;@NUC-GLOBAL ProofExpectedSP PERMANENT PRFEXPC0
+ProofEnd:
+
+EXPRSSNP EQU 116 ;@NUC-GLOBAL ExpressionProgramSize PERMANENT EXPRSSNP
+GNRTDEXP      EQU GNRTDBS+EXPRSSNP ;@NUC-GLOBAL GeneratedExpressionEnd PERMANENT GNRTDEXP
+
+            ;@AZM-END

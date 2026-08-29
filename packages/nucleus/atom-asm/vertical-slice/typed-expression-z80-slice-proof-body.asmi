@@ -1,0 +1,723 @@
+            ORG PRFBS
+TEPNWOF EQU 67  ; narrow trap offset
+TEPDVOF EQU 68  ; divide trap offset
+TEPNDOF EQU 101 ; nested divide outer trap offset
+TEPNNOF EQU 88  ; nested narrow outer trap offset
+TEPU8MT EQU 129 ; u8 constant metadata
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFCS),A
+            LD   (PRFSTTS),A
+            LD   (SRVCFLRC),A
+
+            LD   A,80
+            LD   HL,TYPDACCP
+            LD   DE,TYPDACC0
+            CALL CMPLSLC
+            JP   C,PRFFLACC
+            CALL ENCDTYPD
+            JP   C,PRFFLAC0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLAC5
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLAC9
+            LD   A,(SRVCOTP0)
+            CP   1
+            JP   NZ,PRFFLAC7
+            LD   A,(GNRTDBS+3)       ; out
+            CP   1
+            JP   NZ,PRFFLAC8
+            LD   A,(GNRTDBS+6)       ; final comparison conjunction
+            CP   1
+            JP   NZ,PRFFLACA
+            LD   HL,(GNRTDBS+4)      ; widened add wraps 65535 + 1
+            LD   A,H
+            OR   L
+            JP   NZ,PRFFLACB
+            LD   HL,(GNRTDSZ)
+            LD   (TYPDGNRT),HL
+
+            LD   A,90
+            LD   HL,TYPDDFLT
+            LD   DE,TYPDDFL0
+            CALL CMPLSLC
+            JP   C,PRFFLDFL
+            CALL ENCDTYPD
+            JP   C,PRFFLDF0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLDF1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLDF2
+            LD   A,(SRVCOTP0)
+            OR   A
+            JP   NZ,PRFFLDF2
+            LD   HL,(GNRTDBS+4)      ; word defaults to zero
+            LD   A,H
+            OR   L
+            JP   NZ,PRFFLDF3
+            LD   A,(GNRTDBS+6)       ; false, then not, becomes true
+            CP   1
+            JP   NZ,PRFFLDF4
+
+            LD   A,81
+            LD   HL,TYPDNRR1
+            LD   DE,TYPDNRR2
+            CALL CMPLSLC
+            JP   C,PRFFLNRR
+            CALL ENCDTYPD
+            JP   C,PRFFLNR0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLNR1
+            LD   A,(TRPNMBR)
+            CP   2
+            JP   NZ,PRFFLNR2
+            LD   HL,(TRPOFFST)
+            LD   DE,TEPNWOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLNR3
+            LD   A,(GNRTDBS+3)
+            CP   7
+            JP   NZ,PRFFLNR4
+
+            LD   A,82
+            LD   HL,TYPDDVDT
+            LD   DE,TYPDDVD0
+            CALL CMPLSLC
+            JP   C,PRFFLDVD
+            CALL ENCDTYPD
+            JP   C,PRFFLDV0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLDV1
+            LD   A,(TRPNMBR)
+            CP   3
+            JP   NZ,PRFFLDV2
+            LD   HL,(TRPOFFST)
+            LD   DE,TEPDVOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLDV3
+            LD   A,(GNRTDBS+3)
+            CP   9
+            JP   NZ,PRFFLDV4
+
+            LD   A,83
+            LD   HL,TYPDIMPL
+            LD   DE,TYPDIMP0
+            LD   C,DGNSTCTY
+            CALL PRFEXPCT
+            JP   C,PRFFLIMP
+            LD   A,84
+            LD   HL,TYPDBLNM
+            LD   DE,TYPDBLN0
+            LD   C,DGNSTCTY
+            CALL PRFEXPCT
+            JP   C,PRFFLBL5
+            LD   A,85
+            LD   HL,TYPDCHNS
+            LD   DE,TYPDCHN0
+            LD   C,DGNSTCCM
+            CALL PRFEXPCT
+            JP   C,PRFFLCHN
+            LD   A,86
+            LD   HL,TYPDCNST
+            LD   DE,TYPDCNS0
+            LD   C,DGNSTCDV
+            CALL PRFEXPCT
+            JP   C,PRFFLCN3
+            LD   A,87
+            LD   HL,TYPDCNS1
+            LD   DE,TYPDCNS2
+            LD   C,DGNSTCNR
+            CALL PRFEXPCT
+            JP   C,PRFFLCN4
+            LD   A,88
+            LD   HL,TYPDLTR0
+            LD   DE,TYPDLTR1
+            LD   C,DGNSTCLX
+            CALL PRFEXPCT
+            JP   C,PRFFLLTR
+            LD   A,89
+            LD   HL,TYPDTRNS
+            LD   DE,TYPDTRN0
+            LD   C,DGNSTCSN
+            CALL PRFEXPCT
+            JP   C,PRFFLTR4
+
+            ; The byte stream still has room after 255 one-byte operations,
+            ; but the independently published operation count does not. Lock
+            ; the exact count and cursor before the 256th operation; its
+            ; terminal diagnostic intentionally overlays that dead sink state.
+            CALL SMNTCSN1
+            LD   C,255
+.L00000:
+            LD   A,SMNTCLT0
+            CALL SMNTCSN5
+            JP   C,PRFFLOP0
+            DEC  C
+            JR   NZ,.L00000
+            LD   A,(SNKOPRTN)
+            CP   255
+            JP   NZ,PRFFLOP1
+            LD   HL,(SNKCRSR)
+            LD   DE,SMNTCBFF+256
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLOP1
+            LD   A,SMNTCLT0
+            CALL SMNTCSN5
+            JP   NC,PRFFLOP2
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCSN
+            JP   NZ,PRFFLOP3
+
+            LD   A,91
+            LD   HL,TYPDEXP4
+            LD   DE,TYPDEXP5
+            LD   C,DGNSTCEK
+            CALL PRFEXPCT
+            JP   C,PRFFLEXP
+
+            LD   A,92
+            LD   HL,TYPDDYNM
+            LD   DE,TYPDDYN0
+            LD   C,DGNSTCDV
+            CALL PRFEXPCT
+            JP   C,PRFFLDYN
+            LD   A,93
+            LD   HL,TYPDUNR2
+            LD   DE,TYPDUNR3
+            LD   C,DGNSTCIN
+            CALL PRFEXPCT
+            JP   C,PRFFLUNR
+            LD   A,94
+            LD   HL,TYPDNTOV
+            LD   DE,TYPDNTO0
+            LD   C,DGNSTCIN
+            CALL PRFEXPCT
+            JP   C,PRFFLNTR
+            LD   A,95
+            LD   HL,TYPDMLFR
+            LD   DE,TYPDMLF0
+            LD   C,DGNSTCLX
+            CALL PRFEXPCT
+            JP   C,PRFFLML8
+            LD   A,96
+            LD   HL,TYPDMLF1
+            LD   DE,TYPDMLF2
+            LD   C,DGNSTCLX
+            CALL PRFEXPCT
+            JP   C,PRFFLML9
+
+            ; Fault suppression removes the fault, not the operation's static
+            ; type. Both skipped u8 operations must still make 300 invalid as
+            ; the exact peer of a u8 comparison.
+            LD   A,100
+            LD   HL,TYPDSPPR
+            LD   DE,TYPDSPP0
+            LD   C,DGNSTCIN
+            CALL PRFEXPCT
+            JP   C,PRFFLSPP
+            LD   A,101
+            LD   HL,TYPDSPP1
+            LD   DE,TYPDSPP2
+            LD   C,DGNSTCIN
+            CALL PRFEXPCT
+            JP   C,PRFFLSP0
+            LD   A,102
+            LD   HL,TYPDMSSN
+            LD   DE,TYPDMSS0
+            LD   C,DGNSTCE2
+            CALL PRFEXPCT
+            JP   C,PRFFLMS4
+            LD   A,103
+            LD   HL,TYPDMSS1
+            LD   DE,TYPDMSS2
+            LD   C,DGNSTCE2
+            CALL PRFEXPCT
+            JP   C,PRFFLMS5
+            LD   A,104
+            LD   HL,TYPDMLF3
+            LD   DE,TYPDMLF4
+            LD   C,DGNSTCLX
+            CALL PRFEXPCT
+            JP   C,PRFFLMLA
+
+            ; Put the cursor three bytes below the transcript limit. The local
+            ; declaration consumes two bytes and its literal operation consumes
+            ; the third; the first literal operand must report capacity.
+            LD   A,105
+            LD   HL,TYPDDFL1
+            LD   DE,TYPDDFL2
+            CALL SRCINTLZ
+            CALL SMNTCSN1
+            LD   A,$FF
+            LD   (PRSRLKHD),A
+            CALL SYMBLRST
+            LD   HL,SMNTCBF0-3
+            LD   (SNKCRSR),HL
+            CALL TYPDPRSL
+            JP   NC,PRFFLDF5
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCSN
+            JP   NZ,PRFFLDF5
+
+            ; Exercise paths absent from the primary program: named u8 and
+            ; Boolean constants, unary plus, u8 or, integer less-than, Boolean
+            ; equality/inequality, constant division, and boundary narrowing.
+            LD   A,97
+            LD   HL,TYPDCVRG
+            LD   DE,TYPDCVR0
+            CALL CMPLSLC
+            JP   C,PRFFLCVR
+            CALL ENCDTYPD
+            JP   C,PRFFLCV0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLCV1
+            LD   A,(SRVCOTP0)
+            CP   255
+            JP   NZ,PRFFLCV2
+            LD   A,(GNRTDBS+4)       ; dynamic Boolean conjunction
+            CP   1
+            JP   NZ,PRFFLCV3
+
+            ; The inner u8 conversion controls its arithmetic width even though
+            ; the enclosing destination is u16: 200+100 wraps to 44, then widens.
+            LD   A,98
+            LD   HL,TYPDCNVR
+            LD   DE,TYPDCNV0
+            CALL CMPLSLC
+            JP   C,PRFFLCNV
+            CALL ENCDTYPD
+            JP   C,PRFFLCN5
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLCN6
+            LD   HL,(GNRTDBS+4)
+            LD   A,H
+            OR   A
+            JP   NZ,PRFFLCN7
+            LD   A,L
+            CP   44
+            JP   NZ,PRFFLCN7
+
+            ; A nested successful divide must not replace the outer divide's
+            ; source offset when the outer operation traps.
+            LD   A,99
+            LD   HL,TYPDNSTD
+            LD   DE,TYPDNST0
+            CALL CMPLSLC
+            JP   C,PRFFLNST
+            CALL ENCDTYPD
+            JP   C,PRFFLNS0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLNS1
+            LD   HL,(TRPOFFST)
+            LD   DE,TEPNDOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLNS2
+            LD   HL,(GNRTDBS+3)
+            LD   DE,10
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLNS3
+
+            ; A nested successful narrowing likewise must not replace the
+            ; outer checked conversion's trap position.
+            LD   A,100
+            LD   HL,TYPDNST1
+            LD   DE,TYPDNST2
+            CALL CMPLSLC
+            JP   C,PRFFLNS4
+            CALL ENCDTYPD
+            JP   C,PRFFLNS5
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLFRM
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLNS6
+            LD   HL,(TRPOFFST)
+            LD   DE,TEPNNOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLNS7
+            LD   A,(GNRTDBS+3)
+            CP   7
+            JP   NZ,PRFFLNS8
+
+            ; Defensive invariant failures use their own diagnostics rather
+            ; than masquerading as semantic-transcript exhaustion.
+            XOR  A
+            LD   (EXPRSSN3),A
+            LD   HL,1
+            LD   A,TEPU8MT
+            CALL TYPDRST0
+            JP   NC,PRFFLEX0
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCI0
+            JP   NZ,PRFFLEX0
+
+            LD   A,EMTBLNF1
+            LD   (EMTBLNFX),A
+            LD   DE,0
+            CALL TYPDPSHB
+            JP   NC,PRFFLBL6
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCBL
+            JP   NZ,PRFFLBL6
+
+            XOR  A
+            LD   (EMTBLNFX),A
+            CALL TYPDPPBL
+            JP   NC,PRFFLBL7
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCI0
+            JP   NZ,PRFFLBL7
+
+            LD   A,1
+            LD   (SMNTCBFF),A
+            LD   A,SMNTCLTR
+            LD   (SMNTCBFF+1),A
+            CALL TYPDDSPT
+            JP   NC,PRFFLRTR
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCI0
+            JP   NZ,PRFFLRTR
+
+            LD   A,1
+            LD   (EMTBLNFX),A
+            CALL TYPDENDM
+            JP   NC,PRFFLUNB
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCI0
+            JP   NZ,PRFFLUNB
+
+            CALL PRFCHCKA
+            JP   C,PRFFLART
+
+            ; Restore the accepted compiler result for host-side inspection.
+            LD   A,80
+            LD   HL,TYPDACCP
+            LD   DE,TYPDACC0
+            CALL CMPLSLC
+            JP   C,PRFFLACC
+            CALL ENCDTYPD
+            JP   C,PRFFLAC0
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+; A=part, HL..DE source, C=expected diagnostic. Carry means mismatch.
+;@ROUTINE IN A,C,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+PRFEXPCT: ;@NUC-GLOBAL ProofExpectDiagnostic PERMANENT PRFEXPCT
+            PUSH BC
+            CALL CMPLSLC
+            POP  BC
+            JR   NC,PRFEXPCA
+            LD   A,(DGNSTCCD)
+            CP   C
+            JR   NZ,PRFEXPCA
+            OR   A
+            RET
+PRFEXPCA: ;@NUC-GLOBAL ProofExpectedDiagnosticNo PERMANENT PRFEXPCA
+            SCF
+            RET
+
+; Execute a generated routine with a visible frame sentinel. Returning through
+; local storage or a saved IX value cannot satisfy both observations.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCLLGN: ;@NUC-GLOBAL ProofCallGenerated PERMANENT PRFCLLGN
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   IX,$A55A
+            CALL GNRTDBS
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,PRFCLLG0
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFCLLG0: ;@NUC-GLOBAL ProofCallGeneratedNo PERMANENT PRFCLLG0
+            SCF
+            RET
+
+; The runtime fast paths must preserve the full multiply/divide/modulo result
+; matrix at their gating boundaries. Rows are dividend, divisor, quotient,
+; remainder, and wrapped product.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX
+PRFCHCKA: ;@NUC-GLOBAL ProofCheckArithmeticFastPaths PERMANENT PRFCHCKA
+            LD   IX,PRFARTHM
+.L00000:
+            LD   L,(IX+0)
+            LD   H,(IX+1)
+            LD   E,(IX+2)
+            LD   D,(IX+3)
+            CALL DVDU16
+            JR   C,.L00001
+            LD   E,(IX+4)
+            LD   D,(IX+5)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00001
+            LD   L,(IX+0)
+            LD   H,(IX+1)
+            LD   E,(IX+2)
+            LD   D,(IX+3)
+            CALL MDLU16
+            JR   C,.L00001
+            LD   E,(IX+6)
+            LD   D,(IX+7)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00001
+            LD   L,(IX+0)
+            LD   H,(IX+1)
+            LD   E,(IX+2)
+            LD   D,(IX+3)
+            CALL MLTPLYU1
+            JR   C,.L00001
+            LD   E,(IX+8)
+            LD   D,(IX+9)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00001
+            LD   DE,10
+            ADD  IX,DE
+            PUSH IX
+            POP  HL
+            LD   DE,PRFARTH0
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00000
+
+            LD   HL,1000
+            LD   DE,0
+            CALL DVDU16
+            JR   NC,.L00001
+            LD   HL,1000
+            LD   DE,0
+            CALL MDLU16
+            JR   NC,.L00001
+            LD   HL,37
+            LD   DE,0
+            CALL MLTPLYU1
+            JR   C,.L00001
+            LD   A,H
+            OR   L
+            RET  Z
+.L00001:
+            SCF
+            RET
+
+PRFFLDNR:              JP PRFFLD ;@NUC-GLOBAL ProofFailedNear PERMANENT PRFFLDNR
+PRFFLACC:     LD A,1 ;@NUC-GLOBAL ProofFailAcceptedCompile PERMANENT PRFFLACC
+                              JR PRFFLDNR
+PRFFLAC0:      LD A,2 ;@NUC-GLOBAL ProofFailAcceptedEncode PERMANENT PRFFLAC0
+                              JR PRFFLDNR
+PRFFLAC5:       LD A,3 ;@NUC-GLOBAL ProofFailAcceptedState PERMANENT PRFFLAC5
+                              JR PRFFLDNR
+PRFFLAC9:      LD A,4 ;@NUC-GLOBAL ProofFailAcceptedLength PERMANENT PRFFLAC9
+                              JR PRFFLDNR
+PRFFLAC7:       LD A,5 ;@NUC-GLOBAL ProofFailAcceptedValue PERMANENT PRFFLAC7
+                              JR PRFFLDNR
+PRFFLAC8:       LD A,6 ;@NUC-GLOBAL ProofFailAcceptedStore PERMANENT PRFFLAC8
+                              JR PRFFLDNR
+PRFFLACA:     LD A,26 ;@NUC-GLOBAL ProofFailAcceptedBoolean PERMANENT PRFFLACA
+                              JR PRFFLDNR
+PRFFLACB:        LD A,27 ;@NUC-GLOBAL ProofFailAcceptedWord PERMANENT PRFFLACB
+                              JR PRFFLDNR
+PRFFLDFL:      LD A,28 ;@NUC-GLOBAL ProofFailDefaultCompile PERMANENT PRFFLDFL
+                              JR PRFFLDNR
+PRFFLDF0:       LD A,29 ;@NUC-GLOBAL ProofFailDefaultEncode PERMANENT PRFFLDF0
+                              JR PRFFLDNR
+PRFFLDF1:        LD A,30 ;@NUC-GLOBAL ProofFailDefaultState PERMANENT PRFFLDF1
+                              JR PRFFLDNR
+PRFFLDF2:       LD A,31 ;@NUC-GLOBAL ProofFailDefaultOutput PERMANENT PRFFLDF2
+                              JR PRFFLDNR
+PRFFLDF3:      LD A,32 ;@NUC-GLOBAL ProofFailDefaultProgram PERMANENT PRFFLDF3
+                              JR PRFFLDNR
+PRFFLDF4:      LD A,33 ;@NUC-GLOBAL ProofFailDefaultBoolean PERMANENT PRFFLDF4
+                              JR PRFFLDNR
+PRFFLNRR:       LD A,7 ;@NUC-GLOBAL ProofFailNarrowCompile PERMANENT PRFFLNRR
+                              JR PRFFLDNR
+PRFFLNR0:        LD A,8 ;@NUC-GLOBAL ProofFailNarrowEncode PERMANENT PRFFLNR0
+                              JR PRFFLDNR
+PRFFLNR1:         LD A,9 ;@NUC-GLOBAL ProofFailNarrowState PERMANENT PRFFLNR1
+                              JR PRFFLDNR
+PRFFLNR2:        LD A,10 ;@NUC-GLOBAL ProofFailNarrowNumber PERMANENT PRFFLNR2
+                              JR PRFFLDNR
+PRFFLNR3:        LD A,11 ;@NUC-GLOBAL ProofFailNarrowOffset PERMANENT PRFFLNR3
+                              JR PRFFLDNR
+PRFFLNR4:        LD A,12 ;@NUC-GLOBAL ProofFailNarrowAtomic PERMANENT PRFFLNR4
+                              JR PRFFLDNR
+PRFFLDVD:       LD A,13 ;@NUC-GLOBAL ProofFailDivideCompile PERMANENT PRFFLDVD
+                              JR PRFFLDNR
+PRFFLDV0:        LD A,14 ;@NUC-GLOBAL ProofFailDivideEncode PERMANENT PRFFLDV0
+                              JR PRFFLDNR
+PRFFLDV1:         LD A,15 ;@NUC-GLOBAL ProofFailDivideState PERMANENT PRFFLDV1
+                              JR PRFFLDNR
+PRFFLDV2:        LD A,16 ;@NUC-GLOBAL ProofFailDivideNumber PERMANENT PRFFLDV2
+                              JR PRFFLDNR
+PRFFLDV3:        LD A,17 ;@NUC-GLOBAL ProofFailDivideOffset PERMANENT PRFFLDV3
+                              JR PRFFLDNR
+PRFFLDV4:        LD A,18 ;@NUC-GLOBAL ProofFailDivideAtomic PERMANENT PRFFLDV4
+                              JR PRFFLDNR
+PRFFLIMP:      LD A,19 ;@NUC-GLOBAL ProofFailImplicitNarrow PERMANENT PRFFLIMP
+                              JR PRFFLDNR
+PRFFLBL5:          LD A,20 ;@NUC-GLOBAL ProofFailBooleanMix PERMANENT PRFFLBL5
+                              JR PRFFLDNR
+PRFFLCHN:               LD A,21 ;@NUC-GLOBAL ProofFailChain PERMANENT PRFFLCHN
+                              JR PRFFLDNR
+PRFFLCN3:      LD A,22 ;@NUC-GLOBAL ProofFailConstantDivide PERMANENT PRFFLCN3
+                              JR PRFFLDNR
+PRFFLCN4:      LD A,23 ;@NUC-GLOBAL ProofFailConstantNarrow PERMANENT PRFFLCN4
+                              JR PRFFLDNR
+PRFFLLTR:     LD A,24 ;@NUC-GLOBAL ProofFailLiteralOverflow PERMANENT PRFFLLTR
+                              JP PRFFLD
+PRFFLTR4:  LD A,25 ;@NUC-GLOBAL ProofFailTranscriptCapacity PERMANENT PRFFLTR4
+                              JP PRFFLD
+PRFFLEXP:  LD A,34 ;@NUC-GLOBAL ProofFailExpressionCapacity PERMANENT PRFFLEXP
+                              JP PRFFLD
+PRFFLEX0: LD A,35 ;@NUC-GLOBAL ProofFailExpressionUnderflow PERMANENT PRFFLEX0
+                              JP PRFFLD
+PRFFLBL6:     LD A,36 ;@NUC-GLOBAL ProofFailBooleanCapacity PERMANENT PRFFLBL6
+                              JP PRFFLD
+PRFFLBL7:    LD A,37 ;@NUC-GLOBAL ProofFailBooleanUnderflow PERMANENT PRFFLBL7
+                              JP PRFFLD
+PRFFLRTR:    LD A,38 ;@NUC-GLOBAL ProofFailRetiredOperation PERMANENT PRFFLRTR
+                              JP PRFFLD
+PRFFLUNB:   LD A,39 ;@NUC-GLOBAL ProofFailUnbalancedBoolean PERMANENT PRFFLUNB
+                              JP PRFFLD
+PRFFLFRM:               LD A,40 ;@NUC-GLOBAL ProofFailFrame PERMANENT PRFFLFRM
+                              JP PRFFLD
+PRFFLDYN:         LD A,41 ;@NUC-GLOBAL ProofFailDynamicZero PERMANENT PRFFLDYN
+                              JP PRFFLD
+PRFFLUNR:     LD A,42 ;@NUC-GLOBAL ProofFailUnaryMinusRange PERMANENT PRFFLUNR
+                              JP PRFFLD
+PRFFLNTR:            LD A,43 ;@NUC-GLOBAL ProofFailNotRange PERMANENT PRFFLNTR
+                              JP PRFFLD
+PRFFLML8:        LD A,44 ;@NUC-GLOBAL ProofFailMalformedHex PERMANENT PRFFLML8
+                              JP PRFFLD
+PRFFLML9:     LD A,45 ;@NUC-GLOBAL ProofFailMalformedSuffix PERMANENT PRFFLML9
+                              JR PRFFLD
+PRFFLSPP: LD A,65 ;@NUC-GLOBAL ProofFailSuppressedDivideType PERMANENT PRFFLSPP
+                              JR PRFFLD
+PRFFLSP0: LD A,66 ;@NUC-GLOBAL ProofFailSuppressedNarrowType PERMANENT PRFFLSP0
+                              JR PRFFLD
+PRFFLMS4: LD A,67 ;@NUC-GLOBAL ProofFailMissingConversionRight PERMANENT PRFFLMS4
+                              JR PRFFLD
+PRFFLMS5:   LD A,68 ;@NUC-GLOBAL ProofFailMissingParenRight PERMANENT PRFFLMS5
+                              JR PRFFLD
+PRFFLMLA:  LD A,69 ;@NUC-GLOBAL ProofFailMalformedAfterLeft PERMANENT PRFFLMLA
+                              JR PRFFLD
+PRFFLDF5: LD A,70 ;@NUC-GLOBAL ProofFailDefaultLocalCapacity PERMANENT PRFFLDF5
+                              JR PRFFLD
+PRFFLOP0: LD A,71 ;@NUC-GLOBAL ProofFailOperationCapacityFill PERMANENT PRFFLOP0
+                              JP PRFFLD
+PRFFLOP1: LD A,72 ;@NUC-GLOBAL ProofFailOperationCapacityBoundary PERMANENT PRFFLOP1
+                              JP PRFFLD
+PRFFLOP2: LD A,73 ;@NUC-GLOBAL ProofFailOperationCapacityAccept PERMANENT PRFFLOP2
+                              JP PRFFLD
+PRFFLOP3: LD A,74 ;@NUC-GLOBAL ProofFailOperationCapacityDiagnostic PERMANENT PRFFLOP3
+                              JP PRFFLD
+PRFFLCVR:     LD A,46 ;@NUC-GLOBAL ProofFailCoverageCompile PERMANENT PRFFLCVR
+                              JR PRFFLD
+PRFFLCV0:      LD A,47 ;@NUC-GLOBAL ProofFailCoverageEncode PERMANENT PRFFLCV0
+                              JR PRFFLD
+PRFFLCV1:       LD A,48 ;@NUC-GLOBAL ProofFailCoverageState PERMANENT PRFFLCV1
+                              JR PRFFLD
+PRFFLCV2:      LD A,49 ;@NUC-GLOBAL ProofFailCoverageOutput PERMANENT PRFFLCV2
+                              JR PRFFLD
+PRFFLCV3:     LD A,50 ;@NUC-GLOBAL ProofFailCoverageBoolean PERMANENT PRFFLCV3
+                              JR PRFFLD
+PRFFLCNV:   LD A,51 ;@NUC-GLOBAL ProofFailConversionCompile PERMANENT PRFFLCNV
+                              JR PRFFLD
+PRFFLCN5:    LD A,52 ;@NUC-GLOBAL ProofFailConversionEncode PERMANENT PRFFLCN5
+                              JR PRFFLD
+PRFFLCN6:     LD A,53 ;@NUC-GLOBAL ProofFailConversionState PERMANENT PRFFLCN6
+                              JR PRFFLD
+PRFFLCN7:     LD A,54 ;@NUC-GLOBAL ProofFailConversionValue PERMANENT PRFFLCN7
+                              JR PRFFLD
+PRFFLNST: LD A,55 ;@NUC-GLOBAL ProofFailNestedDivideCompile PERMANENT PRFFLNST
+                              JR PRFFLD
+PRFFLNS0:  LD A,56 ;@NUC-GLOBAL ProofFailNestedDivideEncode PERMANENT PRFFLNS0
+                              JR PRFFLD
+PRFFLNS1:   LD A,57 ;@NUC-GLOBAL ProofFailNestedDivideState PERMANENT PRFFLNS1
+                              JR PRFFLD
+PRFFLNS2:  LD A,58 ;@NUC-GLOBAL ProofFailNestedDivideOffset PERMANENT PRFFLNS2
+                              JR PRFFLD
+PRFFLNS3:  LD A,59 ;@NUC-GLOBAL ProofFailNestedDivideAtomic PERMANENT PRFFLNS3
+                              JR PRFFLD
+PRFFLNS4: LD A,60 ;@NUC-GLOBAL ProofFailNestedNarrowCompile PERMANENT PRFFLNS4
+                              JR PRFFLD
+PRFFLNS5:  LD A,61 ;@NUC-GLOBAL ProofFailNestedNarrowEncode PERMANENT PRFFLNS5
+                              JR PRFFLD
+PRFFLNS6:   LD A,62 ;@NUC-GLOBAL ProofFailNestedNarrowState PERMANENT PRFFLNS6
+                              JR PRFFLD
+PRFFLNS7:  LD A,63 ;@NUC-GLOBAL ProofFailNestedNarrowOffset PERMANENT PRFFLNS7
+                              JR PRFFLD
+PRFFLNS8:  LD A,64 ;@NUC-GLOBAL ProofFailNestedNarrowAtomic PERMANENT PRFFLNS8
+                              JR PRFFLD
+PRFFLART:   LD A,71 ;@NUC-GLOBAL ProofFailArithmeticRuntime PERMANENT PRFFLART
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            LD   A,$E0
+            LD   (PRFSTTS),A
+            HALT
+
+TYPDGNRT:           DW 0 ;@NUC-GLOBAL TypedGeneratedSize PERMANENT TYPDGNRT
+PRFEXPC0:              DW 0 ;@NUC-GLOBAL ProofExpectedSP PERMANENT PRFEXPC0
+PRFSTTS:                  DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:                    DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+PRFARTHM: ;@NUC-GLOBAL ProofArithmeticCases PERMANENT PRFARTHM
+            DW 1000,1,1000,0,1000
+            DW 1000,2,500,0,2000
+            DW 1000,255,3,235,58392
+            DW 1000,256,3,232,59392
+            DW 1000,257,3,229,60392
+            DW 65535,65535,1,0,1
+PRFARTH0: ;@NUC-GLOBAL ProofArithmeticCasesEnd PERMANENT PRFARTH0
+ProofEnd:
+
+GNRTDTYP             EQU GNRTDBS+857 ;@NUC-GLOBAL GeneratedTypedEnd PERMANENT GNRTDTYP

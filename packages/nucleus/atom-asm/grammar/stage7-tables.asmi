@@ -1,0 +1,748 @@
+; Generated from stage7-grammar.json.
+HYBRDL3I EQU 41 ;@NUC-GLOBAL HybridLL1NonterminalCount PERMANENT HYBRDL3I
+HYBRDL3J  EQU 67 ;@NUC-GLOBAL HybridLL1ProductionCount PERMANENT HYBRDL3J
+HYBRDL3K  EQU 34 ;@NUC-GLOBAL HybridLL1ProductionSplit PERMANENT HYBRDL3K
+HYBRDL3L      EQU 73 ;@NUC-GLOBAL HybridLL1ActionCount PERMANENT HYBRDL3L
+HYBRDL3M      EQU $40 ;@NUC-GLOBAL HybridLL1StartSymbol PERMANENT HYBRDL3M
+HYBRDL3N EQU 46 ;@NUC-GLOBAL HybridLL1ActionOrdinalEmitExit PERMANENT HYBRDL3N
+HYBRDL3O EQU 47 ;@NUC-GLOBAL HybridLL1ActionOrdinalEmitContinue PERMANENT HYBRDL3O
+HYBRDL3P EQU 61 ;@NUC-GLOBAL HybridLL1ActionOrdinalForTo PERMANENT HYBRDL3P
+HYBRDL3Q EQU 62 ;@NUC-GLOBAL HybridLL1ActionOrdinalForUntil PERMANENT HYBRDL3Q
+HYBRDL3R EQU 70 ;@NUC-GLOBAL HybridLL1ActionOrdinalTypeU8 PERMANENT HYBRDL3R
+HYBRDL3S EQU 71 ;@NUC-GLOBAL HybridLL1ActionOrdinalTypeU16 PERMANENT HYBRDL3S
+HYBRDL3T EQU 72 ;@NUC-GLOBAL HybridLL1ActionOrdinalTypeBoolean PERMANENT HYBRDL3T
+
+HYBRDL3U: ;@NUC-GLOBAL HybridLL1RowDirectory PERMANENT HYBRDL3U
+            DB HYBRDL3W,DGNSTCEC ; compilation-unit
+            DB HYBRDL3X,DGNSTCEC ; top-level-list
+            DB HYBRDL3Y,DGNSTCEC ; top-level-declaration
+            DB HYBRDL3Z,DGNSTCEC ; const-declaration
+            DB HYBRDL40,DGNSTCEQ ; const-declaration-tail
+            DB HYBRDL41,DGNSTCEC ; assert-declaration
+            DB HYBRDL42,DGNSTCEC ; program-var-declaration
+            DB HYBRDL43,DGNSTCEQ ; program-initializer-opt
+            DB HYBRDL44,DGNSTCEC ; record-declaration
+            DB HYBRDL45,DGNSTCRC ; record-fields
+            DB HYBRDL46,DGNSTCEI ; record-field-tail
+            DB HYBRDL47,DGNSTCEI ; record-field
+            DB HYBRDL48,DGNSTC11 ; forward-declaration
+            DB HYBRDL49,DGNSTCEX ; sub-definition
+            DB HYBRDL4A,DGNSTCE1 ; sub-definition-tail
+            DB HYBRDL4B,DGNSTCE2 ; parameter-list
+            DB HYBRDL4C,DGNSTCE2 ; parameter-tail
+            DB HYBRDL4D,DGNSTCEI ; parameter
+            DB HYBRDL4E,DGNSTCE4 ; result-opt
+            DB HYBRDL4F,DGNSTCE4 ; fails-opt
+            DB HYBRDL4G,DGNSTCEI ; routine-body
+            DB HYBRDL4H,DGNSTCEI ; local-list
+            DB HYBRDL4I,DGNSTCES ; local-declaration
+            DB HYBRDL4J,DGNSTCE4 ; local-initializer-opt
+            DB HYBRDL4K,DGNSTCEI ; statement-sequence
+            DB HYBRDL4L,DGNSTCEI ; statement
+            DB HYBRDL4M,DGNSTC12 ; return-statement
+            DB HYBRDL4N,DGNSTCE4 ; return-value-opt
+            DB HYBRDL4O,DGNSTCE8 ; fail-statement
+            DB HYBRDL4P,DGNSTCFL ; name-statement-tail
+            DB HYBRDL4Q,DGNSTCEM ; transfer-statement
+            DB HYBRDL4R,DGNSTC13 ; if-statement
+            DB HYBRDL4S,DGNSTCEI ; if-tail
+            DB HYBRDL4T,DGNSTCEI ; while-statement
+            DB HYBRDL4U,DGNSTCEV ; for-statement
+            DB HYBRDL4V,DGNSTCEI ; for-bound
+            DB HYBRDL4W,DGNSTCE4 ; for-step-opt
+            DB HYBRDL4X,DGNSTCEJ ; type
+            DB HYBRDL4Y,DGNSTCEJ ; type-atom
+            DB HYBRDL4Z,DGNSTCEI ; type-array-opt
+            DB HYBRDL50,DGNSTCEJ ; scalar-type
+.L00000:
+HYBRDL3V: ;@NUC-GLOBAL HybridLL1Rows PERMANENT HYBRDL3V
+.L00000: ; compilation-unit
+            DB $80
+            DB TKNASSRT
+            DB TKNCNST
+            DB TokenEof
+            DB TKNFRWRD
+            DB TKNRCRD
+            DB TokenSub
+            DB TKNVRFNL
+.L00001: ; top-level-list
+            DB 1
+            DB TKNASSRT
+            DB TKNCNST
+            DB TKNFRWRD
+            DB TKNRCRD
+            DB TokenSub
+            DB TKNVRFNL
+            DB $82
+            DB TKNEFFNL
+.L00002: ; top-level-declaration
+            DB 3
+            DB TKNCNSTF
+            DB 4
+            DB TKNASSR0
+            DB 5
+            DB TKNVRFNL
+            DB 6
+            DB TKNRCRDF
+            DB 7
+            DB TKNFRWR0
+            DB $88
+            DB TKNSBFNL
+.L00003: ; const-declaration
+            DB $89
+            DB TKNCNSTF
+.L00004: ; const-declaration-tail
+            DB $0a
+            DB TKNEQLSF
+            DB $8b
+            DB TKNASFNL
+.L00005: ; assert-declaration
+            DB $8c
+            DB TKNASSR0
+.L00006: ; program-var-declaration
+            DB $8d
+            DB TKNVRFNL
+.L00007: ; program-initializer-opt
+            DB $0e
+            DB TKNEQLSF
+            DB $82
+            DB TKNNWLNF
+.L00008: ; record-declaration
+            DB $8f
+            DB TKNRCRDF
+.L00009: ; record-fields
+            DB $90
+            DB TKNNMFNL
+.L0000A: ; record-field-tail
+            DB $10
+            DB TKNNMFNL
+            DB $82
+            DB TKNENDFN
+.L0000B: ; record-field
+            DB $91
+            DB TKNNMFNL
+.L0000C: ; forward-declaration
+            DB $92
+            DB TKNFRWR0
+.L0000D: ; sub-definition
+            DB $93
+            DB TKNSBFNL
+.L0000E: ; sub-definition-tail
+            DB $14
+            DB TKNLFTP0
+            DB $95
+            DB TKNNWLNF
+.L0000F: ; parameter-list
+            DB $16
+            DB TKNNMFNL
+            DB $82
+            DB TKNRGHT0
+.L0000G: ; parameter-tail
+            DB $17
+            DB TKNCMMFN
+            DB $82
+            DB TKNRGHT0
+.L0000H: ; parameter
+            DB $98
+            DB TKNNMFNL
+.L0000I: ; result-opt
+            DB $19
+            DB TKNASFNL
+            DB $82
+            DB TKNFLS
+            DB TKNNWLNF
+.L0000J: ; fails-opt
+            DB $1a
+            DB TKNFLSFN
+            DB $82
+            DB TKNNWLNF
+.L0000K: ; routine-body
+            DB $1b
+            DB TKNCNTN
+            DB TokenEnd
+            DB TKNEXT
+            DB TKNFL
+            DB TokenFor
+            DB TokenIf
+            DB TKNNM
+            DB TKNRTRN
+            DB TokenVar
+            DB TKNWHLFN
+            DB $9c
+            DB TKNELS
+            DB TKNELSI0
+.L0000L: ; local-list
+            DB $1d
+            DB TKNVRFNL
+            DB $82
+            DB TKNCNTN
+            DB TokenEnd
+            DB TKNEXT
+            DB TKNFL
+            DB TokenFor
+            DB TokenIf
+            DB TKNNM
+            DB TKNRTRN
+            DB TKNWHLFN
+.L0000M: ; local-declaration
+            DB $9e
+            DB TKNVRFNL
+.L0000N: ; local-initializer-opt
+            DB $1f
+            DB TKNEQLSF
+            DB $a0
+            DB TKNNWLNF
+.L0000O: ; statement-sequence
+            DB $21
+            DB TKNCNTN
+            DB TKNEXT
+            DB TKNFL
+            DB TokenFor
+            DB TokenIf
+            DB TKNNM
+            DB TKNRTRN
+            DB TKNWHLFN
+            DB $82
+            DB TKNELS
+            DB TKNELSIF
+            DB TKNENDFN
+.L0000P: ; statement
+            DB $22
+            DB TKNNMFNL
+            DB $23
+            DB TKNRTRNF
+            DB $24
+            DB TKNFLFNL
+            DB $25
+            DB TKNCNTN
+            DB TKNEXTFN
+            DB $26
+            DB TKNIFFNL
+            DB $27
+            DB TKNWHLFN
+            DB $a8
+            DB TKNFRFNL
+.L0000Q: ; return-statement
+            DB $a9
+            DB TKNRTRNF
+.L0000R: ; return-value-opt
+            DB $2a
+            DB TKNCHRCT
+            DB TKNFLS0
+            DB TKNLFTPR
+            DB TKNMNS
+            DB TKNNM
+            DB TokenNot
+            DB TKNNMBR
+            DB TKNPLS
+            DB TKNTR
+            DB TokenU16
+            DB TKNU8FNL
+            DB $ab
+            DB TKNNWLNF
+.L0000S: ; fail-statement
+            DB $ac
+            DB TKNFLFNL
+.L0000T: ; name-statement-tail
+            DB $2d
+            DB TKNNWLNF
+            DB $ae
+            DB TKNHNDLF
+.L0000U: ; transfer-statement
+            DB $2f
+            DB TKNEXTFN
+            DB $b0
+            DB TKNCNTNF
+.L0000V: ; if-statement
+            DB $b1
+            DB TKNIFFNL
+.L0000W: ; if-tail
+            DB $32
+            DB TKNELSI0
+            DB $33
+            DB TKNELSFN
+            DB $b4
+            DB TKNENDFN
+.L0000X: ; while-statement
+            DB $b5
+            DB TKNWHLFN
+.L0000Y: ; for-statement
+            DB $b6
+            DB TKNFRFNL
+.L0000Z: ; for-bound
+            DB $37
+            DB TKNTOFNL
+            DB $b8
+            DB TKNUNTLF
+.L00010: ; for-step-opt
+            DB $39
+            DB TKNSTPFN
+            DB $ba
+            DB TKNNWLNF
+.L00011: ; type
+            DB $bb
+            DB TKNBLN
+            DB TKNNM
+            DB TKNSTRN0
+            DB TokenU16
+            DB TKNU8FNL
+.L00012: ; type-atom
+            DB $3c
+            DB TKNBLN
+            DB TokenU16
+            DB TKNU8FNL
+            DB $3d
+            DB TKNNMFNL
+            DB $be
+            DB TKNSTRN1
+.L00013: ; type-array-opt
+            DB $3f
+            DB TKNLFTB0
+            DB $82
+            DB TKNCMM
+            DB TKNEQLS
+            DB TKNFLS
+            DB TKNNWLN
+            DB TKNRGHT0
+.L00014: ; scalar-type
+            DB $40
+            DB TKNU8FNL
+            DB $41
+            DB TKNU16FN
+            DB $c2
+            DB TKNBLNFN
+.L00015:
+
+TKNASFNL EQU TokenAs+$80 ;@NUC-GLOBAL TokenAsFinal PERMANENT TKNASFNL
+TKNASSR0 EQU TKNASSRT+$80 ;@NUC-GLOBAL TokenAssertFinal PERMANENT TKNASSR0
+TKNBLNFN EQU TKNBLN+$80 ;@NUC-GLOBAL TokenBooleanFinal PERMANENT TKNBLNFN
+TKNCMMFN EQU TKNCMM+$80 ;@NUC-GLOBAL TokenCommaFinal PERMANENT TKNCMMFN
+TKNCNSTF EQU TKNCNST+$80 ;@NUC-GLOBAL TokenConstFinal PERMANENT TKNCNSTF
+TKNCNTNF EQU TKNCNTN+$80 ;@NUC-GLOBAL TokenContinueFinal PERMANENT TKNCNTNF
+TKNELSFN EQU TKNELS+$80 ;@NUC-GLOBAL TokenElseFinal PERMANENT TKNELSFN
+TKNELSI0 EQU TKNELSIF+$80 ;@NUC-GLOBAL TokenElseIfFinal PERMANENT TKNELSI0
+TKNENDFN EQU TokenEnd+$80 ;@NUC-GLOBAL TokenEndFinal PERMANENT TKNENDFN
+TKNEFFNL EQU TokenEof+$80 ;@NUC-GLOBAL TokenEofFinal PERMANENT TKNEFFNL
+TKNEQLSF EQU TKNEQLS+$80 ;@NUC-GLOBAL TokenEqualsFinal PERMANENT TKNEQLSF
+TKNEXTFN EQU TKNEXT+$80 ;@NUC-GLOBAL TokenExitFinal PERMANENT TKNEXTFN
+TKNFLFNL EQU TKNFL+$80 ;@NUC-GLOBAL TokenFailFinal PERMANENT TKNFLFNL
+TKNFLSFN EQU TKNFLS+$80 ;@NUC-GLOBAL TokenFailsFinal PERMANENT TKNFLSFN
+TKNFRFNL EQU TokenFor+$80 ;@NUC-GLOBAL TokenForFinal PERMANENT TKNFRFNL
+TKNFRWR0 EQU TKNFRWRD+$80 ;@NUC-GLOBAL TokenForwardFinal PERMANENT TKNFRWR0
+TKNHNDLF EQU TKNHNDL+$80 ;@NUC-GLOBAL TokenHandleFinal PERMANENT TKNHNDLF
+TKNIFFNL EQU TokenIf+$80 ;@NUC-GLOBAL TokenIfFinal PERMANENT TKNIFFNL
+TKNLFTB0 EQU TKNLFTBR+$80 ;@NUC-GLOBAL TokenLeftBracketFinal PERMANENT TKNLFTB0
+TKNLFTP0 EQU TKNLFTPR+$80 ;@NUC-GLOBAL TokenLeftParenFinal PERMANENT TKNLFTP0
+TKNNMFNL EQU TKNNM+$80 ;@NUC-GLOBAL TokenNameFinal PERMANENT TKNNMFNL
+TKNNWLNF EQU TKNNWLN+$80 ;@NUC-GLOBAL TokenNewlineFinal PERMANENT TKNNWLNF
+TKNRCRDF EQU TKNRCRD+$80 ;@NUC-GLOBAL TokenRecordFinal PERMANENT TKNRCRDF
+TKNRTRNF EQU TKNRTRN+$80 ;@NUC-GLOBAL TokenReturnFinal PERMANENT TKNRTRNF
+TKNRGHT0 EQU TKNRGHTP+$80 ;@NUC-GLOBAL TokenRightParenFinal PERMANENT TKNRGHT0
+TKNSTPFN EQU TKNSTP+$80 ;@NUC-GLOBAL TokenStepFinal PERMANENT TKNSTPFN
+TKNSTRN1 EQU TKNSTRN0+$80 ;@NUC-GLOBAL TokenStringFinal PERMANENT TKNSTRN1
+TKNSBFNL EQU TokenSub+$80 ;@NUC-GLOBAL TokenSubFinal PERMANENT TKNSBFNL
+TKNTOFNL EQU TokenTo+$80 ;@NUC-GLOBAL TokenToFinal PERMANENT TKNTOFNL
+TKNU16FN EQU TokenU16+$80 ;@NUC-GLOBAL TokenU16Final PERMANENT TKNU16FN
+TKNU8FNL EQU TokenU8+$80 ;@NUC-GLOBAL TokenU8Final PERMANENT TKNU8FNL
+TKNUNTLF EQU TKNUNTL+$80 ;@NUC-GLOBAL TokenUntilFinal PERMANENT TKNUNTLF
+TKNVRFNL EQU TokenVar+$80 ;@NUC-GLOBAL TokenVarFinal PERMANENT TKNVRFNL
+TKNWHLFN EQU TKNWHL+$80 ;@NUC-GLOBAL TokenWhileFinal PERMANENT TKNWHLFN
+
+HYBRDL3W EQU .L00000-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row0Offset PERMANENT HYBRDL3W; compilation-unit
+HYBRDL3X EQU .L00001-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row1Offset PERMANENT HYBRDL3X; top-level-list
+HYBRDL3Y EQU .L00002-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row2Offset PERMANENT HYBRDL3Y; top-level-declaration
+HYBRDL3Z EQU .L00003-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row3Offset PERMANENT HYBRDL3Z; const-declaration
+HYBRDL40 EQU .L00004-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row4Offset PERMANENT HYBRDL40; const-declaration-tail
+HYBRDL41 EQU .L00005-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row5Offset PERMANENT HYBRDL41; assert-declaration
+HYBRDL42 EQU .L00006-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row6Offset PERMANENT HYBRDL42; program-var-declaration
+HYBRDL43 EQU .L00007-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row7Offset PERMANENT HYBRDL43; program-initializer-opt
+HYBRDL44 EQU .L00008-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row8Offset PERMANENT HYBRDL44; record-declaration
+HYBRDL45 EQU .L00009-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row9Offset PERMANENT HYBRDL45; record-fields
+HYBRDL46 EQU .L0000A-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row10Offset PERMANENT HYBRDL46; record-field-tail
+HYBRDL47 EQU .L0000B-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row11Offset PERMANENT HYBRDL47; record-field
+HYBRDL48 EQU .L0000C-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row12Offset PERMANENT HYBRDL48; forward-declaration
+HYBRDL49 EQU .L0000D-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row13Offset PERMANENT HYBRDL49; sub-definition
+HYBRDL4A EQU .L0000E-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row14Offset PERMANENT HYBRDL4A; sub-definition-tail
+HYBRDL4B EQU .L0000F-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row15Offset PERMANENT HYBRDL4B; parameter-list
+HYBRDL4C EQU .L0000G-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row16Offset PERMANENT HYBRDL4C; parameter-tail
+HYBRDL4D EQU .L0000H-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row17Offset PERMANENT HYBRDL4D; parameter
+HYBRDL4E EQU .L0000I-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row18Offset PERMANENT HYBRDL4E; result-opt
+HYBRDL4F EQU .L0000J-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row19Offset PERMANENT HYBRDL4F; fails-opt
+HYBRDL4G EQU .L0000K-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row20Offset PERMANENT HYBRDL4G; routine-body
+HYBRDL4H EQU .L0000L-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row21Offset PERMANENT HYBRDL4H; local-list
+HYBRDL4I EQU .L0000M-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row22Offset PERMANENT HYBRDL4I; local-declaration
+HYBRDL4J EQU .L0000N-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row23Offset PERMANENT HYBRDL4J; local-initializer-opt
+HYBRDL4K EQU .L0000O-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row24Offset PERMANENT HYBRDL4K; statement-sequence
+HYBRDL4L EQU .L0000P-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row25Offset PERMANENT HYBRDL4L; statement
+HYBRDL4M EQU .L0000Q-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row26Offset PERMANENT HYBRDL4M; return-statement
+HYBRDL4N EQU .L0000R-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row27Offset PERMANENT HYBRDL4N; return-value-opt
+HYBRDL4O EQU .L0000S-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row28Offset PERMANENT HYBRDL4O; fail-statement
+HYBRDL4P EQU .L0000T-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row29Offset PERMANENT HYBRDL4P; name-statement-tail
+HYBRDL4Q EQU .L0000U-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row30Offset PERMANENT HYBRDL4Q; transfer-statement
+HYBRDL4R EQU .L0000V-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row31Offset PERMANENT HYBRDL4R; if-statement
+HYBRDL4S EQU .L0000W-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row32Offset PERMANENT HYBRDL4S; if-tail
+HYBRDL4T EQU .L0000X-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row33Offset PERMANENT HYBRDL4T; while-statement
+HYBRDL4U EQU .L0000Y-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row34Offset PERMANENT HYBRDL4U; for-statement
+HYBRDL4V EQU .L0000Z-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row35Offset PERMANENT HYBRDL4V; for-bound
+HYBRDL4W EQU .L00010-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row36Offset PERMANENT HYBRDL4W; for-step-opt
+HYBRDL4X EQU .L00011-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row37Offset PERMANENT HYBRDL4X; type
+HYBRDL4Y EQU .L00012-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row38Offset PERMANENT HYBRDL4Y; type-atom
+HYBRDL4Z EQU .L00013-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row39Offset PERMANENT HYBRDL4Z; type-array-opt
+HYBRDL50 EQU .L00014-HYBRDL3V  ;@NUC-GLOBAL HybridLL1Row40Offset PERMANENT HYBRDL50; scalar-type
+
+HYBRDL51: ;@NUC-GLOBAL HybridLL1ProductionDirectory PERMANENT HYBRDL51
+            DB HYBRDL63 ; compilation-unit
+            DB HYBRDL64 ; top-level-list
+            DB HYBRDL65 ; top-level-list
+            DB HYBRDL66 ; top-level-declaration
+            DB HYBRDL67 ; top-level-declaration
+            DB HYBRDL68 ; top-level-declaration
+            DB HYBRDL69 ; top-level-declaration
+            DB HYBRDL6A ; top-level-declaration
+            DB HYBRDL6B ; top-level-declaration
+            DB HYBRDL6C ; const-declaration
+            DB HYBRDL6D ; const-declaration-tail
+            DB HYBRDL6E ; const-declaration-tail
+            DB HYBRDL6F ; assert-declaration
+            DB HYBRDL6G ; program-var-declaration
+            DB HYBRDL6H ; program-initializer-opt
+            DB HYBRDL6I ; record-declaration
+            DB HYBRDL6J ; record-fields
+            DB HYBRDL6K ; record-field
+            DB HYBRDL6L ; forward-declaration
+            DB HYBRDL6M ; sub-definition
+            DB HYBRDL6N ; sub-definition-tail
+            DB HYBRDL6O ; sub-definition-tail
+            DB HYBRDL6P ; parameter-list
+            DB HYBRDL6Q ; parameter-tail
+            DB HYBRDL6R ; parameter
+            DB HYBRDL6S ; result-opt
+            DB HYBRDL6T ; fails-opt
+            DB HYBRDL6U ; routine-body
+            DB HYBRDL6V ; routine-body
+            DB HYBRDL6W ; local-list
+            DB HYBRDL6X ; local-declaration
+            DB HYBRDL6Y ; local-initializer-opt
+            DB HYBRDL6Z ; local-initializer-opt
+            DB HYBRDL70 ; statement-sequence
+            DB HYBRDL71
+HYBRDL52: ;@NUC-GLOBAL HybridLL1ProductionDirectoryHigh PERMANENT HYBRDL52
+            DB HYBRDL72 ; statement
+            DB HYBRDL73 ; statement
+            DB HYBRDL74 ; statement
+            DB HYBRDL75 ; statement
+            DB HYBRDL76 ; statement
+            DB HYBRDL77 ; statement
+            DB HYBRDL78 ; statement
+            DB HYBRDL79 ; return-statement
+            DB HYBRDL7A ; return-value-opt
+            DB HYBRDL7B ; return-value-opt
+            DB HYBRDL7C ; fail-statement
+            DB HYBRDL7D ; name-statement-tail
+            DB HYBRDL7E ; name-statement-tail
+            DB HYBRDL7F ; transfer-statement
+            DB HYBRDL7G ; transfer-statement
+            DB HYBRDL7H ; if-statement
+            DB HYBRDL7I ; if-tail
+            DB HYBRDL7J ; if-tail
+            DB HYBRDL7K ; if-tail
+            DB HYBRDL7L ; while-statement
+            DB HYBRDL7M ; for-statement
+            DB HYBRDL7N ; for-bound
+            DB HYBRDL7O ; for-bound
+            DB HYBRDL7P ; for-step-opt
+            DB HYBRDL7Q ; for-step-opt
+            DB HYBRDL7R ; type
+            DB HYBRDL7S ; type-atom
+            DB HYBRDL7T ; type-atom
+            DB HYBRDL7U ; type-atom
+            DB HYBRDL7V ; type-array-opt
+            DB HYBRDL7W ; scalar-type
+            DB HYBRDL7X ; scalar-type
+            DB HYBRDL7Y ; scalar-type
+            DB HYBRDL7Z
+.L00000:
+HYBRDL53: ;@NUC-GLOBAL HybridLL1Productions PERMANENT HYBRDL53
+HYBRDL54:  ;@NUC-GLOBAL HybridLL1Production0 PERMANENT HYBRDL54; compilation-unit
+            DB TokenEof,$80,$41
+HYBRDL55:  ;@NUC-GLOBAL HybridLL1Production1 PERMANENT HYBRDL55; top-level-list
+            DB $41,$42
+HYBRDL56:  ;@NUC-GLOBAL HybridLL1Production2 PERMANENT HYBRDL56; top-level-list
+HYBRDL57:  ;@NUC-GLOBAL HybridLL1Production3 PERMANENT HYBRDL57; top-level-declaration
+            DB $43
+HYBRDL58:  ;@NUC-GLOBAL HybridLL1Production4 PERMANENT HYBRDL58; top-level-declaration
+            DB $45
+HYBRDL59:  ;@NUC-GLOBAL HybridLL1Production5 PERMANENT HYBRDL59; top-level-declaration
+            DB $46
+HYBRDL5A:  ;@NUC-GLOBAL HybridLL1Production6 PERMANENT HYBRDL5A; top-level-declaration
+            DB $48
+HYBRDL5B:  ;@NUC-GLOBAL HybridLL1Production7 PERMANENT HYBRDL5B; top-level-declaration
+            DB $4c
+HYBRDL5C:  ;@NUC-GLOBAL HybridLL1Production8 PERMANENT HYBRDL5C; top-level-declaration
+            DB $4d
+HYBRDL5D:  ;@NUC-GLOBAL HybridLL1Production9 PERMANENT HYBRDL5D; const-declaration
+            DB $44,$82,TKNNM,TKNCNST,$81
+HYBRDL5E:  ;@NUC-GLOBAL HybridLL1Production10 PERMANENT HYBRDL5E; const-declaration-tail
+            DB $85,TKNNWLN,$84,$83,TKNEQLS
+HYBRDL5F:  ;@NUC-GLOBAL HybridLL1Production11 PERMANENT HYBRDL5F; const-declaration-tail
+            DB $89,TKNNWLN,$88,$87,TKNEQLS,$86,$65,TokenAs
+HYBRDL5G:  ;@NUC-GLOBAL HybridLL1Production12 PERMANENT HYBRDL5G; assert-declaration
+            DB $8b,TKNNWLN,$83,TKNASSRT,$8a,$81
+HYBRDL5H:  ;@NUC-GLOBAL HybridLL1Production13 PERMANENT HYBRDL5H; program-var-declaration
+            DB $8d,TKNNWLN,$47,$8c,$65,TokenAs,$82,TKNNM,TokenVar,$81
+HYBRDL5I:  ;@NUC-GLOBAL HybridLL1Production14 PERMANENT HYBRDL5I; program-initializer-opt
+            DB $88,$87,TKNEQLS
+HYBRDL5J:  ;@NUC-GLOBAL HybridLL1Production15 PERMANENT HYBRDL5J; record-declaration
+            DB $8f,TKNNWLN,TokenEnd,$49,TKNNWLN,$8e,TKNNM,TKNRCRD,$81
+HYBRDL5K:  ;@NUC-GLOBAL HybridLL1Production16 PERMANENT HYBRDL5K; record-fields
+            DB $4a,$4b
+HYBRDL5L:  ;@NUC-GLOBAL HybridLL1Production17 PERMANENT HYBRDL5L; record-field
+            DB $91,TKNNWLN,$65,TokenAs,$90,TKNNM
+HYBRDL5M:  ;@NUC-GLOBAL HybridLL1Production18 PERMANENT HYBRDL5M; forward-declaration
+            DB $94,TKNNWLN,$53,$52,TKNRGHTP,$4f,TKNLFTPR,$93,$92,TKNNM,TokenSub,TKNFRWRD
+HYBRDL5N:  ;@NUC-GLOBAL HybridLL1Production19 PERMANENT HYBRDL5N; sub-definition
+            DB $4e,$92,TKNNM,TokenSub
+HYBRDL5O:  ;@NUC-GLOBAL HybridLL1Production20 PERMANENT HYBRDL5O; sub-definition-tail
+            DB $97,$54,$96,TKNNWLN,$53,$52,TKNRGHTP,$4f,TKNLFTPR,$95
+HYBRDL5P:  ;@NUC-GLOBAL HybridLL1Production21 PERMANENT HYBRDL5P; sub-definition-tail
+            DB $97,$54,TKNNWLN,$98
+HYBRDL5Q:  ;@NUC-GLOBAL HybridLL1Production22 PERMANENT HYBRDL5Q; parameter-list
+            DB $50,$51
+HYBRDL5R:  ;@NUC-GLOBAL HybridLL1Production23 PERMANENT HYBRDL5R; parameter-tail
+            DB $50,$51,TKNCMM
+HYBRDL5S:  ;@NUC-GLOBAL HybridLL1Production24 PERMANENT HYBRDL5S; parameter
+            DB $9a,$65,TokenAs,$99,TKNNM
+HYBRDL5T:  ;@NUC-GLOBAL HybridLL1Production25 PERMANENT HYBRDL5T; result-opt
+            DB $9c,$65,$9b,TokenAs
+HYBRDL5U:  ;@NUC-GLOBAL HybridLL1Production26 PERMANENT HYBRDL5U; fails-opt
+            DB $9d,TKNFLS
+HYBRDL5V:  ;@NUC-GLOBAL HybridLL1Production27 PERMANENT HYBRDL5V; routine-body
+            DB TKNNWLN,TokenEnd,$58,$55
+HYBRDL5W:  ;@NUC-GLOBAL HybridLL1Production28 PERMANENT HYBRDL5W; routine-body
+            DB $9e
+HYBRDL5X:  ;@NUC-GLOBAL HybridLL1Production29 PERMANENT HYBRDL5X; local-list
+            DB $55,$56
+HYBRDL5Y:  ;@NUC-GLOBAL HybridLL1Production30 PERMANENT HYBRDL5Y; local-declaration
+            DB $a0,TKNNWLN,$57,$9f,$68,TokenAs,$82,TKNNM,TokenVar
+HYBRDL5Z:  ;@NUC-GLOBAL HybridLL1Production31 PERMANENT HYBRDL5Z; local-initializer-opt
+            DB $a3,$a2,$a1,TKNEQLS
+HYBRDL60:  ;@NUC-GLOBAL HybridLL1Production32 PERMANENT HYBRDL60; local-initializer-opt
+            DB $a4
+HYBRDL61:  ;@NUC-GLOBAL HybridLL1Production33 PERMANENT HYBRDL61; statement-sequence
+            DB $58,$59
+HYBRDL62: ;@NUC-GLOBAL HybridLL1ProductionsHigh PERMANENT HYBRDL62
+.L00000: ; statement
+            DB $5d,$a5
+.L00001: ; statement
+            DB TKNNWLN,$5a
+.L00002: ; statement
+            DB TKNNWLN,$5c
+.L00003: ; statement
+            DB TKNNWLN,$5e
+.L00004: ; statement
+            DB $5f
+.L00005: ; statement
+            DB $61
+.L00006: ; statement
+            DB $62
+.L00007: ; return-statement
+            DB $5b,$a6,TKNRTRN
+.L00008: ; return-value-opt
+            DB $a8,$a7
+.L00009: ; return-value-opt
+            DB $a9
+.L0000A: ; fail-statement
+            DB $ab,$a2,$aa,TKNFL
+.L0000B: ; name-statement-tail
+            DB TKNNWLN
+.L0000C: ; name-statement-tail
+            DB $ad,TKNNWLN,TokenEnd,$58,TKNNWLN,$ac,TKNNM,TKNHNDL
+.L0000D: ; transfer-statement
+            DB $ae,TKNEXT
+.L0000E: ; transfer-statement
+            DB $af,TKNCNTN
+.L0000F: ; if-statement
+            DB $b2,TKNNWLN,TokenEnd,$60,$58,$b1,TKNNWLN,$a2,$b0,TokenIf
+.L0000G: ; if-tail
+            DB $60,$58,$b1,TKNNWLN,$a2,$b3,TKNELSIF
+.L0000H: ; if-tail
+            DB $b5,$58,TKNNWLN,$b4,TKNELS
+.L0000I: ; if-tail
+            DB $b6
+.L0000J: ; while-statement
+            DB $b9,TKNNWLN,TokenEnd,$58,$b8,TKNNWLN,$a2,$b7,TKNWHL
+.L0000K: ; for-statement
+            DB $bc,TKNNWLN,TokenEnd,$58,$bb,TKNNWLN,$64,$a2,$63,$a2,TKNEQLS,$ba,TKNNM,TokenFor
+.L0000L: ; for-bound
+            DB $bd,TokenTo
+.L0000M: ; for-bound
+            DB $be,TKNUNTL
+.L0000N: ; for-step-opt
+            DB $c0,$bf,TKNSTP
+.L0000O: ; for-step-opt
+            DB $c1
+.L0000P: ; type
+            DB $67,$66
+.L0000Q: ; type-atom
+            DB $68
+.L0000R: ; type-atom
+            DB $c2,TKNNM
+.L0000S: ; type-atom
+            DB $c4,TKNRGHTB,$83,$c3,TKNLFTBR,TKNSTRN0
+.L0000T: ; type-array-opt
+            DB $c5,TKNRGHTB,$83,$c3,TKNLFTBR
+.L0000U: ; scalar-type
+            DB $c6,TokenU8
+.L0000V: ; scalar-type
+            DB $c7,TokenU16
+.L0000W: ; scalar-type
+            DB $c8,TKNBLN
+.L0000X:
+
+HYBRDL63 EQU HYBRDL54-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production0Offset PERMANENT HYBRDL63; compilation-unit
+HYBRDL64 EQU HYBRDL55-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production1Offset PERMANENT HYBRDL64; top-level-list
+HYBRDL65 EQU HYBRDL56-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production2Offset PERMANENT HYBRDL65; top-level-list
+HYBRDL66 EQU HYBRDL57-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production3Offset PERMANENT HYBRDL66; top-level-declaration
+HYBRDL67 EQU HYBRDL58-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production4Offset PERMANENT HYBRDL67; top-level-declaration
+HYBRDL68 EQU HYBRDL59-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production5Offset PERMANENT HYBRDL68; top-level-declaration
+HYBRDL69 EQU HYBRDL5A-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production6Offset PERMANENT HYBRDL69; top-level-declaration
+HYBRDL6A EQU HYBRDL5B-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production7Offset PERMANENT HYBRDL6A; top-level-declaration
+HYBRDL6B EQU HYBRDL5C-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production8Offset PERMANENT HYBRDL6B; top-level-declaration
+HYBRDL6C EQU HYBRDL5D-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production9Offset PERMANENT HYBRDL6C; const-declaration
+HYBRDL6D EQU HYBRDL5E-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production10Offset PERMANENT HYBRDL6D; const-declaration-tail
+HYBRDL6E EQU HYBRDL5F-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production11Offset PERMANENT HYBRDL6E; const-declaration-tail
+HYBRDL6F EQU HYBRDL5G-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production12Offset PERMANENT HYBRDL6F; assert-declaration
+HYBRDL6G EQU HYBRDL5H-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production13Offset PERMANENT HYBRDL6G; program-var-declaration
+HYBRDL6H EQU HYBRDL5I-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production14Offset PERMANENT HYBRDL6H; program-initializer-opt
+HYBRDL6I EQU HYBRDL5J-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production15Offset PERMANENT HYBRDL6I; record-declaration
+HYBRDL6J EQU HYBRDL5K-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production16Offset PERMANENT HYBRDL6J; record-fields
+HYBRDL6K EQU HYBRDL5L-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production17Offset PERMANENT HYBRDL6K; record-field
+HYBRDL6L EQU HYBRDL5M-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production18Offset PERMANENT HYBRDL6L; forward-declaration
+HYBRDL6M EQU HYBRDL5N-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production19Offset PERMANENT HYBRDL6M; sub-definition
+HYBRDL6N EQU HYBRDL5O-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production20Offset PERMANENT HYBRDL6N; sub-definition-tail
+HYBRDL6O EQU HYBRDL5P-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production21Offset PERMANENT HYBRDL6O; sub-definition-tail
+HYBRDL6P EQU HYBRDL5Q-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production22Offset PERMANENT HYBRDL6P; parameter-list
+HYBRDL6Q EQU HYBRDL5R-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production23Offset PERMANENT HYBRDL6Q; parameter-tail
+HYBRDL6R EQU HYBRDL5S-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production24Offset PERMANENT HYBRDL6R; parameter
+HYBRDL6S EQU HYBRDL5T-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production25Offset PERMANENT HYBRDL6S; result-opt
+HYBRDL6T EQU HYBRDL5U-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production26Offset PERMANENT HYBRDL6T; fails-opt
+HYBRDL6U EQU HYBRDL5V-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production27Offset PERMANENT HYBRDL6U; routine-body
+HYBRDL6V EQU HYBRDL5W-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production28Offset PERMANENT HYBRDL6V; routine-body
+HYBRDL6W EQU HYBRDL5X-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production29Offset PERMANENT HYBRDL6W; local-list
+HYBRDL6X EQU HYBRDL5Y-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production30Offset PERMANENT HYBRDL6X; local-declaration
+HYBRDL6Y EQU HYBRDL5Z-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production31Offset PERMANENT HYBRDL6Y; local-initializer-opt
+HYBRDL6Z EQU HYBRDL60-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production32Offset PERMANENT HYBRDL6Z; local-initializer-opt
+HYBRDL70 EQU HYBRDL61-HYBRDL53  ;@NUC-GLOBAL HybridLL1Production33Offset PERMANENT HYBRDL70; statement-sequence
+HYBRDL71 EQU HYBRDL62-HYBRDL53 ;@NUC-GLOBAL HybridLL1ProductionsHighOffset PERMANENT HYBRDL71
+HYBRDL72 EQU .L00000-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production34Offset PERMANENT HYBRDL72; statement
+HYBRDL73 EQU .L00001-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production35Offset PERMANENT HYBRDL73; statement
+HYBRDL74 EQU .L00002-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production36Offset PERMANENT HYBRDL74; statement
+HYBRDL75 EQU .L00003-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production37Offset PERMANENT HYBRDL75; statement
+HYBRDL76 EQU .L00004-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production38Offset PERMANENT HYBRDL76; statement
+HYBRDL77 EQU .L00005-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production39Offset PERMANENT HYBRDL77; statement
+HYBRDL78 EQU .L00006-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production40Offset PERMANENT HYBRDL78; statement
+HYBRDL79 EQU .L00007-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production41Offset PERMANENT HYBRDL79; return-statement
+HYBRDL7A EQU .L00008-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production42Offset PERMANENT HYBRDL7A; return-value-opt
+HYBRDL7B EQU .L00009-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production43Offset PERMANENT HYBRDL7B; return-value-opt
+HYBRDL7C EQU .L0000A-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production44Offset PERMANENT HYBRDL7C; fail-statement
+HYBRDL7D EQU .L0000B-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production45Offset PERMANENT HYBRDL7D; name-statement-tail
+HYBRDL7E EQU .L0000C-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production46Offset PERMANENT HYBRDL7E; name-statement-tail
+HYBRDL7F EQU .L0000D-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production47Offset PERMANENT HYBRDL7F; transfer-statement
+HYBRDL7G EQU .L0000E-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production48Offset PERMANENT HYBRDL7G; transfer-statement
+HYBRDL7H EQU .L0000F-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production49Offset PERMANENT HYBRDL7H; if-statement
+HYBRDL7I EQU .L0000G-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production50Offset PERMANENT HYBRDL7I; if-tail
+HYBRDL7J EQU .L0000H-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production51Offset PERMANENT HYBRDL7J; if-tail
+HYBRDL7K EQU .L0000I-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production52Offset PERMANENT HYBRDL7K; if-tail
+HYBRDL7L EQU .L0000J-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production53Offset PERMANENT HYBRDL7L; while-statement
+HYBRDL7M EQU .L0000K-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production54Offset PERMANENT HYBRDL7M; for-statement
+HYBRDL7N EQU .L0000L-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production55Offset PERMANENT HYBRDL7N; for-bound
+HYBRDL7O EQU .L0000M-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production56Offset PERMANENT HYBRDL7O; for-bound
+HYBRDL7P EQU .L0000N-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production57Offset PERMANENT HYBRDL7P; for-step-opt
+HYBRDL7Q EQU .L0000O-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production58Offset PERMANENT HYBRDL7Q; for-step-opt
+HYBRDL7R EQU .L0000P-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production59Offset PERMANENT HYBRDL7R; type
+HYBRDL7S EQU .L0000Q-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production60Offset PERMANENT HYBRDL7S; type-atom
+HYBRDL7T EQU .L0000R-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production61Offset PERMANENT HYBRDL7T; type-atom
+HYBRDL7U EQU .L0000S-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production62Offset PERMANENT HYBRDL7U; type-atom
+HYBRDL7V EQU .L0000T-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production63Offset PERMANENT HYBRDL7V; type-array-opt
+HYBRDL7W EQU .L0000U-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production64Offset PERMANENT HYBRDL7W; scalar-type
+HYBRDL7X EQU .L0000V-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production65Offset PERMANENT HYBRDL7X; scalar-type
+HYBRDL7Y EQU .L0000W-HYBRDL62  ;@NUC-GLOBAL HybridLL1Production66Offset PERMANENT HYBRDL7Y; scalar-type
+HYBRDL7Z EQU .L0000X-HYBRDL62 ;@NUC-GLOBAL HybridLL1ProductionsEndOffset PERMANENT HYBRDL7Z
+
+HYBRDL80: ;@NUC-GLOBAL HybridLL1ActionDirectory PERMANENT HYBRDL80
+            DW HYBRDL11 ; a:RequireMain
+            DW HYBRDL10 ; a:RequireBeforeMain
+            DW HYBRDLLK ; a:RetainDeclarationName
+            DW HYBRDLL5 ; x:ConstantExpression
+            DW HYBRDLLM ; a:FinishConstantExpression
+            DW HYBRDLLN ; a:CommitConstant
+            DW HYBRDLLT ; a:SaveAggregateConstantType
+            DW HYBRDLL9 ; x:StaticInitializer
+            DW HYBRDLLU ; a:FinishProgramInitializer
+            DW HYBRDLLO ; a:CommitAggregateConstant
+            DW HYBRDLLP ; a:BeginAssert
+            DW HYBRDLLQ ; a:CommitAssert
+            DW HYBRDLLR ; a:SaveProgramType
+            DW HYBRDLLV ; a:CommitProgramVariable
+            DW HYBRDLLW ; a:BeginRecord
+            DW HYBRDLLZ ; a:CommitRecord
+            DW HYBRDLLX ; a:BeginRecordField
+            DW HYBRDLLY ; a:CommitRecordField
+            DW HYBRDL12 ; a:RetainSubName
+            DW HYBRDL16 ; a:BeginForward
+            DW HYBRDL17 ; a:CommitForward
+            DW HYBRDL15 ; a:BeginSub
+            DW HYBRDL1F ; a:BeginSubBody
+            DW HYBRDL1L ; a:EndSub
+            DW HYBRDL1E ; a:BeginForwardBody
+            DW HYBRDL18 ; a:RetainParameter
+            DW HYBRDL19 ; a:CommitParameter
+            DW HYBRDL1A ; a:AllowSubResult
+            DW HYBRDL1B ; a:SaveSubResult
+            DW HYBRDL1C ; a:MarkSubFails
+            DW HYBRDLLA ; x:StrayClause
+            DW HYBRDL1W ; a:SaveLocalType
+            DW HYBRDL23 ; a:CommitLocal
+            DW HYBRDL1Y ; a:BeginLocalInitializer
+            DW HYBRDLL6 ; x:RuntimeExpression
+            DW HYBRDL20 ; a:FinishLocalInitializer
+            DW HYBRDL1Z ; a:DefaultLocalInitializer
+            DW HYBRDL24 ; x:NameStatement
+            DW HYBRDL25 ; a:BeginReturnValue
+            DW HYBRDL26 ; x:ReturnValue
+            DW HYBRDL27 ; a:CommitReturn
+            DW HYBRDL29 ; a:CommitBareReturn
+            DW HYBRDL1O ; a:BeginFail
+            DW HYBRDL1P ; a:CommitFail
+            DW HYBRDL1U ; a:BeginHandle
+            DW HYBRDL1V ; a:EndHandle
+            DW HYBRDL2A ; a:EmitExit, parameter 45
+            DW HYBRDL2A ; a:EmitContinue, parameter 46
+            DW HYBRDL2H ; a:BeginIf
+            DW HYBRDL2J ; a:BeginIfBody
+            DW HYBRDL2S ; a:EndIf
+            DW HYBRDL2N ; a:BeginElseIf
+            DW HYBRDL2O ; a:BeginElse
+            DW HYBRDL2P ; a:FinishElse
+            DW HYBRDL2Q ; a:FinishIfClauses
+            DW HYBRDL2T ; a:BeginWhile
+            DW HYBRDL2U ; a:BeginWhileBody
+            DW HYBRDL2V ; a:EndWhile
+            DW HYBRDL2X ; a:BeginFor
+            DW HYBRDL32 ; a:BeginForBody
+            DW HYBRDL33 ; a:EndFor
+            DW HYBRDL2Y ; a:ForTo, parameter 1
+            DW HYBRDL2Y ; a:ForUntil, parameter 0
+            DW HYBRDLL8 ; x:StepConstant
+            DW HYBRDL30 ; a:SaveForStep
+            DW HYBRDL31 ; a:DefaultForStep
+            DW HYBRDLLD ; a:ResolveRecordType
+            DW HYBRDLLE ; a:BeginTypeBound
+            DW HYBRDLLH ; a:MakeStringType
+            DW HYBRDLLJ ; a:MakeArrayType
+            DW HYBRDLLB ; a:TypeU8, parameter 1
+            DW HYBRDLLB ; a:TypeU16, parameter 2
+            DW HYBRDLLB ; a:TypeBoolean, parameter 3
+.L00000:
+
+.L00001:

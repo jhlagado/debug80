@@ -1,0 +1,60 @@
+; Nucleus vertical-slice proof memory map
+;
+; Every end symbol is exclusive. The map keeps the 16 KiB compiler-core gate
+; visible while giving every other account a distinct, bounded proof region.
+
+CMPLRCRB    EQU $0000 ;@NUC-GLOBAL CompilerCoreBase PERMANENT CMPLRCRB
+CMPLRCRL   EQU $4000 ;@NUC-GLOBAL CompilerCoreLimit PERMANENT CMPLRCRL
+
+CMPLRWR0    EQU $4000 ;@NUC-GLOBAL CompilerWorkBase PERMANENT CMPLRWR0
+CMPLRWR1   EQU $5000 ;@NUC-GLOBAL CompilerWorkLimit PERMANENT CMPLRWR1
+
+SRCBS          EQU $5000 ;@NUC-GLOBAL SourceBase PERMANENT SRCBS
+SRCLMT         EQU $5800 ;@NUC-GLOBAL SourceLimit PERMANENT SRCLMT
+
+GNRTDBS       EQU $5800 ;@NUC-GLOBAL GeneratedBase PERMANENT GNRTDBS
+GNRTDLMT      EQU $6800 ;@NUC-GLOBAL GeneratedLimit PERMANENT GNRTDLMT
+
+; Historical direct-sink module proofs retain this complete-image region and
+; its segmented variant. Production target proofs use target-memory-map.asmi
+; and therefore cannot resolve these symbols.
+GNRTDCDB       EQU GNRTDBS ;@NUC-GLOBAL GeneratedCodeBase PERMANENT GNRTDCDB
+GNRTDCDL      EQU $6400 ;@NUC-GLOBAL GeneratedCodeLimit PERMANENT GNRTDCDL
+GNRTDRO0     EQU GNRTDCDL ;@NUC-GLOBAL GeneratedRoDataBase PERMANENT GNRTDRO0
+GNRTDRO1    EQU GNRTDLMT ;@NUC-GLOBAL GeneratedRoDataLimit PERMANENT GNRTDRO1
+
+TRGTRNTM   EQU $6800 ;@NUC-GLOBAL TargetRuntimeBase PERMANENT TRGTRNTM
+TRGTRNT0  EQU $7800 ;@NUC-GLOBAL TargetRuntimeLimit PERMANENT TRGTRNT0
+
+EXCTNBS       EQU $7800 ;@NUC-GLOBAL ExecutionBase PERMANENT EXCTNBS
+EXCTNLMT      EQU $8800 ;@NUC-GLOBAL ExecutionLimit PERMANENT EXCTNLMT
+
+; Runtime state occupies the first page of ExecutionBase. Mutable initialized
+; data and zero-initialized data occupy adjacent target regions after it.
+PRGRMDTB         EQU EXCTNBS+$0100 ;@NUC-GLOBAL ProgramDataBase PERMANENT PRGRMDTB
+PRGRMDTL        EQU PRGRMDTB+$0400 ;@NUC-GLOBAL ProgramDataLimit PERMANENT PRGRMDTL
+PRGRMBS0          EQU PRGRMDTL ;@NUC-GLOBAL ProgramBssBase PERMANENT PRGRMBS0
+PRGRMBS1         EQU PRGRMBS0+$0400 ;@NUC-GLOBAL ProgramBssLimit PERMANENT PRGRMBS1
+PRGRMDTR  EQU PRGRMBS1 ;@NUC-GLOBAL ProgramDataRegionLimit PERMANENT PRGRMDTR
+PRGRMDT0 EQU PRGRMDTR-PRGRMDTB ;@NUC-GLOBAL ProgramDataRegionCapacity PERMANENT PRGRMDT0
+GNRTDRO2 EQU GNRTDRO1-GNRTDRO0 ;@NUC-GLOBAL GeneratedRoDataCapacity PERMANENT GNRTDRO2
+
+SRVCBS         EQU $8800 ;@NUC-GLOBAL ServiceBase PERMANENT SRVCBS
+SRVCLMT        EQU $9000 ;@NUC-GLOBAL ServiceLimit PERMANENT SRVCLMT
+
+PRFBS           EQU $9000 ;@NUC-GLOBAL ProofBase PERMANENT PRFBS
+PRFLMT          EQU $9800 ;@NUC-GLOBAL ProofLimit PERMANENT PRFLMT
+
+SPRBS           EQU $9800 ;@NUC-GLOBAL SpareBase PERMANENT SPRBS
+SPRLMT          EQU $F000 ;@NUC-GLOBAL SpareLimit PERMANENT SPRLMT
+
+; Historical direct-sink module proofs keep the prior published image here.
+; Production target proofs release and account for this complete 4 KiB range.
+BCKPBS    EQU $A000 ;@NUC-GLOBAL BackupBase PERMANENT BCKPBS
+BCKPLMT   EQU $B000 ;@NUC-GLOBAL BackupLimit PERMANENT BCKPLMT
+
+STCKFLR          EQU $F000 ;@NUC-GLOBAL StackFloor PERMANENT STCKFLR
+StackTop            EQU $FF00
+
+HGHRSRVD    EQU $FF00 ;@NUC-GLOBAL HighReservedBase PERMANENT HGHRSRVD
+ADDRSSSP   EQU 0 ;@NUC-GLOBAL AddressSpaceLimit PERMANENT ADDRSSSP ;@ATOM-PROOF-LIMIT AddressSpaceLimit 65536

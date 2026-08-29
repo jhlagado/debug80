@@ -1,0 +1,1131 @@
+; Predictive parser for the counted-loop and checked-array proof programs.
+
+; The including proof or build context defines HybridLL1Full explicitly.
+
+LPAIMOD EQU AGGRGTHS-AGGRGTMD+1 ; aggregate mode clear span through initializer flag
+
+;@ROUTINE IN A OUT A,CARRY CLOBBERS ZERO,SIGN,PARITY,HALFCARRY,DE,HL
+CMPLRSTD: ;@NUC-GLOBAL CompilerSetDiagnostic PERMANENT CMPLRSTD
+            LD   (DGNSTCCD),A
+            LD   A,(SRCPRTID)
+            LD   (DGNSTCP0),A
+            LD   HL,TKNSTRTO
+            LD   DE,DGNSTCOF
+            PUSH BC
+            CALL CMPLRCPY
+            POP  BC
+            SCF
+            RET
+
+; Copy one complete offset/line/column record from HL to DE. LDIR preserves
+; carry, allowing diagnostic callers to establish failure after the copy.
+;@ROUTINE IN DE,HL OUT BC,DE,HL CLOBBERS PARITY,HALFCARRY
+CMPLRCPY: ;@NUC-GLOBAL CompilerCopyPosition PERMANENT CMPLRCPY
+            LD   BC,6
+            LDIR
+            RET
+
+; E is the expected token ordinal. An ordinary mismatch reports the token
+; ordinal with DiagnosticExpectedTokenBase set.
+;@ROUTINE IN E OUT A,C,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSREXPC: ;@NUC-GLOBAL ParserExpect PERMANENT PRSREXPC
+            PUSH DE
+            CALL PRSRTK
+            POP  DE
+            RET  C
+            CP   E
+            RET  Z
+            LD   A,E
+            OR   DGNSTCEN
+            JR   CMPLRSTD
+
+; The expression parser needs one token of lookahead. Token metadata remains
+; current until another tokenizer request, so buffering kind and word payload
+; is sufficient for names, positions, numbers, and characters.
+;@ROUTINE OUT A,BC,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,D,DE,HL
+PRSRPK: ;@NUC-GLOBAL ParserPeek PERMANENT PRSRPK
+            LD   A,(PRSRLKHD)
+            CP   $FF
+            JR   NZ,.L00000
+            CALL TKNZRNXT
+            RET  C
+            LD   (PRSRLKHD),A
+            LD   (PRSRLKH0),BC
+            LD   A,(PRSRLKHD)
+            RET
+.L00000:
+            LD   BC,(PRSRLKH0)
+            LD   A,(PRSRLKHD)
+            OR   A
+            RET
+
+;@ROUTINE OUT A,BC,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,D,DE,HL
+PRSRTK: ;@NUC-GLOBAL ParserTake PERMANENT PRSRTK
+            CALL PRSRPK
+            RET  C
+            LD   D,A
+            LD   A,$FF
+            LD   (PRSRLKHD),A
+            LD   A,D
+            OR   A
+            RET
+
+; Frequent token checks enter the common ParserExpect tail. These wrappers
+; trade one shared seven-byte body for each repeated eight-byte inline check.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP0: ;@NUC-GLOBAL ParserExpectLine PERMANENT PRSREXP0
+            LD   E,TKNNWLN
+            JR   PRSREXPC
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP1: ;@NUC-GLOBAL ParserExpectLeft PERMANENT PRSREXP1
+            LD   E,TKNLFTPR
+            JR   PRSREXPC
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP2: ;@NUC-GLOBAL ParserExpectRight PERMANENT PRSREXP2
+            LD   E,TKNRGHTP
+            JR   PRSREXPC
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP3: ;@NUC-GLOBAL ParserExpectAs PERMANENT PRSREXP3
+            LD   E,TokenAs
+            JR   PRSREXPC
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP4: ;@NUC-GLOBAL ParserExpectU8 PERMANENT PRSREXP4
+            LD   E,TokenU8
+            JP   PRSREXPC
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP5: ;@NUC-GLOBAL ParserExpectAsU8 PERMANENT PRSREXP5
+            CALL PRSREXP3
+            RET  C
+            JP   PRSREXP4
+%ENDIF
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP6: ;@NUC-GLOBAL ParserExpectEqual PERMANENT PRSREXP6
+            LD   E,TKNEQLS
+            JR   PRSREXPC
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP7: ;@NUC-GLOBAL ParserExpectSub PERMANENT PRSREXP7
+            LD   E,TokenSub
+            JP   PRSREXPC
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP8: ;@NUC-GLOBAL ParserExpectLeftBracket PERMANENT PRSREXP8
+            LD   E,TKNLFTBR
+            JP   PRSREXPC
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXP9: ;@NUC-GLOBAL ParserExpectRightBracket PERMANENT PRSREXP9
+            LD   E,TKNRGHTB
+            JP   PRSREXPC
+%ENDIF
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE IN B,D,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPA: ;@NUC-GLOBAL ParserExpectNamed PERMANENT PRSREXPA
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            LD   E,TKNNM
+            CALL PRSREXPC
+            POP  HL
+            POP  DE
+            POP  BC
+            RET  C
+            CALL TKNNMEQL
+            JR   NC,PRSREXPB
+            OR   A
+            RET
+PRSREXPB: ;@NUC-GLOBAL ParserExpectNamedNo PERMANENT PRSREXPB
+            LD   A,D
+            JP   CMPLRSTD
+
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPD: ;@NUC-GLOBAL ParserExpectIndex PERMANENT PRSREXPD
+            LD   D,DGNSTCEB
+            LD   HL,NMINDX
+            LD   B,5
+            JP   PRSREXPA
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPE: ;@NUC-GLOBAL ParserExpectBytes PERMANENT PRSREXPE
+            LD   D,DGNSTCED
+            LD   HL,NMBYTS
+            LD   B,5
+            JP   PRSREXPA
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPF: ;@NUC-GLOBAL ParserExpectResult PERMANENT PRSREXPF
+            LD   D,DGNSTCEH
+            LD   HL,NMRSLT
+            LD   B,6
+            JP   PRSREXPA
+%ENDIF
+
+; Compare the current name token with the one retained by the forward.
+;@ROUTINE IN D OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSRCRRN: ;@NUC-GLOBAL ParserCurrentNameIsForward PERMANENT PRSRCRRN
+            PUSH DE
+            LD   HL,(FRWRDNMP)
+            LD   A,(FRWRDNML)
+            LD   B,A
+            CALL TKNNMEQL
+            POP  DE
+            JR   NC,PRSRCRR0
+            OR   A
+            RET
+PRSRCRR0 EQU PRSREXPB ;@NUC-GLOBAL ParserCurrentNameNotForward PERMANENT PRSRCRR0
+
+;@ROUTINE IN D OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSREXPG: ;@NUC-GLOBAL ParserExpectForwardName PERMANENT PRSREXPG
+            PUSH DE
+            LD   E,TKNNM
+            CALL PRSREXPC
+            POP  DE
+            RET  C
+            JP   PRSRCRRN
+
+; Retain the current name token as the one complete forward signature.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,HL
+PRSRRTNF: ;@NUC-GLOBAL ParserRetainForwardName PERMANENT PRSRRTNF
+            LD   HL,(TKNLXMPN)
+            LD   (FRWRDNMP),HL
+            LD   A,(TKNLNGTH)
+            LD   (FRWRDNML),A
+            OR   A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,HL
+PRSRRTN0: ;@NUC-GLOBAL ParserRetainForwardParameter PERMANENT PRSRRTN0
+            LD   HL,(TKNLXMPN)
+            LD   (FRWRDPRM),HL
+            LD   A,(TKNLNGTH)
+            LD   (FRWRDPR0),A
+            OR   A
+            RET
+%ENDIF
+
+%IF LegacyCompilerSlices
+;@ROUTINE IN D OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSREXPH: ;@NUC-GLOBAL ParserExpectForwardParameter PERMANENT PRSREXPH
+            PUSH DE
+            LD   E,TKNNM
+            CALL PRSREXPC
+            POP  DE
+            RET  C
+            LD   HL,(FRWRDPRM)
+            LD   A,(FRWRDPR0)
+            LD   B,A
+            PUSH DE
+            CALL TKNNMEQL
+            POP  DE
+            JR   NC,.L00000
+            OR   A
+            RET
+.L00000:
+            LD   A,D
+            JP   CMPLRSTD
+%ENDIF
+
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPI: ;@NUC-GLOBAL ParserExpectWrite PERMANENT PRSREXPI
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            LD   HL,NMWRTOTP
+            LD   B,15
+            CALL TKNNMEQL
+            JR   C,.L00001
+            LD   HL,NMINDX
+            LD   B,5
+            CALL TKNNMEQL
+            JR   C,.L00000
+            LD   A,DGNSTCE5
+            JP   CMPLRSTD
+.L00000:
+            LD   A,DGNSTCAC
+            JP   CMPLRSTD
+.L00001:
+            OR   A
+            RET
+%ENDIF
+
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,C,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSREXPJ: ;@NUC-GLOBAL ParserExpectNumber PERMANENT PRSREXPJ
+            LD   E,TKNNMBR
+            CALL PRSREXPC
+            RET  C
+            LD   A,C
+            OR   A
+            RET
+%ENDIF
+
+; Append one operation followed by the byte in C. The helper preserves the
+; operand across the sink's internal cursor work.
+;@ROUTINE IN A,C OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSREMTO: ;@NUC-GLOBAL ParserEmitOperationC PERMANENT PRSREMTO
+            PUSH BC
+            CALL SMNTCSN5
+            POP  BC
+            RET  C
+            LD   A,C
+            JP   SMNTCSN2
+
+%IF LegacyCompilerSlices
+; A resolved scalar symbol is represented by its class in A and its storage
+; ordinal in C. Expressions emit postfix operations, leaving evaluation order
+; independent of either backend's register choices.
+;@ROUTINE IN A,C OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSREMTS: ;@NUC-GLOBAL ParserEmitSymbolLoad PERMANENT PRSREMTS
+            CP   SYMBLIN4
+            JR   Z,.L00000
+            CP   SYMBLIN7
+            JR   NZ,PRSREXPK
+            LD   A,SMNTCLDL
+            JP   PRSREMTO
+.L00000:
+            LD   A,SMNTCLD2
+            JP   PRSREMTO
+
+;@ROUTINE IN A,C OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSREMT0: ;@NUC-GLOBAL ParserEmitSymbolStore PERMANENT PRSREMT0
+            CP   SYMBLIN4
+            JR   Z,.L00000
+            CP   SYMBLIN7
+            JR   NZ,PRSREXPK
+            LD   A,SMNTCST5
+            JP   PRSREMTO
+.L00000:
+            LD   A,SMNTCST4
+            JP   PRSREMTO
+%ENDIF
+
+PRSREXPK: ;@NUC-GLOBAL ParserExpectedScalar PERMANENT PRSREXPK
+            LD   A,DGNSTCEI
+            ; The legacy proof layouts put this target outside JR range.
+%IF AggregateCallSlices
+            JR   CMPLRSTD
+%ELSE
+            JP   CMPLRSTD
+%ENDIF
+
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSRPRSS: ;@NUC-GLOBAL ParserParseScalarPrimary PERMANENT PRSRPRSS
+            CALL PRSRTK
+            RET  C
+            CP   TKNNMBR
+            JR   Z,.L00000
+            CP   TKNNM
+            JR   NZ,PRSREXPK
+            CALL SYMBLLKP
+            RET  C
+            JP   PRSREMTS
+.L00000:
+            LD   A,SMNTCLTR
+            JP   PRSREMTO
+
+; Precedence climbing uses one loop for both admitted operators. B is the
+; minimum precedence; recursive calls only represent nested precedence, not a
+; separate parser routine per grammar level.
+;@ROUTINE IN B OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSRPRS0: ;@NUC-GLOBAL ParserParseScalarExpressionMin PERMANENT PRSRPRS0
+            PUSH BC
+            CALL PRSRPRSS
+            POP  BC
+            RET  C
+.L00000:
+            PUSH BC
+            CALL PRSRPK
+            POP  BC
+            RET  C
+            CP   TKNPLS
+            JR   Z,.L00001
+            CP   TKNSTR
+            JR   NZ,.L00003
+            LD   C,2
+            LD   D,SMNTCMLT
+            JR   .L00002
+.L00001:
+            LD   C,1
+            LD   D,SMNTCADD
+.L00002:
+            LD   A,C
+            CP   B
+            JR   C,.L00003
+            PUSH BC
+            PUSH DE
+            CALL PRSRTK
+            POP  DE
+            POP  BC
+            RET  C
+            PUSH BC
+            PUSH DE
+            LD   B,C
+            INC  B
+            CALL PRSRPRS0
+            POP  DE
+            POP  BC
+            RET  C
+            LD   A,D
+            PUSH BC
+            CALL SMNTCSN5
+            POP  BC
+            RET  C
+            JR   .L00000
+.L00003:
+            OR   A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSRPRS1: ;@NUC-GLOBAL ParserParseScalarExpression PERMANENT PRSRPRS1
+            LD   B,1
+            JP   PRSRPRS0
+%ENDIF
+
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPL: ;@NUC-GLOBAL ParserExpectRoutineHeader PERMANENT PRSREXPL
+            LD   D,DGNSTCE0
+            LD   HL,NameMain
+            LD   B,4
+            CALL PRSREXPA
+            RET  C
+            CALL PRSREXP1
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            LD   E,TKNFLS
+            CALL PRSREXPC
+            RET  C
+            JP   PRSREXP0
+%ENDIF
+
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPM: ;@NUC-GLOBAL ParserExpectIndexDeclaration PERMANENT PRSREXPM
+            LD   E,TokenVar
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXPD
+            RET  C
+            CALL PRSREXP3
+            RET  C
+            CALL PRSREXP4
+            RET  C
+            JP   PRSREXP6
+%ENDIF
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPN: ;@NUC-GLOBAL ParserExpectElseFailLine PERMANENT PRSREXPN
+            CALL .L00000
+            RET  C
+            ; The legacy proof layouts put this target outside JR range.
+%IF AggregateCallSlices
+            JR   PRSREXP0
+%ELSE
+            JP   PRSREXP0
+%ENDIF
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L00000:
+            LD   E,TKNELS
+            CALL PRSREXPC
+            RET  C
+            LD   E,TKNFL
+            ; The legacy proof layouts put this target outside JR range.
+%IF AggregateCallSlices
+            JR   PRSREXPC
+%ELSE
+            JP   PRSREXPC
+%ENDIF
+
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPO: ;@NUC-GLOBAL ParserExpectPropagateLine PERMANENT PRSREXPO
+            CALL PRSREXPN
+            RET  C
+            LD   A,SMNTCPRP
+            JP   SMNTCSN5
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSREXPP: ;@NUC-GLOBAL ParserExpectEndLine PERMANENT PRSREXPP
+            LD   E,TokenEnd
+            CALL PRSREXPC
+            RET  C
+            JP   PRSREXP0
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSRPRSL: ;@NUC-GLOBAL ParserParseLoopProgramAfterSub PERMANENT PRSRPRSL
+            CALL PRSREXPL
+            RET  C
+
+            CALL PRSREXPM
+            RET  C
+            LD   A,SMNTCDCL
+            CALL SMNTCSN5
+            RET  C
+            CALL PRSREXPJ
+            RET  C
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXP0
+            RET  C
+
+            LD   E,TokenFor
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXPD
+            RET  C
+            CALL PRSREXP6
+            RET  C
+            LD   A,SMNTCFRU
+            CALL SMNTCSN5
+            RET  C
+            CALL PRSREXPJ
+            RET  C
+            CALL SMNTCSN2
+            RET  C
+            LD   E,TKNUNTL
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXPJ
+            RET  C
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXP0
+            RET  C
+
+            CALL PRSREXPI
+            RET  C
+            CALL PRSREXP1
+            RET  C
+            LD   A,SMNTCWRT
+            CALL SMNTCSN5
+            RET  C
+            LD   E,TKNCHRCT
+            CALL PRSREXPC
+            RET  C
+            LD   A,C
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            CALL PRSREXPO
+            RET  C
+
+            CALL PRSREXPP
+            RET  C
+            LD   A,SMNTCEN2
+            CALL SMNTCSN5
+            RET  C
+            JP   PRSRFNSH
+%ENDIF
+
+; The first general scalar path admits bounded program variables and scalar
+; locals, then parses a main body as assignment and output statements. The
+; current token is the program variable's name on entry.
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L00000:
+            LD   A,(NXTPRGRM)
+            LD   E,A
+            LD   D,SYMBLIN4
+            CALL SYMBLPRP
+            RET  C
+            JP   .L00001
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L00001:
+            CALL PRSREXP5
+            RET  C
+            JP   .L00002
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L00002:
+            CALL PRSREXP6
+            RET  C
+            CALL PRSREXPJ
+            RET  C
+            LD   B,0
+            PUSH BC
+            LD   A,SMNTCDFN
+            CALL SMNTCSN5
+            JR   C,.L00003
+            LD   A,(NXTPRGRM)
+            CALL SMNTCSN2
+            JR   C,.L00003
+            POP  BC
+            LD   A,C
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            CALL SYMBLCMM
+            LD   HL,NXTPRGRM
+            INC  (HL)
+            XOR  A
+            RET
+.L00003:
+            POP  BC
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L00004:
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            LD   A,(NXTLCLSL)
+            LD   E,A
+            LD   D,SYMBLIN7
+            CALL SYMBLPRP
+            RET  C
+            CALL PRSREXP5
+            RET  C
+            CALL PRSREXP6
+            RET  C
+            LD   A,(NXTLCLSL)
+            LD   C,A
+            LD   A,SMNTCDC0
+            CALL PRSREMTO
+            RET  C
+            CALL PRSRPRS1
+            RET  C
+            LD   A,(NXTLCLSL)
+            LD   C,A
+            LD   A,SMNTCST5
+            CALL PRSREMTO
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            CALL SYMBLCMM
+            LD   HL,NXTLCLSL
+            INC  (HL)
+            XOR  A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L00005:
+            CALL SYMBLLKP
+            RET  C
+            LD   B,A
+            PUSH BC
+            CALL PRSREXP6
+            JR   C,.L00006
+            CALL PRSRPRS1
+            JR   C,.L00006
+            POP  BC
+            LD   A,B
+            CALL PRSREMT0
+            RET  C
+            JP   PRSREXP0
+.L00006:
+            POP  BC
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L00007:
+            LD   HL,(TKNSTRTO)
+            PUSH HL
+            CALL PRSREXP1
+            JR   C,.L00008
+            CALL PRSRPRS1
+            JR   C,.L00008
+            CALL PRSREXP2
+            JR   C,.L00008
+            LD   A,SMNTCWR2
+            CALL SMNTCSN5
+            JR   C,.L00008
+            POP  HL
+            LD   A,L
+            PUSH HL
+            CALL SMNTCSN2
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SMNTCSN2
+            RET  C
+            JP   PRSREXPN
+.L00008:
+            POP  HL
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L00009:
+            CALL PRSRPK
+            RET  C
+            CP   TokenEnd
+            JR   Z,.L0000B
+            CP   TKNNM
+            JP   NZ,PRSREXPK
+            CALL PRSRTK
+            RET  C
+            LD   HL,NMWRTOTP
+            LD   B,15
+            CALL TKNNMEQL
+            JR   NC,.L0000A
+            CALL .L00007
+            RET  C
+            JR   .L00009
+.L0000A:
+            CALL .L00005
+            RET  C
+            JR   .L00009
+.L0000B:
+            CALL PRSRTK
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCEN5
+            CALL SMNTCSN5
+            RET  C
+            LD   E,TokenEof
+            JP   PRSREXPC
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+.L0000C:
+            CALL PRSRPK
+            RET  C
+            CP   TokenVar
+            JR   NZ,.L0000D
+            CALL PRSRTK
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            CALL .L00000
+            RET  C
+            JR   .L0000C
+.L0000D:
+            CP   TokenSub
+            JR   NZ,PRSRSCLR
+            CALL PRSRTK
+            RET  C
+            CALL PRSREXPL
+            RET  C
+            LD   A,SMNTCBG3
+            CALL SMNTCSN5
+            RET  C
+.L0000E:
+            CALL PRSRPK
+            RET  C
+            CP   TokenVar
+            JR   NZ,.L00009
+            CALL PRSRTK
+            RET  C
+            CALL .L00004
+            RET  C
+            JR   .L0000E
+PRSRSCLR: ;@NUC-GLOBAL ParserScalarExpectedTopLevel PERMANENT PRSRSCLR
+            LD   A,DGNSTCEC
+            JP   CMPLRSTD
+%ENDIF
+
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+PRSRPRSP: ;@NUC-GLOBAL ParserParseProgramAfterVar PERMANENT PRSRPRSP
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            JP   TYPDPRS3
+%ENDIF
+
+; The older array slice is selected by the bracketed type suffix. Its body is
+; still deliberately fixed; this split only keeps scalar names unrestricted.
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSRPRSA: ;@NUC-GLOBAL ParserParseArrayProgramAfterU8 PERMANENT PRSRPRSA
+            CALL PRSREXP8
+            RET  C
+            LD   A,SMNTCSTT
+            CALL SMNTCSN5
+            RET  C
+            CALL PRSREXPJ
+            RET  C
+            CP   4
+            JR   Z,.L00000
+            LD   A,DGNSTCEE
+            JP   CMPLRSTD
+.L00000:
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXP9
+            RET  C
+            CALL PRSREXP6
+            RET  C
+            CALL PRSREXP8
+            RET  C
+            LD   C,4
+.L00001:
+            PUSH BC
+            CALL PRSREXPJ
+            POP  BC
+            RET  C
+            CALL SMNTCSN2
+            RET  C
+            DEC  C
+            JR   Z,.L00002
+            PUSH BC
+            LD   E,TKNCMM
+            CALL PRSREXPC
+            POP  BC
+            RET  C
+            JR   .L00001
+.L00002:
+            CALL PRSREXP9
+            RET  C
+            CALL PRSREXP0
+            RET  C
+
+            LD   E,TokenSub
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXPL
+            RET  C
+
+            CALL PRSREXPM
+            RET  C
+            LD   D,DGNSTCEF
+            LD   HL,NMRDINPT
+            LD   B,13
+            CALL PRSREXPA
+            RET  C
+            CALL PRSREXP1
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            LD   A,SMNTCRDI
+            CALL SMNTCSN5
+            RET  C
+            CALL PRSREXPO
+            RET  C
+            LD   A,SMNTCST3
+            CALL SMNTCSN5
+            RET  C
+
+            CALL PRSREXPI
+            RET  C
+            CALL PRSREXP1
+            RET  C
+            CALL PRSREXPE
+            RET  C
+            CALL PRSREXP8
+            RET  C
+            CALL PRSREXPD
+            RET  C
+            CALL PRSREXP9
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            LD   A,SMNTCLDA
+            CALL SMNTCSN5
+            RET  C
+            LD   A,SMNTCWR0
+            CALL SMNTCSN5
+            RET  C
+            CALL PRSREXPO
+            RET  C
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSRFNSH: ;@NUC-GLOBAL ParserFinishRoutine PERMANENT PRSRFNSH
+            CALL PRSREXPP
+            RET  C
+            LD   A,SMNTCRT2
+            CALL SMNTCSN5
+            RET  C
+            LD   E,TokenEof
+            JP   PRSREXPC
+%ENDIF
+
+; Parse the first general routine-call slice. It deliberately admits one
+; retained forward signature while exercising exact completion and parameter
+; lookup, scalar call/result flow, and direct recursion.
+%IF LegacyCompilerSlices
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+PRSRPRSC: ;@NUC-GLOBAL ParserParseCallProgramAfterForward PERMANENT PRSRPRSC
+            CALL PRSREXP7
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            CALL PRSRRTNF
+            CALL PRSREXP1
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            CALL PRSRRTN0
+            CALL PRSREXP5
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            CALL PRSREXP5
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,1
+            LD   (FRWRDORD),A
+            CALL PRSREXP7
+            RET  C
+            CALL PRSREXPL
+            RET  C
+            LD   E,TokenVar
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXPF
+            RET  C
+            CALL PRSREXP5
+            RET  C
+            CALL PRSREXP6
+            RET  C
+            LD   D,DGNSTCFR
+            CALL PRSREXPG
+            RET  C
+            CALL PRSREXP1
+            RET  C
+            LD   A,SMNTCCL0
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(FRWRDORD)
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXPJ
+            RET  C
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            CALL PRSREXP0
+            RET  C
+
+            CALL PRSREXPI
+            RET  C
+            CALL PRSREXP1
+            RET  C
+            CALL PRSREXPF
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            LD   A,SMNTCWR1
+            CALL SMNTCSN5
+            RET  C
+            CALL PRSREXPN
+            RET  C
+            CALL PRSREXPP
+            RET  C
+            LD   A,SMNTCEN4
+            CALL SMNTCSN5
+            RET  C
+
+            CALL PRSREXP7
+            RET  C
+            LD   D,DGNSTCFR
+            CALL PRSREXPG
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,1
+            LD   (FRWRDCMP),A
+            LD   A,SMNTCBG2
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(FRWRDORD)
+            CALL SMNTCSN2
+            RET  C
+
+            LD   E,TokenIf
+            CALL PRSREXPC
+            RET  C
+            LD   D,DGNSTCEG
+            CALL PRSREXPH
+            RET  C
+            CALL PRSREXP6
+            RET  C
+            LD   A,SMNTCIFP
+            CALL SMNTCSN5
+            RET  C
+            CALL PRSREXPJ
+            RET  C
+            OR   A
+            JP   NZ,.L00000
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXP0
+            RET  C
+
+            LD   E,TKNRTRN
+            CALL PRSREXPC
+            RET  C
+            LD   D,DGNSTCEG
+            CALL PRSREXPH
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCRT3
+            CALL SMNTCSN5
+            RET  C
+            CALL PRSREXPP
+            RET  C
+            LD   A,SMNTCEN3
+            CALL SMNTCSN5
+            RET  C
+
+            LD   E,TKNRTRN
+            CALL PRSREXPC
+            RET  C
+            LD   D,DGNSTCFR
+            CALL PRSREXPG
+            RET  C
+            CALL PRSREXP1
+            RET  C
+            LD   D,DGNSTCEG
+            CALL PRSREXPH
+            RET  C
+            LD   E,TKNMNS
+            CALL PRSREXPC
+            RET  C
+            LD   A,SMNTCRT4
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(FRWRDORD)
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXPJ
+            RET  C
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            CALL PRSREXPP
+            RET  C
+            LD   A,SMNTCEN4
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(FRWRDCMP)
+            OR   A
+            JR   Z,.L00001
+            LD   E,TokenEof
+            JP   PRSREXPC
+.L00000:
+            LD   A,DGNSTCEP
+            JP   CMPLRSTD
+.L00001:
+            LD   A,DGNSTCF0
+            JP   CMPLRSTD
+%ENDIF
+
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+PRSRPRS2: ;@NUC-GLOBAL ParserParseProgram PERMANENT PRSRPRS2
+            CALL PRSRTK
+            RET  C
+            CP   TokenSub
+            JP   Z,TYPDPRS7
+            CP   TokenVar
+            JP   Z,PRSRPRSP
+            CP   TKNFRWRD
+            JP   Z,TYPDPRSF
+            CP   TKNCNST
+            JP   Z,TYPDPRS5
+            CP   TKNRCRD
+            JP   Z,AGGRGTP2
+            LD   A,DGNSTCEC
+            JP   CMPLRSTD
+%ENDIF
+
+; A is the stable source-part identity; HL..DE is the half-open byte range.
+%IF LegacyCompilerSlices
+;@ROUTINE IN A,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLLPSL: ;@NUC-GLOBAL CompileLoopSlice PERMANENT CMPLLPSL
+            CALL CMPLSLCI
+            CALL PRSRTK
+            RET  C
+            CP   TokenSub
+            JP   NZ,PRSRSCLR
+            CALL PRSRPRSL
+            RET  C
+            JP   SMNTCSN6
+;@ROUTINE IN A,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLCLLS: ;@NUC-GLOBAL CompileCallSlice PERMANENT CMPLCLLS
+            CALL CMPLSLCI
+            CALL PRSRTK
+            RET  C
+            CP   TKNFRWRD
+            JP   NZ,PRSRSCLR
+            CALL PRSRPRSC
+            RET  C
+            JP   SMNTCSN6
+%ENDIF
+%IF AggregateCallSlices
+%ELSE
+            ;@ROUTINE IN A,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLSLC: ;@NUC-GLOBAL CompileSlice PERMANENT CMPLSLC
+            CALL CMPLSLCI
+%IF HybridLL1Full
+            XOR  A
+            LD   (STG7CRR1),A
+            CALL HYBRDL3B
+%ELSE
+            CALL PRSRPRS2
+%ENDIF
+            RET  C
+            JP   SMNTCSN6
+%ENDIF
+;@ROUTINE IN A,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLSLCI: ;@NUC-GLOBAL CompileSliceInitialize PERMANENT CMPLSLCI
+%IF AggregateCallSlices
+            PUSH AF
+            XOR  A
+            LD   (SRCPRTSR),A
+            LD   (SRCPRTPN),A
+            POP  AF
+%ENDIF
+            CALL SRCINTLZ
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+CMPLSLCR: ;@NUC-GLOBAL CompileSliceResetState PERMANENT CMPLSLCR
+            XOR  A
+            LD   (DGNSTCCD),A
+            LD   (DGNSTCP0),A
+%IF AggregateCallSlices
+            LD   HL,SMNTCBFF+1
+            LD   (SNKCRSR),HL
+            LD   (SNKOPRTN),A
+            LD   (SMNTCBFF),A
+%ELSE
+            CALL SMNTCSN1
+%ENDIF
+            LD   A,$FF
+            LD   (PRSRLKHD),A
+%IF AggregateCallSlices
+            XOR  A
+            LD   (SYMBLCNT),A
+            LD   (NXTLCLSL),A
+            LD   (NXTPRGRM),A
+%ELSE
+            CALL SYMBLRST
+%ENDIF
+            XOR  A
+            LD   HL,AGGRGTMD
+            LD   B,LPAIMOD
+.L00000:
+            LD   (HL),A
+            INC  HL
+            DJNZ .L00000
+            LD   (STTCIMGL),A
+            LD   (STTCIMGL+1),A
+%IF SegmentedOutput
+            LD   (RDONLYIM),A
+            LD   (RDONLYIM+1),A
+%ENDIF
+%IF AggregateCallSlices
+            LD   (PRGRMBSS),A
+            LD   (PRGRMBSS+1),A
+%ENDIF
+            LD   (FRWRDCMP),A
+            LD   (FRWRDORD),A
+            RET

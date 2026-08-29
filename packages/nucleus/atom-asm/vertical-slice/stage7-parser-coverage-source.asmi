@@ -1,0 +1,49 @@
+            ORG SRCBS
+STG7PRS5: ;@NUC-GLOBAL Stage7ParserCoverageSource PERMANENT STG7PRS5
+            DB "var out as u8 = 0",10
+            DB "var finalI as u8 = 0",10
+            DB "var finalJ as u16 = 0",10
+            DB "sub main() fails",10
+            DB "var i as u8",10
+            DB "var j as u16 = 3",10
+            DB "if false",10
+            DB "out = 99",10
+            DB "elseif true",10
+            DB "out = 1",10
+            DB "else",10
+            DB "out = 98",10
+            DB "end",10
+            DB "while out < 3",10
+            DB "out = out + 1",10
+            DB "end",10
+            DB "for i = 0 until 4",10
+            DB "if i = 1",10
+            DB "continue",10
+            DB "end",10
+            DB "if i = 3",10
+            DB "exit",10
+            DB "end",10
+            DB "out = out + i",10
+            DB "end",10
+            DB "for j = 3 to 0 step -1",10
+            DB "out = out + 1",10
+            DB "end",10
+            DB "finalI = i",10
+            DB "finalJ = j",10
+            DB "writeOutputByte(out) else fail",10
+            DB "end",10
+STG7PRS6: ;@NUC-GLOBAL Stage7ParserCoverageSourceEnd PERMANENT STG7PRS6
+
+; Exercise constant declarations and named counted-loop steps separately from
+; the larger control-flow program.
+STG7LL1C: ;@NUC-GLOBAL Stage7LL1ConstantSource PERMANENT STG7LL1C
+            DB "const stepSize = 1",10
+            DB "var out as u8 = 0",10
+            DB "sub main() fails",10
+            DB "var i as u8",10
+            DB "for i = 0 until 2 step stepSize",10
+            DB "out = out + stepSize",10
+            DB "end",10
+            DB "writeOutputByte(out) else fail",10
+            DB "end",10
+STG7LL10: ;@NUC-GLOBAL Stage7LL1ConstantSourceEnd PERMANENT STG7LL10

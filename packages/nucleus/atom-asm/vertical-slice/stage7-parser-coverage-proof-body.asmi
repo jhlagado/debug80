@@ -1,0 +1,122 @@
+            ORG PRFBS
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFSTTS),A
+            LD   (PRFCS),A
+            LD   A,160
+            LD   HL,STG7LL1C
+            LD   DE,STG7LL10
+            CALL CMPLAGG0
+            JP   C,PRFCNSTN
+            CALL ENCDAGGR
+            JP   C,PRFCNST0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFCNST1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFCNST2
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFCNST3
+            LD   A,(SRVCOTP0)
+            CP   2
+            JP   NZ,PRFCNST3
+            LD   A,160
+            LD   HL,STG7PRS5
+            LD   DE,STG7PRS6
+            CALL CMPLAGG0
+            JR   C,PRFCMPLF
+            CALL ENCDAGGR
+            JR   C,PRFENCDF
+            LD   HL,(GNRTDSZ)
+            LD   (PRFGNRTD),HL
+            CALL Reset
+            CALL PRFCLLGN
+            JR   C,PRFFRMFL
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JR   NZ,PRFRNFLR
+            LD   A,(SRVCOTPT)
+            CP   1
+            JR   NZ,PRFOTPTF
+            LD   A,(SRVCOTP0)
+            CP   9
+            JR   NZ,PRFOTPTF
+            LD   A,(PRGRMDTB+1)
+            CP   3
+            JR   NZ,PRFOTPTF
+            LD   A,(PRGRMDTB+2)
+            OR   A
+            JR   NZ,PRFOTPTF
+            LD   A,(PRGRMDTB+3)
+            OR   A
+            JR   NZ,PRFOTPTF
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+PRFCMPLF: ;@NUC-GLOBAL ProofCompileFailure PERMANENT PRFCMPLF
+            LD   A,1
+            JR   PRFFLD
+PRFENCDF: ;@NUC-GLOBAL ProofEncodeFailure PERMANENT PRFENCDF
+            LD   A,2
+            JR   PRFFLD
+PRFFRMFL: ;@NUC-GLOBAL ProofFrameFailure PERMANENT PRFFRMFL
+            LD   A,3
+            JR   PRFFLD
+PRFRNFLR: ;@NUC-GLOBAL ProofRunFailure PERMANENT PRFRNFLR
+            LD   A,4
+            JR   PRFFLD
+PRFOTPTF: ;@NUC-GLOBAL ProofOutputFailure PERMANENT PRFOTPTF
+            LD   A,5
+            JR   PRFFLD
+PRFCNSTN: ;@NUC-GLOBAL ProofConstantCompileFailure PERMANENT PRFCNSTN
+            LD   A,6
+            JR   PRFFLD
+PRFCNST0: ;@NUC-GLOBAL ProofConstantEncodeFailure PERMANENT PRFCNST0
+            LD   A,7
+            JR   PRFFLD
+PRFCNST1: ;@NUC-GLOBAL ProofConstantFrameFailure PERMANENT PRFCNST1
+            LD   A,8
+            JR   PRFFLD
+PRFCNST2: ;@NUC-GLOBAL ProofConstantRunFailure PERMANENT PRFCNST2
+            LD   A,9
+            JR   PRFFLD
+PRFCNST3: ;@NUC-GLOBAL ProofConstantOutputFailure PERMANENT PRFCNST3
+            LD   A,10
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            HALT
+
+; The generated program must restore both the root hardware stack and IX.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCLLGN: ;@NUC-GLOBAL ProofCallGenerated PERMANENT PRFCLLGN
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   IX,$A55A
+            CALL GNRTDBS
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,PRFCLLG1
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFCLLG1: ;@NUC-GLOBAL ProofCallGeneratedFailure PERMANENT PRFCLLG1
+            SCF
+            RET
+
+PRFEXPC0:   DW 0 ;@NUC-GLOBAL ProofExpectedSP PERMANENT PRFEXPC0
+PRFGNRTD: DW 0 ;@NUC-GLOBAL ProofGeneratedSize PERMANENT PRFGNRTD
+PRFSTTS:        DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:          DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+ProofEnd:

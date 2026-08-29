@@ -1,0 +1,96 @@
+HYBRDL36: ;@NUC-GLOBAL HybridLL1MeasuredEnd PERMANENT HYBRDL36
+
+            ORG SRCBS
+MCKTKNST: ;@NUC-GLOBAL MockTokenStream PERMANENT MCKTKNST
+            DB TokenSub,TKNNM,TKNLFTPR,TKNRGHTP
+            DB TKNFLS,TKNNWLN,TokenEnd,TKNNWLN,TokenEof
+MCKTKNS0: ;@NUC-GLOBAL MockTokenStreamEnd PERMANENT MCKTKNS0
+
+            ORG PRFBS
+HLL1STKL EQU HYBRDL3A ; one-past LL(1) proof stack byte
+
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            LD   HL,MCKTKNST
+            LD   (MCKTKNCR),HL
+            XOR  A
+            LD   (DGNSTCCD),A
+            CALL HYBRDL3B
+            JP   C,.L00000
+            LD   HL,(MCKTKNCR)
+            LD   DE,MCKTKNS0
+            OR   A
+            SBC  HL,DE
+            JP   NZ,.L00000
+
+            ; Prediction must propagate a tokenizer/source failure without
+            ; retaining the row diagnostic on the hardware stack.
+            LD   HL,MCKTKNST
+            LD   (MCKTKNCR),HL
+            LD   A,1
+            LD   (MCKPKFLR),A
+            LD   (PRFEXPC0),SP
+            CALL HYBRDL3B
+            JP   NC,.L00000
+            CP   DGNSTCEN
+            JP   NZ,.L00000
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCEN
+            JP   NZ,.L00000
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            JP   NZ,.L00000
+            XOR  A
+            LD   (MCKPKFLR),A
+
+            ; A four-symbol production exactly fills slots 60..63 without
+            ; touching the action workspace immediately above the stack.
+            LD   A,$5A
+            LD   (HLL1STKL),A
+            LD   A,60
+            LD   (HYBRDL38),A
+            LD   A,31
+            CALL HYBRDL3C
+            JR   C,.L00000
+            LD   A,(HYBRDL38)
+            CP   HYBRDL37
+            JR   NZ,.L00000
+            LD   A,(HLL1STKL)
+            CP   $5A
+            JR   NZ,.L00000
+
+            ; Both a single-symbol push at depth 64 and the same production
+            ; at depth 63 fail atomically with the dedicated diagnostic.
+            XOR  A
+            CALL HYBRDL3D
+            JR   NC,.L00000
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCP2
+            JR   NZ,.L00000
+            LD   A,(HYBRDL38)
+            CP   HYBRDL37
+            JR   NZ,.L00000
+            LD   A,63
+            LD   (HYBRDL38),A
+            LD   A,31
+            CALL HYBRDL3C
+            JR   NC,.L00000
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCP2
+            JR   NZ,.L00000
+            LD   A,(HYBRDL38)
+            CP   63
+            JR   NZ,.L00000
+            LD   A,(HLL1STKL)
+            CP   $5A
+            JR   NZ,.L00000
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+.L00000:
+            LD   A,$EE
+            LD   (PRFSTTS),A
+            HALT

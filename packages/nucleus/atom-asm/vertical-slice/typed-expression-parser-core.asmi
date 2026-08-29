@@ -1,0 +1,2356 @@
+TEPRFLG EQU SYMBLRCR+SYMBLAGG
+TEPOR16 EQU SMNTCOR8*$100+SMNTCOR1
+TEPXR16 EQU SMNTCXR8*$100+SMNTCXR1
+TEPAN16 EQU SMNTCAND*$100+SMNTCAN0
+TEPDV16 EQU SMNTCDVD*$100+SMNTCDV0
+TEPMD16 EQU SMNTCMDL*$100+SMNTCMD0
+TEPMEX EQU SCLRMTCN+SCLRTYPE
+TEPMBL EQU SCLRMTCN+SCLRTYPB
+TEPMU8 EQU SCLRMTCN+SCLRTYPU
+
+; Correctness-first typed scalar declarations and expressions.
+;
+; Expression results return metadata in A and, when constant, a value in HL.
+; The low two metadata bits are ScalarType*, and ScalarMetaConstant marks an
+; exact compile-time value. Runtime expressions are emitted as a checked
+; postfix stream of 16-bit carriers; u8 and boolean carriers have a zero high
+; byte. The declared type, not the carrier, controls width and compatibility.
+
+
+;@ROUTINE OUT A,B,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,C,DE
+TYPDMTCH: ;@NUC-GLOBAL TypedMatchForwardName PERMANENT TYPDMTCH
+            LD   A,(FRWRDORD)
+            OR   A
+            RET  Z
+            LD   HL,FRWRDNMP
+            JP   TKNNMRCR
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+TYPDNMEQ: ;@NUC-GLOBAL TypedNameEqualsMain PERMANENT TYPDNMEQ
+            LD   HL,NameMain
+            LD   B,4
+            JP   TKNNMEQL
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDRTND: ;@NUC-GLOBAL TypedRetainDeclarationName PERMANENT TYPDRTND
+            CALL TYPDNMEQ
+            JR   C,TYPDDPLC
+            CALL TYPDMTCH
+            JR   C,TYPDDPLC
+TYPDRTN0: ;@NUC-GLOBAL TypedRetainDeclarationNameReady PERMANENT TYPDRTN0
+            LD   HL,DCLRTNNM
+            CALL TKNRTNNM
+            LD   HL,TKNSTRTO
+            LD   DE,DCLRTNN1
+            CALL CMPLRCPY
+            OR   A
+            RET
+
+TYPDDPLC: ;@NUC-GLOBAL TypedDuplicateNameFailure PERMANENT TYPDDPLC
+            LD   A,DGNSTCDP
+            JP   CMPLRSTD
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+TYPDRJCT: ;@NUC-GLOBAL TypedRejectCurrentOrdinaryName PERMANENT TYPDRJCT
+            CALL SYMBLFND
+            JR   C,TYPDDPLC
+            CALL TYPDNMEQ
+            JR   C,TYPDDPLC
+            OR   A
+            RET
+
+; Restore the retained declaration spelling as the current name token.
+;@ROUTINE OUT A,HL
+TYPDRSTR: ;@NUC-GLOBAL TypedRestoreDeclarationToken PERMANENT TYPDRSTR
+            LD   HL,(DCLRTNNM)
+            LD   (TKNLXMPN),HL
+            LD   A,(DCLRTNN0)
+            LD   (TKNLNGTH),A
+            RET
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRPR: ;@NUC-GLOBAL TypedPrepareCurrentWord PERMANENT TYPDPRPR
+            CALL TYPDRSTR
+            PUSH BC
+            PUSH DE
+            LD   HL,DCLRTNN1
+            LD   DE,TKNSTRTO
+            CALL CMPLRCPY
+%IF AggregateCallSlices
+            CALL STG7RJCT
+            JR   NC,.L00000
+            POP  DE
+            POP  BC
+            RET
+.L00000:
+%ENDIF
+            POP  DE
+            POP  BC
+            JP   SYMBLPR0
+
+; Expression-only sink wrappers allow the same parser to evaluate static
+; constant initializers without emitting runtime operations.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEMTO: ;@NUC-GLOBAL TypedEmitOperation PERMANENT TYPDEMTO
+            LD   D,A
+            LD   A,(EXPRSSN2)
+            OR   A
+            LD   A,D
+            RET  Z
+            JP   SMNTCSN5
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEMTB: ;@NUC-GLOBAL TypedEmitByte PERMANENT TYPDEMTB
+            LD   D,A
+            LD   A,(EXPRSSN2)
+            OR   A
+            LD   A,D
+            RET  Z
+            JP   SMNTCSN2
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEMTW: ;@NUC-GLOBAL TypedEmitWord PERMANENT TYPDEMTW
+            PUSH HL
+            LD   A,L
+            CALL TYPDEMTB
+            POP  HL
+            RET  C
+            LD   A,H
+            JR   TYPDEMTB
+
+; Emit one expression operation followed by a complete program address.
+%IF AggregateCallSlices
+;@ROUTINE IN A,BC OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TYPDEMT0: ;@NUC-GLOBAL TypedEmitOperationBC PERMANENT TYPDEMT0
+            PUSH BC
+            CALL TYPDEMTO
+            POP  HL
+            RET  C
+            JR   TYPDEMTW
+%ENDIF
+
+; Push one pending binary-expression context into the bounded compiler stack.
+; Retaining the operator source offset is necessary because a nested operation
+; may replace the global offset before the outer operation is reduced.
+;@ROUTINE IN A OUT A,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,IX,IY
+TYPDEXPR: ;@NUC-GLOBAL TypedExpressionAddress PERMANENT TYPDEXPR
+            LD   E,A
+            ADD  A,A
+            ADD  A,E
+            ADD  A,A
+            ADD  A,A
+            ADD  A,E
+            LD   E,A
+            LD   D,0
+            LD   HL,EXPRSSN9
+            ADD  HL,DE
+            RET
+
+TYPDEXP0: ;@NUC-GLOBAL TypedExpressionPush PERMANENT TYPDEXP0
+            LD   A,(EXPRSSN3)
+            CP   EXPRSSNA
+            JR   NC,.L00000
+            CALL TYPDEXPR
+            LD   A,(EXPRSSNL)
+            LD   (HL),A
+            INC  HL
+            LD   DE,(EXPRSSN5)
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
+            INC  HL
+            LD   A,(EXPRSSNS)
+            LD   (HL),A
+            INC  HL
+            LD   A,(EXPRSSN6)
+            LD   (HL),A
+            INC  HL
+            LD   DE,(EXPRSSN7)
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
+            INC  HL
+            EX   DE,HL
+            LD   HL,EXPRSSNV
+            CALL CMPLRCPY
+            LD   A,(EXPRSSN3)
+            INC  A
+            LD   (EXPRSSN3),A
+            OR   A
+            RET
+
+.L00000:
+            LD   A,DGNSTCEK
+            JP   CMPLRSTD
+
+; Store A/HL as the pending left result before pushing it.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDSVLF: ;@NUC-GLOBAL TypedSaveLeft PERMANENT TYPDSVLF
+            LD   (EXPRSSNL),A
+            LD   (EXPRSSN5),HL
+            JR   TYPDEXP0
+
+; Save the right result, then restore the most recent left result.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDRST0: ;@NUC-GLOBAL TypedRestoreOperands PERMANENT TYPDRST0
+            LD   (EXPRSSNR),A
+            LD   (EXPRSSN4),HL
+            ; Every reduction follows TypedSaveLeft. Keep the defensive test so
+            ; a future parser change cannot turn a broken invariant into a
+            ; wrapped address beyond CompilerWorkspaceEnd.
+            LD   A,(EXPRSSN3)
+            OR   A
+            JR   Z,TYPDEXP1
+            DEC  A
+            LD   (EXPRSSN3),A
+            CALL TYPDEXPR
+            LD   A,(HL)
+            LD   (EXPRSSNL),A
+            INC  HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            LD   (EXPRSSN5),DE
+            INC  HL
+            LD   A,(HL)
+            LD   (EXPRSSNS),A
+            INC  HL
+            LD   A,(HL)
+            LD   (EXPRSSN6),A
+            INC  HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            LD   (EXPRSSN7),DE
+            INC  HL
+            LD   (EXPRSSN8),HL
+            OR   A
+            RET
+TYPDEXP1: ;@NUC-GLOBAL TypedExpressionStackUnderflow PERMANENT TYPDEXP1
+            LD   A,DGNSTCI0
+            JP   CMPLRSTD
+
+TYPDVLRN: ;@NUC-GLOBAL TypedValueRangeFailure PERMANENT TYPDVLRN
+            LD   HL,EXPRSSNV
+            JR   TYPDRNGF
+TYPDLFTR: ;@NUC-GLOBAL TypedLeftRangeFailure PERMANENT TYPDLFTR
+            LD   HL,(EXPRSSN8)
+TYPDRNGF: ;@NUC-GLOBAL TypedRangeFailureAtPosition PERMANENT TYPDRNGF
+            LD   DE,TKNSTRTO
+            CALL CMPLRCPY
+TYPDRNG0: ;@NUC-GLOBAL TypedRangeFailure PERMANENT TYPDRNG0
+            LD   A,DGNSTCIN
+            JP   CMPLRSTD
+TYPDTYPF: ;@NUC-GLOBAL TypedTypeFailure PERMANENT TYPDTYPF
+            LD   A,DGNSTCTY
+            JP   CMPLRSTD
+TYPDDVSN: ;@NUC-GLOBAL TypedDivisionFailure PERMANENT TYPDDVSN
+            LD   B,C                     ; statically selected divide width
+            LD   C,DGNSTCDV
+            JR   TYPDCHCK
+TYPDNRRW: ;@NUC-GLOBAL TypedNarrowFailure PERMANENT TYPDNRRW
+            LD   B,SCLRTYPU           ; u8(...) always has u8 result type
+            LD   C,DGNSTCNR
+TYPDCHCK: ;@NUC-GLOBAL TypedCheckedFault PERMANENT TYPDCHCK
+            LD   A,(EXPRSSNS)
+            OR   A
+            JR   NZ,.L00000
+            LD   A,C
+            JP   CMPLRSTD
+.L00000:
+            LD   A,B
+            LD   HL,0
+            OR   SCLRMTCN
+            RET
+
+; Resolve two integer operands. The four source metadata/value cells are live.
+; C returns u8 or u16. Exact constants adopt the typed peer or expected type.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TYPDLFTT: ;@NUC-GLOBAL TypedLeftTypeIsBoolean PERMANENT TYPDLFTT
+            LD   A,(EXPRSSNL)
+            AND  SCLRMTTY
+            CP   SCLRTYPB
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TYPDDCLR: ;@NUC-GLOBAL TypedDeclarationScalarType PERMANENT TYPDDCLR
+            LD   A,(DCLRTNIN)
+            AND  SCLRMTTY
+            RET
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDRSLV: ;@NUC-GLOBAL TypedResolveIntegerPair PERMANENT TYPDRSLV
+            CALL TYPDLFTT
+            JR   Z,TYPDTYPF
+            LD   D,A
+            LD   A,(EXPRSSNR)
+            AND  SCLRMTTY
+            CP   SCLRTYPB
+            JR   Z,TYPDTYPF
+            LD   E,A
+            LD   A,D
+            OR   A
+            JR   NZ,.L00003
+            LD   A,E
+            OR   A
+            JR   NZ,.L00001
+            LD   A,(EXPRSSNE)
+            CP   SCLRTYPU
+            JR   Z,.L00000
+            LD   C,SCLRTYP0
+            OR   A
+            RET
+.L00000:
+            LD   HL,(EXPRSSN5)
+            LD   A,H
+            OR   A
+            JR   NZ,TYPDLFTR
+            LD   HL,(EXPRSSN4)
+            LD   A,H
+            OR   A
+            JR   NZ,TYPDVLRN
+            LD   C,SCLRTYPU
+            OR   A
+            RET
+.L00001:
+            LD   C,E
+            CP   SCLRTYPU
+            JR   NZ,.L00002
+            LD   HL,(EXPRSSN5)
+            LD   A,H
+            OR   A
+            JR   NZ,TYPDLFTR
+.L00002:
+            OR   A
+            RET
+.L00003:
+            LD   A,E
+            OR   A
+            JR   NZ,.L00004
+            LD   C,D
+            LD   A,D
+            CP   SCLRTYPU
+            JR   NZ,.L00002
+            LD   HL,(EXPRSSN4)
+            LD   A,H
+            OR   A
+            JP   NZ,TYPDVLRN
+            JR   .L00002
+.L00004:
+            LD   A,D
+            CP   SCLRTYP0
+            JR   Z,.L00005
+            LD   A,E
+            CP   SCLRTYP0
+            JR   Z,.L00005
+            LD   C,SCLRTYPU
+            OR   A
+            RET
+.L00005:
+            LD   C,SCLRTYP0
+            OR   A
+            RET
+
+;@ROUTINE IN A,D OUT A,D,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TYPDRQRS: ;@NUC-GLOBAL TypedRequireScalarSymbolClass PERMANENT TYPDRQRS
+            AND  TEPRFLG
+            JP   NZ,TYPDTYPF
+            LD   A,D
+            AND  SYMBLCL3
+            RET
+
+; Return constant in A when both operands are constant.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDBTHC: ;@NUC-GLOBAL TypedBothConstant PERMANENT TYPDBTHC
+            LD   A,(EXPRSSNL)
+            AND  SCLRMTCN
+            RET  Z
+            LD   A,(EXPRSSNR)
+            AND  SCLRMTCN
+            RET
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDMSKR: ;@NUC-GLOBAL TypedMaskResultWidth PERMANENT TYPDMSKR
+            LD   A,C
+            CP   SCLRTYPU
+            RET  NZ
+            LD   H,0
+            RET
+
+; Emit a width-selected binary operation. D=u8 ordinal, E=u16 ordinal.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEMT1: ;@NUC-GLOBAL TypedEmitWidthOperation PERMANENT TYPDEMT1
+            LD   A,C
+            CP   SCLRTYPU
+            LD   A,D
+            JR   Z,.L00000
+            LD   A,E
+.L00000:
+            JP   TYPDEMTO
+
+; Emit the selected operation, then retain both values only when the pair is
+; compile-time constant. Carry reports emission failure; zero reports dynamic.
+;@ROUTINE IN C,D,E OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRP0: ;@NUC-GLOBAL TypedPrepareConstantBinary PERMANENT TYPDPRP0
+            CALL TYPDEMT1
+            RET  C
+            CALL TYPDBTHC
+            RET  Z
+            LD   HL,(EXPRSSN5)
+            LD   DE,(EXPRSSN4)
+            RET
+
+; Reduce +, -, *, /, integer and, or, xor. ExpressionOperator holds the token.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDRDCI: ;@NUC-GLOBAL TypedReduceIntegerBinary PERMANENT TYPDRDCI
+            CALL TYPDRSLV
+            RET  C
+            LD   A,(EXPRSSN6)
+            CP   TKNPLS
+            JR   Z,.L00003
+            CP   TKNMNS
+            JR   Z,.L00004
+            CP   TKNSTR
+            JR   Z,.L00005
+            CP   TKNSLSH
+            JP   Z,.L00008
+            CP   TokenMod
+            JP   Z,.L00009
+            CP   TokenAnd
+            JR   Z,.L00002
+            CP   TokenXor
+            JR   Z,.L00001
+.L00000:
+            LD   DE,TEPOR16
+            CALL TYPDPRP0
+            RET  C
+            LD   A,C
+            RET  Z
+            LD   A,L
+            OR   E
+            LD   L,A
+            LD   A,H
+            OR   D
+            LD   H,A
+            JP   .L0000E
+.L00001:
+            LD   DE,TEPXR16
+            CALL TYPDPRP0
+            RET  C
+            LD   A,C
+            RET  Z
+            LD   A,L
+            XOR  E
+            LD   L,A
+            LD   A,H
+            XOR  D
+            LD   H,A
+            JP   .L0000E
+.L00002:
+            LD   DE,TEPAN16
+            CALL TYPDPRP0
+            RET  C
+            LD   A,C
+            RET  Z
+            LD   A,L
+            AND  E
+            LD   L,A
+            LD   A,H
+            AND  D
+            LD   H,A
+            JP   .L0000E
+.L00003:
+            LD   D,SMNTCAD0
+            LD   E,SMNTCAD1
+            CALL TYPDPRP0
+            RET  C
+            JR   Z,.L0000F
+            ADD  HL,DE
+            JR   .L0000E
+.L00004:
+            LD   D,SMNTCSBT
+            LD   E,SMNTCSB0
+            CALL TYPDPRP0
+            RET  C
+            JR   Z,.L0000F
+            OR   A
+            SBC  HL,DE
+            JR   .L0000E
+.L00005:
+            LD   D,SMNTCML0
+            LD   E,SMNTCML1
+            CALL TYPDPRP0
+            RET  C
+            JR   Z,.L0000F
+            ; Constant multiplication modulo 65536, using sixteen shift/add
+            ; steps.
+            LD   BC,0
+            LD   A,16
+.L00006:
+            SRL  D
+            RR   E
+            JR   NC,.L00007
+            PUSH HL
+            ADD  HL,BC
+            LD   B,H
+            LD   C,L
+            POP  HL
+.L00007:
+            ADD  HL,HL
+            DEC  A
+            JR   NZ,.L00006
+            LD   H,B
+            LD   L,C
+            JR   .L0000E
+.L00008:
+            LD   DE,TEPDV16
+            JR   .L0000A
+.L00009:
+            LD   DE,TEPMD16
+.L0000A:
+            CALL TYPDEMT1
+            RET  C
+            LD   HL,(EXPRSSN7)
+            CALL TYPDEMTW
+            RET  C
+            ; A divisor known to be zero is invalid even when the dividend is
+            ; dynamic. The fault helper also implements constant short-circuit
+            ; suppression, so the unevaluated Boolean arm remains admissible.
+            LD   A,(EXPRSSNR)
+            AND  SCLRMTCN
+            JR   Z,.L0000B
+            LD   HL,(EXPRSSN4)
+            LD   A,H
+            OR   L
+            JP   Z,TYPDDVSN
+.L0000B:
+            CALL TYPDBTHC
+            JR   Z,.L0000F
+            ; The earlier exact-divisor check proves DE is nonzero here.
+            ; Constant unsigned division uses a bounded subtraction loop.
+            LD   DE,(EXPRSSN4)
+            LD   HL,(EXPRSSN5)
+            LD   BC,0
+.L0000C:
+            OR   A
+            SBC  HL,DE
+            JR   C,.L0000D
+            INC  BC
+            JR   .L0000C
+.L0000D:
+            ADD  HL,DE
+            LD   A,(EXPRSSN6)
+            CP   TokenMod
+            JR   Z,.L0000E
+            LD   H,B
+            LD   L,C
+            OR   A
+.L0000E:
+            CALL TYPDMSKR
+            LD   A,C
+            OR   SCLRMTCN
+            RET
+.L0000F:
+            LD   A,C
+            OR   A
+            RET
+
+; Primary expressions.
+TYPDPRSP: ;@NUC-GLOBAL TypedParsePrimary PERMANENT TYPDPRSP
+            CALL PRSRTK
+            RET  C
+            PUSH AF
+            PUSH BC
+            LD   HL,TKNSTRTO
+            LD   DE,EXPRSSNV
+            CALL CMPLRCPY
+            POP  BC
+            POP  AF
+            CP   TKNNMBR
+            JR   Z,.L00000
+            CP   TKNCHRCT
+            JR   Z,.L00001
+            CP   TKNTR
+            JR   Z,.L00002
+            CP   TKNFLS0
+            JR   Z,.L00003
+            CP   TKNNM
+            JR   Z,TYPDPRM0
+            CP   TKNLFTPR
+            JP   Z,TYPDPRM6
+            CP   TokenU8
+            JP   Z,TYPDPRM7
+            CP   TokenU16
+            JP   Z,TYPDPRM8
+            JP   PRSREXPK
+.L00000:
+            LD   H,B
+            LD   L,C
+            LD   B,TEPMEX
+            JR   TYPDPRMR
+.L00001:
+            LD   H,0
+            LD   L,C
+            JR   .L00005
+.L00002:
+            LD   HL,1
+            JR   .L00004
+.L00003:
+            LD   HL,0
+.L00004:
+            LD   B,TEPMBL
+            JR   TYPDPRMR
+.L00005:
+            LD   B,TEPMU8
+TYPDPRMR: ;@NUC-GLOBAL TypedPrimaryEmitTypedConstant PERMANENT TYPDPRMR
+            PUSH BC
+            PUSH HL
+            LD   A,SMNTCLT0
+            CALL TYPDEMTO
+            POP  HL
+            JR   C,.L00000
+            PUSH HL
+            CALL TYPDEMTW
+            POP  HL
+            POP  BC
+            RET  C
+            LD   A,B
+            OR   A
+            RET
+.L00000:
+            POP  BC
+            RET
+TYPDPRM0: ;@NUC-GLOBAL TypedPrimaryName PERMANENT TYPDPRM0
+%IF AggregateCallSlices
+            CALL STG8MTCH
+            JR   NC,.L00000
+            CP   STG8PRDF
+            JP   NC,STG8TYP0
+            LD   B,A
+            AND  $FD                     ; readInput/readStorage map to zero
+            JP   NZ,TYPDTYPF
+            LD   A,B
+            JP   STG8TYPD
+.L00000:
+            CALL STG7FNDR
+            JP   Z,STG7TYPD
+            CALL SYMBLLKP
+            RET  C
+            LD   D,A
+            AND  SYMBLAGG
+            JP   NZ,STG7TYP1
+            LD   A,D
+            JR   .L00002
+%ENDIF
+            CALL TYPDMTCH
+            JR   C,TYPDPRM5
+.L00001:
+            CALL SYMBLLKP
+            RET  C
+            LD   D,A
+.L00002:
+            CALL TYPDRQRS
+            RET  C
+            JR   Z,TYPDPRM4
+            LD   A,D
+            AND  SCLRMTTY
+            LD   E,A
+            LD   A,D
+            AND  SYMBLCL3
+            CP   SYMBLCL0
+            JR   Z,.L00003
+            CP   SYMBLCL2
+            JR   Z,TYPDPRM2
+            LD   A,E
+            CP   SCLRTYP0
+            LD   A,SMNTCLDL
+            JR   NZ,TYPDPRM3
+            LD   A,SMNTCLD4
+            JR   TYPDPRM3
+.L00003:
+            LD   A,E
+            CP   SCLRTYP0
+            LD   A,SMNTCLD2
+            JR   NZ,TYPDPRM1
+            LD   A,SMNTCLD3
+%IF AggregateCallSlices
+TYPDPRM1: ;@NUC-GLOBAL TypedPrimaryProgramSelected PERMANENT TYPDPRM1
+            PUSH DE
+            CALL TYPDEMT0
+            POP  DE
+            RET  C
+            LD   A,E
+            OR   A
+            RET
+%ELSE
+TYPDPRM1: ;@NUC-GLOBAL TypedPrimaryProgramSelected PERMANENT TYPDPRM1
+            JR   TYPDPRM3
+%ENDIF
+TYPDPRM2: ;@NUC-GLOBAL TypedPrimaryParameterName PERMANENT TYPDPRM2
+            LD   A,E
+            CP   SCLRTYP0
+            LD   A,SMNTCLD5
+            JR   NZ,TYPDPRM3
+            LD   A,SMNTCLD6
+TYPDPRM3: ;@NUC-GLOBAL TypedPrimaryEmitLoad PERMANENT TYPDPRM3
+            PUSH DE
+            PUSH BC
+            CALL TYPDEMTO
+            POP  BC
+            POP  DE
+            RET  C
+            LD   A,C
+            PUSH DE
+            CALL TYPDEMTB
+            POP  DE
+            RET  C
+            LD   A,E
+            OR   A
+            RET
+TYPDPRM4: ;@NUC-GLOBAL TypedPrimaryConstantName PERMANENT TYPDPRM4
+            LD   H,B
+            LD   L,C
+            LD   B,D
+            SET  7,B
+%IF AggregateCallSlices
+            JP   TYPDPRMR
+%ELSE
+            JR   TYPDPRMR
+%ENDIF
+
+; Parse one call to the retained scalar forward. The outer call position stays
+; on the compiler stack while a nested argument call is parsed.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRM5: ;@NUC-GLOBAL TypedPrimaryScalarCall PERMANENT TYPDPRM5
+            LD   HL,(TKNSTRTO)
+            PUSH HL
+            CALL PRSREXP1
+            JR   C,.L00003
+            LD   A,(EXPRSSNE)
+            LD   B,A
+            LD   A,(FRWRDPR1)
+            LD   C,A
+            PUSH BC
+            LD   (EXPRSSNE),A
+            CALL TYPDPRSO
+            JR   C,.L00002
+            LD   D,A
+            PUSH DE
+            PUSH HL
+            CALL PRSREXP2
+            JR   C,.L00001
+            POP  HL
+            POP  DE
+            POP  BC
+            LD   A,B
+            LD   (EXPRSSNE),A
+            LD   A,C
+            LD   E,A
+            LD   A,D
+            CALL TYPDCHC0
+            JR   C,.L00003
+            POP  HL
+            PUSH HL
+            LD   A,SMNTCCL1
+            CALL TYPDEMTO
+            JR   C,.L00000
+            LD   A,(FRWRDORD)
+            CALL TYPDEMTB
+            JR   C,.L00000
+            LD   A,(FRWRDRSL)
+            CALL TYPDEMTB
+            JR   C,.L00000
+            POP  HL
+            PUSH HL
+            CALL TYPDEMTW
+            JR   C,.L00000
+            POP  HL
+            LD   A,(FRWRDRSL)
+            OR   A
+            RET
+.L00000:
+            POP  HL
+            SCF
+            RET
+.L00001:
+            POP  HL
+            POP  DE
+.L00002:
+            POP  BC
+            LD   A,B
+            LD   (EXPRSSNE),A
+.L00003:
+            POP  HL
+            SCF
+            RET
+%IF AggregateCallSlices
+; A failable invocation remains consumable only while it is the complete,
+; untouched expression. Preserve the expression result while checking that no
+; pending direct failure is being enclosed by another expression form.
+;@ROUTINE IN A,HL OUT A,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,IX,IY
+TYPDRQRC: ;@NUC-GLOBAL TypedRequireComposable PERMANENT TYPDRQRC
+            LD   C,A
+            LD   A,(STG8DRCT)
+            OR   A
+            JP   NZ,HYBRDL1S
+            LD   A,C
+            RET
+
+;@ROUTINE IN A,HL OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDCMPS: ;@NUC-GLOBAL TypedComposableSaveLeft PERMANENT TYPDCMPS
+            CALL TYPDRQRC
+            RET  C
+            JP   TYPDSVLF
+
+;@ROUTINE IN A,HL OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDCMP0: ;@NUC-GLOBAL TypedComposableRestoreOperands PERMANENT TYPDCMP0
+            CALL TYPDRQRC
+            RET  C
+            JP   TYPDRST0
+%ENDIF
+TYPDPRM6: ;@NUC-GLOBAL TypedPrimaryParen PERMANENT TYPDPRM6
+            CALL TYPDPRSO
+            RET  C
+            PUSH AF
+            PUSH HL
+            CALL PRSREXP2
+            JR   C,.L00000
+            POP  HL
+            POP  AF
+%IF AggregateCallSlices
+            JR   TYPDRQRC
+%ELSE
+            RET
+%ENDIF
+.L00000:
+            POP  HL
+            POP  AF
+            SCF
+            RET
+
+; Parse the parenthesized operand of an explicit conversion under the
+; conversion's own expected type. The enclosing expected type is restored on
+; every exit; A/HL return the checked operand on success.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSC: ;@NUC-GLOBAL TypedParseConversionOperand PERMANENT TYPDPRSC
+            LD   C,A
+            LD   A,(EXPRSSNE)
+            LD   B,A
+            PUSH BC
+            LD   A,C
+            LD   (EXPRSSNE),A
+            CALL PRSREXP1
+            JR   C,.L00001
+            CALL TYPDPRSO
+            JR   C,.L00001
+            LD   D,A
+            PUSH DE
+            PUSH HL
+            CALL PRSREXP2
+            JR   C,.L00000
+            POP  HL
+            POP  DE
+            POP  BC
+            LD   A,B
+            LD   (EXPRSSNE),A
+            LD   A,D
+%IF AggregateCallSlices
+            CALL TYPDRQRC
+            RET  C
+%ENDIF
+            OR   A
+            RET
+.L00000:
+            POP  HL
+            POP  DE
+.L00001:
+            POP  BC
+            LD   A,B
+            LD   (EXPRSSNE),A
+            SCF
+            RET
+
+TYPDPRM7: ;@NUC-GLOBAL TypedPrimaryNarrow PERMANENT TYPDPRM7
+            LD   HL,(TKNSTRTO)
+            LD   (EXPRSSN7),HL
+            PUSH HL                       ; this conversion's trap position
+            LD   A,SCLRTYPU
+            CALL TYPDPRSC
+            JR   C,.L00001
+            ; Restore the enclosing context while keeping this conversion's
+            ; value and source offset live for the checked narrowing below.
+            LD   D,A
+            LD   B,H
+            LD   C,L
+            POP  HL
+            LD   (EXPRSSN7),HL
+            LD   H,B
+            LD   L,C
+            LD   A,D
+            CALL TYPDRQRI
+            RET  C
+            AND  SCLRMTCN
+            JR   Z,.L00000
+            LD   A,H
+            OR   A
+            JP   NZ,TYPDNRRW
+            LD   A,TEPMU8
+            OR   A
+            RET
+.L00000:
+            LD   A,SMNTCNRR
+            CALL TYPDEMTO
+            RET  C
+            LD   HL,(EXPRSSN7)
+            CALL TYPDEMTW
+            RET  C
+            LD   A,SCLRTYPU
+            OR   A
+            RET
+.L00001:
+            POP  HL
+            SCF
+            RET
+
+;@ROUTINE IN A OUT A,D,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TYPDRQRI: ;@NUC-GLOBAL TypedRequireIntegerMeta PERMANENT TYPDRQRI
+            LD   D,A
+            AND  SCLRMTTY
+            CP   SCLRTYPB
+            JP   Z,TYPDTYPF
+            LD   A,D
+            CCF                            ; valid scalar types compare below Boolean
+            RET
+
+TYPDPRM8: ;@NUC-GLOBAL TypedPrimaryWiden PERMANENT TYPDPRM8
+            LD   A,SCLRTYP0
+            CALL TYPDPRSC
+            RET  C
+            CALL TYPDRQRI
+            RET  C
+            AND  SCLRMTCN
+            LD   A,SCLRTYP0
+            RET  Z
+            OR   SCLRMTCN
+            RET
+
+; Unary + and - bind above multiplicative operators.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSU: ;@NUC-GLOBAL TypedParseUnary PERMANENT TYPDPRSU
+            CALL PRSRPK
+            RET  C
+            CP   TKNPLS
+            JR   Z,.L00000
+            CP   TKNMNS
+            JR   Z,.L00001
+            JP   TYPDPRSP
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+.L00000:
+            CALL PRSRTK
+            RET  C
+            CALL TYPDPRSU
+            RET  C
+%IF AggregateCallSlices
+            CALL TYPDRQRC
+            RET  C
+%ENDIF
+            CALL TYPDRQRI
+            RET  C
+            OR   A
+            RET
+.L00001:
+            CALL .L00000
+            RET  C
+            LD   D,A
+            AND  SCLRMTTY
+            JR   NZ,.L00002
+            LD   A,(EXPRSSNE)
+            CP   SCLRTYPU
+            JR   Z,TYPDUNR0
+            LD   A,SCLRTYP0
+            JR   TYPDUNRY
+.L00002:
+            LD   A,D
+            AND  SCLRMTTY
+TYPDUNRY: ;@NUC-GLOBAL TypedUnaryMinusResolved PERMANENT TYPDUNRY
+            LD   C,A
+            CP   SCLRTYPU
+            LD   A,SMNTCNGT
+            JR   Z,.L00000
+            LD   A,SMNTCNG0
+.L00000:
+            CALL TYPDEMTU
+            RET  C
+            LD   A,D
+            AND  SCLRMTCN
+            LD   A,C
+            RET  Z
+            XOR  A
+            SUB  L
+            LD   L,A
+            LD   A,0
+            SBC  A,H
+            LD   H,A
+            CALL TYPDMSKR
+            LD   A,C
+            OR   SCLRMTCN
+            RET
+
+;@ROUTINE IN A,BC,DE,HL OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEMTU: ;@NUC-GLOBAL TypedEmitUnaryOperation PERMANENT TYPDEMTU
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            CALL TYPDEMTO
+            POP  HL
+            POP  DE
+            POP  BC
+            RET
+TYPDUNR0: ;@NUC-GLOBAL TypedUnaryMinusU8 PERMANENT TYPDUNR0
+            ; Width selection must not destroy evidence that the exact literal
+            ; itself exceeded u8 before negation applies modulo 256.
+            LD   A,D
+            AND  SCLRMTCN
+            JR   Z,.L00000
+            LD   A,H
+            OR   A
+            JP   NZ,TYPDVLRN
+.L00000:
+            LD   A,SCLRTYPU
+            JR   TYPDUNRY
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSM: ;@NUC-GLOBAL TypedParseMultiplicative PERMANENT TYPDPRSM
+            CALL TYPDPRSU
+            RET  C
+.L00000:
+            PUSH AF
+            PUSH HL
+            CALL PRSRPK
+            JR   C,.L00003
+            CP   TKNSTR
+            JR   Z,.L00001
+            CP   TKNSLSH
+            JR   Z,.L00001
+            CP   TokenMod
+            JR   NZ,.L00002
+.L00001:
+            LD   (EXPRSSN6),A
+            CALL PRSRTK
+            JR   C,.L00003
+            LD   HL,(TKNSTRTO)
+            LD   (EXPRSSN7),HL
+            POP  HL
+            POP  AF
+%IF AggregateCallSlices
+            CALL TYPDCMPS
+%ELSE
+            CALL TYPDSVLF
+%ENDIF
+            RET  C
+            CALL TYPDPRSU
+            RET  C
+%IF AggregateCallSlices
+            CALL TYPDCMP0
+%ELSE
+            CALL TYPDRST0
+%ENDIF
+            RET  C
+            CALL TYPDRDCI
+            RET  C
+            JR   .L00000
+.L00002:
+            POP  HL
+            POP  AF
+            RET
+.L00003:
+            POP  HL
+            POP  AF
+            SCF
+            RET
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSA: ;@NUC-GLOBAL TypedParseAdditive PERMANENT TYPDPRSA
+            CALL TYPDPRSM
+            RET  C
+.L00000:
+            PUSH AF
+            PUSH HL
+            CALL PRSRPK
+            JR   C,.L00003
+            CP   TKNPLS
+            JR   Z,.L00001
+            CP   TKNMNS
+            JR   NZ,.L00002
+.L00001:
+            LD   (EXPRSSN6),A
+            CALL PRSRTK
+            JR   C,.L00003
+            POP  HL
+            POP  AF
+%IF AggregateCallSlices
+            CALL TYPDCMPS
+%ELSE
+            CALL TYPDSVLF
+%ENDIF
+            RET  C
+            CALL TYPDPRSM
+            RET  C
+%IF AggregateCallSlices
+            CALL TYPDCMP0
+%ELSE
+            CALL TYPDRST0
+%ENDIF
+            RET  C
+            CALL TYPDRDCI
+            RET  C
+            JR   .L00000
+.L00002:
+            POP  HL
+            POP  AF
+            RET
+.L00003:
+            POP  HL
+            POP  AF
+            SCF
+            RET
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDCMPR: ;@NUC-GLOBAL TypedComparisonToken PERMANENT TYPDCMPR
+            LD   HL,.L00002
+            LD   B,6
+.L00000:
+            CP   (HL)
+            JR   Z,.L00001
+            INC  HL
+            INC  HL
+            DJNZ .L00000
+            OR   A
+            RET
+.L00001:
+            INC  HL
+            LD   C,(HL)
+            SCF
+            RET
+.L00002:
+            DB TKNEQLS,CMPRSNEQ
+            DB TKNNTEQL,CMPRSNNT
+            DB TKNLSS,CMPRSNLS
+            DB TKNLSSEQ,CMPRSNL0
+            DB TKNGRTR,CMPRSNGR
+            DB TKNGRTRE,CMPRSNG0
+
+TYPDPRS0: ;@NUC-GLOBAL TypedParseComparison PERMANENT TYPDPRS0
+            CALL TYPDPRSA
+            RET  C
+            PUSH AF
+            PUSH HL
+            CALL PRSRPK
+            JR   C,.L00001
+            CALL TYPDCMPR
+            JR   NC,.L00000
+            LD   A,C
+            LD   (EXPRSSN6),A
+            CALL PRSRTK
+            JR   C,.L00001
+            POP  HL
+            POP  AF
+%IF AggregateCallSlices
+            CALL TYPDCMPS
+%ELSE
+            CALL TYPDSVLF
+%ENDIF
+            RET  C
+            CALL TYPDPRSA
+            RET  C
+%IF AggregateCallSlices
+            CALL TYPDCMP0
+%ELSE
+            CALL TYPDRST0
+%ENDIF
+            RET  C
+            CALL .L00003
+            RET  C
+            PUSH AF
+            PUSH HL
+            CALL PRSRPK
+            JR   C,.L00001
+            CALL TYPDCMPR
+            JR   C,.L00002
+            POP  HL
+            POP  AF
+            RET
+.L00000:
+            POP  HL
+            POP  AF
+            RET
+.L00001:
+            POP  HL
+            POP  AF
+            SCF
+            RET
+.L00002:
+            POP  HL
+            POP  AF
+            LD   A,DGNSTCCM
+            JP   CMPLRSTD
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+.L00003:
+            LD   A,(EXPRSSNL)
+            AND  SCLRMTTY
+            LD   D,A
+            LD   A,(EXPRSSNR)
+            AND  SCLRMTTY
+            LD   E,A
+            LD   A,D
+            CP   SCLRTYPB
+            JR   NZ,.L00004
+            LD   A,E
+            CP   SCLRTYPB
+            JP   NZ,TYPDTYPF
+            LD   A,(EXPRSSN6)
+            CP   CMPRSNNT+1
+            JP   NC,TYPDTYPF
+            LD   A,SMNTCCM1
+            JR   .L00005
+.L00004:
+            CALL TYPDRSLV
+            RET  C
+            LD   A,C
+            CP   SCLRTYPU
+            LD   A,SMNTCCMP
+            JR   Z,.L00005
+            LD   A,SMNTCCM0
+.L00005:
+            CALL TYPDEMTO
+            RET  C
+            LD   A,(EXPRSSN6)
+            CALL TYPDEMTB
+            RET  C
+            CALL TYPDBTHC
+            LD   A,SCLRTYPB
+            RET  Z
+            LD   HL,(EXPRSSN5)
+            LD   DE,(EXPRSSN4)
+            OR   A
+            SBC  HL,DE
+            LD   A,(EXPRSSN6)
+            JR   Z,.L00006
+            JR   C,.L00007
+            LD   C,1
+            JR   .L00008
+.L00006:
+            LD   C,0
+            JR   .L00008
+.L00007:
+            LD   C,$FF
+.L00008:
+            ; C is -1, 0, or 1. Map the requested relation to a Boolean.
+            LD   B,A
+            LD   HL,0
+            LD   A,B
+            CP   CMPRSNEQ
+            JR   Z,.L00009
+            CP   CMPRSNNT
+            JR   Z,.L0000A
+            CP   CMPRSNLS
+            JR   Z,.L0000B
+            CP   CMPRSNL0
+            JR   Z,.L0000C
+            CP   CMPRSNGR
+            JR   Z,.L0000D
+            LD   A,C
+            CP   $FF
+            JR   Z,.L0000E
+            INC  L
+            JR   .L0000E
+.L00009:
+            LD   A,C
+            OR   A
+            JR   NZ,.L0000E
+            INC  L
+            JR   .L0000E
+.L0000A:
+            LD   A,C
+            OR   A
+            JR   Z,.L0000E
+            INC  L
+            JR   .L0000E
+.L0000B:
+            LD   A,C
+            CP   $FF
+            JR   NZ,.L0000E
+            INC  L
+            JR   .L0000E
+.L0000C:
+            LD   A,C
+            CP   1
+            JR   Z,.L0000E
+            INC  L
+            JR   .L0000E
+.L0000D:
+            LD   A,C
+            CP   1
+            JR   NZ,.L0000E
+            INC  L
+.L0000E:
+            LD   A,TEPMBL
+            OR   A
+            RET
+
+; `not` binds below comparisons and above `and`.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSN: ;@NUC-GLOBAL TypedParseNot PERMANENT TYPDPRSN
+            CALL PRSRPK
+            RET  C
+            CP   TokenNot
+            JP   NZ,TYPDPRS0
+            CALL PRSRTK
+            RET  C
+            CALL TYPDPRSN
+            RET  C
+%IF AggregateCallSlices
+            CALL TYPDRQRC
+            RET  C
+%ENDIF
+            LD   D,A
+            AND  SCLRMTTY
+            CP   SCLRTYPB
+            LD   C,SCLRTYPB
+            LD   A,SMNTCNTB
+            JR   Z,.L00003
+            LD   A,D
+            AND  SCLRMTTY
+            JR   NZ,.L00002
+            LD   A,(EXPRSSNE)
+            CP   SCLRTYPU
+            JR   Z,.L00000
+            LD   C,SCLRTYP0
+            LD   A,SMNTCNT1
+            JR   .L00003
+.L00000:
+            ; As with unary minus, validate the exact operand before applying
+            ; the width-specific complement and masking the result.
+            LD   A,D
+            AND  SCLRMTCN
+            JR   Z,.L00001
+            LD   A,H
+            OR   A
+            JP   NZ,TYPDVLRN
+.L00001:
+            LD   C,SCLRTYPU
+            LD   A,SMNTCNT8
+            JR   .L00003
+.L00002:
+            LD   A,D
+            AND  SCLRMTTY
+            LD   C,A
+            CP   SCLRTYPU
+            LD   A,SMNTCNT8
+            JR   Z,.L00003
+            LD   A,SMNTCNT1
+.L00003:
+            CALL TYPDEMTU
+            RET  C
+            LD   A,D
+            AND  SCLRMTCN
+            LD   A,C
+            RET  Z
+            CP   SCLRTYPB
+            JR   NZ,.L00004
+            LD   A,L
+            XOR  1
+            LD   L,A
+            LD   H,0
+            JR   .L00005
+.L00004:
+            LD   A,L
+            CPL
+            LD   L,A
+            LD   A,H
+            CPL
+            LD   H,A
+            CALL TYPDMSKR
+.L00005:
+            LD   A,C
+            OR   SCLRMTCN
+            RET
+
+; Boolean short circuit is represented by prefix/suffix operations so the
+; Z80 backend can branch around the right operand. Integer and/or use the
+; ordinary postfix reduction.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRS1: ;@NUC-GLOBAL TypedParseAnd PERMANENT TYPDPRS1
+            CALL TYPDPRSN
+            RET  C
+.L00000:
+            PUSH AF
+            PUSH HL
+            CALL PRSRPK
+            JP   C,TYPDBLNP
+            CP   TokenAnd
+            JP   NZ,TYPDBLND
+            LD   (EXPRSSN6),A
+            CALL PRSRTK
+            JP   C,TYPDBLNP
+            POP  HL
+            POP  AF
+%IF AggregateCallSlices
+            CALL TYPDCMPS
+%ELSE
+            CALL TYPDSVLF
+%ENDIF
+            RET  C
+            CALL TYPDLFTT
+            JR   NZ,.L00001
+            LD   A,SMNTCBG4
+            CALL TYPDEMTO
+            RET  C
+            LD   C,0
+            CALL TYPDBGNS
+.L00001:
+            CALL TYPDPRSN
+            RET  C
+%IF AggregateCallSlices
+            CALL TYPDCMP0
+%ELSE
+            CALL TYPDRST0
+%ENDIF
+            RET  C
+            CALL TYPDLFTT
+            JR   NZ,.L00002
+            CALL TYPDRDCB
+            RET  C
+            JR   .L00000
+.L00002:
+            CALL TYPDRDCI
+            RET  C
+            JR   .L00000
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSO: ;@NUC-GLOBAL TypedParseOr PERMANENT TYPDPRSO
+            CALL TYPDPRS1
+            RET  C
+TYPDORLP: ;@NUC-GLOBAL TypedOrLoop PERMANENT TYPDORLP
+            PUSH AF
+            PUSH HL
+            CALL PRSRPK
+            JR   C,TYPDBLNP
+            CP   TokenXor
+            JR   Z,.L00000
+            CP   TokenOr
+            JR   NZ,TYPDBLND
+%IF AggregateCallSlices
+            LD   A,(STG8DRCT)
+            OR   A
+            JR   NZ,TYPDORFL
+            LD   A,TokenOr
+%ENDIF
+.L00000:
+            LD   (EXPRSSN6),A
+            CALL PRSRTK
+            JR   C,TYPDBLNP
+            POP  HL
+            POP  AF
+            CALL TYPDSVLF
+            RET  C
+            LD   A,(EXPRSSN6)
+            CP   TokenXor
+            JR   NZ,.L00001
+            CALL TYPDLFTT
+            JP   Z,TYPDTYPF
+            JR   .L00002
+.L00001:
+            CALL TYPDLFTT
+            JR   NZ,.L00002
+            LD   A,SMNTCBG5
+            CALL TYPDEMTO
+            RET  C
+            LD   C,1
+            CALL TYPDBGNS
+.L00002:
+            CALL TYPDPRS1
+            RET  C
+%IF AggregateCallSlices
+            CALL TYPDCMP0
+%ELSE
+            CALL TYPDRST0
+%ENDIF
+            RET  C
+            CALL TYPDLFTT
+            JR   NZ,TYPDORIN
+            CALL TYPDRDCB
+            RET  C
+            JR   TYPDORLP
+TYPDBLND: ;@NUC-GLOBAL TypedBooleanDone PERMANENT TYPDBLND
+            POP  HL
+            POP  AF
+            RET
+%IF AggregateCallSlices
+TYPDORFL: ;@NUC-GLOBAL TypedOrFailureContext PERMANENT TYPDORFL
+            CALL HYBRDL1S
+%ENDIF
+TYPDBLNP: ;@NUC-GLOBAL TypedBooleanPeekFailure PERMANENT TYPDBLNP
+            POP  HL
+            POP  AF
+            SCF
+            RET
+TYPDORIN: ;@NUC-GLOBAL TypedOrInteger PERMANENT TYPDORIN
+            CALL TYPDRDCI
+            RET  C
+            JR   TYPDORLP
+
+;@ROUTINE IN C OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDBGNS: ;@NUC-GLOBAL TypedBeginSuppression PERMANENT TYPDBGNS
+            LD   A,(EXPRSSNL)
+            AND  SCLRMTCN
+            RET  Z
+            LD   HL,(EXPRSSN5)
+            LD   A,L
+            XOR  C
+            RET  NZ
+            LD   HL,EXPRSSNS
+            INC  (HL)
+            RET
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDRDCB: ;@NUC-GLOBAL TypedReduceBoolean PERMANENT TYPDRDCB
+            LD   A,(EXPRSSNR)
+            AND  SCLRMTTY
+            CP   SCLRTYPB
+            JP   NZ,TYPDTYPF
+            LD   A,SMNTCEN6
+            CALL TYPDEMTO
+            RET  C
+            CALL TYPDBTHC
+            LD   A,SCLRTYPB
+            RET  Z
+            LD   HL,(EXPRSSN5)
+            LD   A,L
+            OR   H
+            LD   C,A
+            LD   A,(EXPRSSN6)
+            CP   TokenAnd
+            JR   Z,.L00000
+            LD   A,C
+            OR   A
+            JR   NZ,.L00003
+            JR   .L00001
+.L00000:
+            LD   A,C
+            OR   A
+            JR   Z,.L00002
+.L00001:
+            LD   HL,(EXPRSSN4)
+            JR   .L00004
+.L00002:
+            LD   HL,0
+            JR   .L00004
+.L00003:
+            LD   HL,1
+.L00004:
+            LD   A,TEPMBL
+            OR   A
+            RET
+
+; Assignment compatibility resolves exact constants and the sole implicit
+; widening. A/HL is the expression; E is the destination type.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDCHC0: ;@NUC-GLOBAL TypedCheckAssignable PERMANENT TYPDCHC0
+            LD   D,A
+            AND  SCLRMTTY
+            JR   NZ,.L00001
+            LD   A,E
+            CP   SCLRTYPB
+            JP   Z,TYPDTYPF
+            CP   SCLRTYPU
+            JR   NZ,.L00000
+            LD   A,H
+            OR   A
+            JP   NZ,TYPDVLRN
+.L00000:
+            LD   A,D
+            AND  SCLRMTCN
+            OR   E
+            RET
+.L00001:
+            CP   E
+            JR   Z,.L00002
+            CP   SCLRTYPU
+            JP   NZ,TYPDTYPF
+            LD   A,E
+            CP   SCLRTYP0
+            JP   NZ,TYPDTYPF
+.L00002:
+            LD   A,D
+            AND  SCLRMTCN
+            OR   E
+            RET
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEXP2: ;@NUC-GLOBAL TypedExpressionBeginRuntime PERMANENT TYPDEXP2
+            LD   (EXPRSSNE),A
+%IF AggregateCallSlices
+            XOR  A
+            LD   (STG8DRCT),A
+            LD   (STG8RTND),A
+%ENDIF
+            LD   A,1
+            LD   (EXPRSSN2),A
+            XOR  A
+            LD   (EXPRSSNS),A
+            LD   (EXPRSSN3),A
+            JP   TYPDPRSO
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEXP3: ;@NUC-GLOBAL TypedExpressionBeginConstant PERMANENT TYPDEXP3
+            LD   (EXPRSSNE),A
+            XOR  A
+            LD   (EXPRSSN2),A
+            LD   (EXPRSSNS),A
+            LD   (EXPRSSN3),A
+            JP   TYPDPRSO
+
+; Parse u8, u16, or boolean and return ScalarType* in A.
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRST: ;@NUC-GLOBAL TypedParseType PERMANENT TYPDPRST
+            CALL PRSRTK
+            RET  C
+            CP   TokenU8
+            JR   Z,.L00000
+            CP   TokenU16
+            JR   Z,.L00001
+            CP   TKNBLN
+            JR   Z,.L00002
+            LD   A,DGNSTCEJ
+            JP   CMPLRSTD
+.L00000:       LD A,SCLRTYPU
+                   OR A
+                   RET
+.L00001:      LD A,SCLRTYP0
+                   OR A
+                   RET
+.L00002:  LD A,SCLRTYPB
+                   OR A
+                   RET
+%ENDIF
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDTYPW: ;@NUC-GLOBAL TypedTypeWidth PERMANENT TYPDTYPW
+            CP   SCLRTYP0
+            LD   A,1
+            RET  NZ
+            INC  A
+            RET
+
+; Emit a typed static program object. D=type, BC=offset, HL=value.
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEMTP: ;@NUC-GLOBAL TypedEmitProgramDefinition PERMANENT TYPDEMTP
+            LD   A,D
+            CP   SCLRTYP0
+            LD   A,SMNTCDFN
+            JR   NZ,.L00000
+            LD   A,SMNTCDF0
+.L00000:
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            CALL SMNTCSN5
+            POP  HL
+            POP  DE
+            POP  BC
+            RET  C
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            LD   A,C
+            CALL SMNTCSN2
+            POP  HL
+            POP  DE
+            POP  BC
+            RET  C
+            PUSH DE
+            PUSH HL
+            LD   A,L
+            CALL SMNTCSN2
+            POP  HL
+            POP  DE
+            RET  C
+            LD   A,D
+            CP   SCLRTYP0
+            JR   Z,.L00001
+            OR   A
+            RET
+.L00001:
+            LD   A,H
+            JP   SMNTCSN2
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRS2: ;@NUC-GLOBAL TypedParseConstantAfterName PERMANENT TYPDPRS2
+            CALL TYPDRTND
+            RET  C
+            CALL PRSREXP6
+            RET  C
+            LD   A,SCLRTYPE
+            CALL TYPDEXP3
+            RET  C
+            CALL TYPDRTNI
+            RET  C
+            LD   A,(DCLRTNIN)
+            OR   SYMBLCLS
+            LD   D,A
+            LD   BC,(DCLRTNPY)
+            CALL TYPDPRPR
+            RET  C
+            JP   SYMBLCMM
+
+;@ROUTINE IN A,HL OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDRTNC: ;@NUC-GLOBAL TypedRetainConstantExpression PERMANENT TYPDRTNC
+            LD   D,A
+            LD   A,(DCLRTNIN)
+            LD   E,A
+            LD   A,D
+            CALL TYPDCHC0
+            RET  C
+            AND  SCLRMTCN
+            JP   Z,TYPDTYPF
+            LD   (DCLRTNPY),HL
+            JP   PRSREXP0
+
+;@ROUTINE IN A,HL OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDRTNI: ;@NUC-GLOBAL TypedRetainInferredConstantExpression PERMANENT TYPDRTNI
+            LD   D,A
+            AND  SCLRMTCN
+            JP   Z,TYPDTYPF
+            LD   A,D
+            AND  SCLRMTTY
+            CP   SCLRTYPB
+            LD   A,SCLRTYPE
+            JR   NZ,.L00000
+            LD   A,SCLRTYPB
+.L00000:
+            LD   (DCLRTNIN),A
+            LD   (DCLRTNPY),HL
+            JP   PRSREXP0
+
+; Current token is the variable name.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRS3: ;@NUC-GLOBAL TypedParseProgramAfterVar PERMANENT TYPDPRS3
+            LD   A,(AGGRGTMD)
+            OR   A
+            JP   NZ,AGGRGTP4
+            CALL TYPDRTND
+            RET  C
+            CALL PRSREXP3
+            RET  C
+            CALL TYPDPRST
+            RET  C
+            LD   (DCLRTNIN),A
+%IF LegacyCompilerSlices
+            ; Preserve the legacy initialized-array proof behind u8[...].
+            CP   SCLRTYPU
+            JR   NZ,.L00000
+            CALL PRSRPK
+            RET  C
+            CP   TKNLFTBR
+            JR   NZ,.L00000
+            LD   A,(NXTPRGRM)
+            LD   C,A
+            LD   B,0
+            LD   D,SYMBLIN4
+            CALL TYPDPRPR
+            RET  C
+            JP   PRSRPRSA
+%ENDIF
+.L00000:
+            CALL PRSRPK
+            RET  C
+            CP   TKNEQLS
+            JR   Z,.L00001
+            LD   HL,0
+            LD   A,(DCLRTNIN)
+            OR   SCLRMTCN
+            JR   .L00002
+.L00001:
+            CALL PRSRTK
+            RET  C
+            LD   A,(DCLRTNIN)
+            CALL TYPDEXP3
+            RET  C
+.L00002:
+            CALL TYPDRTNC
+            RET  C
+            LD   A,(NXTPRGRM)
+            LD   C,A
+            LD   B,0
+            LD   (EXPRSSN5),BC
+            PUSH BC
+            LD   A,(DCLRTNIN)
+            OR   SYMBLCL0
+            LD   D,A
+            CALL TYPDPRPR
+            POP  BC
+            RET  C
+            CALL SYMBLCMM
+            RET  C
+            LD   BC,(EXPRSSN5)
+            LD   HL,(DCLRTNPY)
+            LD   A,(DCLRTNIN)
+            LD   D,A
+            CALL TYPDEMTP
+            RET  C
+            LD   A,(DCLRTNIN)
+            CALL TYPDTYPW
+            LD   HL,NXTPRGRM
+            ADD  A,(HL)
+            LD   (HL),A
+            JP   TYPDPRS4
+
+TYPDPRS4: ;@NUC-GLOBAL TypedParseTopLevel PERMANENT TYPDPRS4
+            CALL PRSRPK
+            RET  C
+            CP   TokenVar
+            JR   Z,.L00000
+            CP   TKNCNST
+            JR   Z,.L00001
+            CP   TKNFRWRD
+            JR   Z,.L00002
+            CP   TokenSub
+            JP   Z,TYPDPRS6
+            CP   TKNRCRD
+            JR   Z,.L00003
+            LD   A,DGNSTCEC
+            JP   CMPLRSTD
+.L00000:
+            CALL PRSRTK
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            JP   TYPDPRS3
+.L00001:
+            CALL PRSRTK
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            CALL TYPDPRS2
+            RET  C
+            JR   TYPDPRS4
+.L00002:
+            CALL PRSRTK
+            RET  C
+            JP   TYPDPRSF
+.L00003:
+            CALL PRSRTK
+            RET  C
+            JP   AGGRGTP2
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRS5: ;@NUC-GLOBAL TypedParseTopLevelConstAfterTake PERMANENT TYPDPRS5
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            CALL TYPDPRS2
+            RET  C
+            JP   TYPDPRS4
+
+; TokenForward has already been consumed. Nucleus 0.1 permits a bounded
+; retained signature; this first Z80 increment supports one scalar
+; parameter and one scalar result, with exact completion after main.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSF: ;@NUC-GLOBAL TypedParseForwardAfterTake PERMANENT TYPDPRSF
+            LD   E,TokenSub
+            CALL PRSREXPC
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            LD   A,(FRWRDORD)
+            OR   A
+            JP   NZ,TYPDDPLC
+            CALL TYPDRJCT
+            RET  C
+            CALL PRSRRTNF
+            CALL PRSREXP1
+            RET  C
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            LD   HL,(FRWRDNMP)
+            LD   A,(FRWRDNML)
+            LD   B,A
+            CALL TKNNMEQL
+            JP   C,TYPDDPLC
+            CALL TYPDRJCT
+            RET  C
+            CALL PRSRRTN0
+            CALL PRSREXP3
+            RET  C
+            CALL TYPDPRST
+            RET  C
+            LD   (FRWRDPR1),A
+            CALL PRSREXP2
+            RET  C
+            CALL PRSREXP3
+            RET  C
+            CALL TYPDPRST
+            RET  C
+            LD   (FRWRDRSL),A
+            CALL PRSREXP0
+            RET  C
+            LD   A,1
+            LD   (FRWRDORD),A
+            XOR  A
+            LD   (FRWRDCMP),A
+            JP   TYPDPRS4
+
+TYPDPRS6: ;@NUC-GLOBAL TypedParseMain PERMANENT TYPDPRS6
+            CALL PRSRTK
+            RET  C
+TYPDPRS7: ;@NUC-GLOBAL TypedParseMainAfterTake PERMANENT TYPDPRS7
+            CALL PRSREXPL
+            RET  C
+            LD   A,SMNTCBG3
+            CALL SMNTCSN5
+            RET  C
+            CALL CNTRLRST
+            LD   A,(SYMBLCNT)
+            LD   (CNTRLGLB),A
+            XOR  A
+            LD   (CNTRLRTN),A
+.L00000:
+            CALL TYPDPRS8
+            RET  C
+.L00001:
+            CALL TYPDPRSS
+            RET  C
+            JP   TYPDPRSE
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSL: ;@NUC-GLOBAL TypedParseLocalDeclaration PERMANENT TYPDPRSL
+            LD   E,TKNNM
+            CALL PRSREXPC
+            RET  C
+            CALL TYPDRTND
+            RET  C
+            CALL PRSREXP3
+            RET  C
+            CALL TYPDPRST
+            RET  C
+            OR   SYMBLCL1
+            LD   (DCLRTNIN),A
+            LD   A,(NXTLCLSL)
+            LD   C,A
+            LD   B,0
+            LD   (DCLRTNPY),BC
+            PUSH BC
+            LD   A,(DCLRTNIN)
+            LD   D,A
+            CALL TYPDPRPR
+            POP  BC
+            RET  C
+            LD   A,(DCLRTNIN)
+            AND  SCLRMTTY
+            CALL TYPDEMTL
+            RET  C
+            CALL PRSRPK
+            RET  C
+            CP   TKNEQLS
+            JR   Z,.L00000
+            LD   A,1
+            LD   (EXPRSSN2),A
+            LD   A,SMNTCLT0
+            CALL TYPDEMTO
+            RET  C
+            LD   HL,0
+            CALL TYPDEMTW
+            RET  C
+            LD   A,(DCLRTNIN)
+            AND  SCLRMTTY
+            OR   SCLRMTCN
+            JR   .L00001
+.L00000:
+            CALL PRSRTK
+            RET  C
+            LD   A,(DCLRTNIN)
+            AND  SCLRMTTY
+            CALL TYPDEXP2
+            RET  C
+.L00001:
+            LD   D,A
+            LD   A,(DCLRTNIN)
+            AND  SCLRMTTY
+            LD   E,A
+            LD   A,D
+            CALL TYPDCHC0
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,(DCLRTNIN)
+            LD   D,A
+            LD   A,(DCLRTNPY)
+            LD   C,A
+            CALL TYPDEMTS
+            RET  C
+            CALL SYMBLCMM
+            RET  C
+            LD   A,(DCLRTNIN)
+            AND  SCLRMTTY
+            CALL TYPDTYPW
+            LD   HL,NXTLCLSL
+            ADD  A,(HL)
+            LD   (HL),A
+            OR   A
+            RET
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRS8: ;@NUC-GLOBAL TypedParseLocalRun PERMANENT TYPDPRS8
+            CALL PRSRPK
+            RET  C
+            CP   TokenVar
+            JR   Z,.L00000
+            OR   A
+            RET
+.L00000:
+            CALL PRSRTK
+            RET  C
+            CALL TYPDPRSL
+            RET  C
+            JR   TYPDPRS8
+%ENDIF
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEMTL: ;@NUC-GLOBAL TypedEmitLocalDeclare PERMANENT TYPDEMTL
+            CP   SCLRTYP0
+            LD   A,SMNTCDC0
+            JR   NZ,.L00000
+            LD   A,SMNTCDC1
+.L00000:
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(NXTLCLSL)
+            JP   SMNTCSN2
+
+; D is symbol info and C its byte offset.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDEMTS: ;@NUC-GLOBAL TypedEmitStoreByInfo PERMANENT TYPDEMTS
+            LD   A,D
+            AND  SYMBLCL3
+            CP   SYMBLCL0
+            JR   Z,.L00001
+            CP   SYMBLCL1
+            JR   Z,.L00000
+            CP   SYMBLCL2
+            JP   NZ,TYPDTYPF
+            LD   A,D
+            AND  SCLRMTTY
+            CP   SCLRTYP0
+            LD   A,SMNTCST8
+            JR   NZ,.L00003
+            LD   A,SMNTCST9
+            JR   .L00003
+.L00000:
+            LD   A,D
+            AND  SCLRMTTY
+            CP   SCLRTYP0
+            LD   A,SMNTCST5
+            JR   NZ,.L00003
+            LD   A,SMNTCST7
+            JR   .L00003
+.L00001:
+            LD   A,D
+            AND  SCLRMTTY
+            CP   SCLRTYP0
+            LD   A,SMNTCST4
+            JR   NZ,.L00002
+            LD   A,SMNTCST6
+.L00002:
+%IF AggregateCallSlices
+            JP   TYPDEMT0
+%ENDIF
+.L00003:
+            JP   PRSREMTO
+
+%IF HybridLL1Full
+%ELSE
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSS: ;@NUC-GLOBAL TypedParseStatements PERMANENT TYPDPRSS
+            LD   A,1
+            LD   (CNTRLSQN),A
+TYPDPRS9: ;@NUC-GLOBAL TypedParseStatementsContinue PERMANENT TYPDPRS9
+            CALL PRSRPK
+            RET  C
+            CP   TokenEnd
+            RET  Z
+            CP   TKNELSIF
+            RET  Z
+            CP   TKNELS
+            RET  Z
+            CP   TKNRTRN
+            JR   Z,.L00006
+            LD   C,A
+.L00000:
+            LD   A,C
+            CP   TokenIf
+            JR   Z,.L00001
+            CP   TKNWHL
+            JR   Z,.L00002
+            CP   TokenFor
+            JR   Z,.L00003
+            CP   TKNEXT
+            JP   Z,TYPDSTTM
+            CP   TKNCNTN
+            JP   Z,TYPDSTTM
+            CP   TKNNM
+            JP   NZ,PRSREXPK
+            CALL PRSRTK
+            RET  C
+            LD   HL,NMWRTOTP
+            LD   B,15
+            CALL TKNNMEQL
+            JP   C,TYPDPRSW
+%IF AggregateCallSlices
+            CALL STG7FNDR
+            JP   Z,STG7PRS1
+%ENDIF
+            CALL TYPDPRSB
+            RET  C
+            JP   TYPDPRS9
+.L00001:
+            CALL PRSRTK
+            RET  C
+            LD   A,(CNTRLSQN)
+            PUSH AF
+            CALL STRCTRD0
+            JR   C,.L00005
+            LD   C,A
+            POP  AF
+            AND  C
+            LD   (CNTRLSQN),A
+            JP   TYPDPRS9
+.L00002:
+            CALL PRSRTK
+            RET  C
+            LD   A,(CNTRLSQN)
+            PUSH AF
+            CALL STRCTRD1
+            JR   .L00004
+.L00003:
+            CALL PRSRTK
+            RET  C
+            LD   A,(CNTRLSQN)
+            PUSH AF
+            CALL STRCTRD4
+.L00004:
+            JR   C,.L00005
+            POP  AF
+            LD   (CNTRLSQN),A
+            JP   TYPDPRS9
+.L00005:
+            POP  AF
+            SCF
+            RET
+.L00006:
+            CALL PRSRTK
+            RET  C
+%IF AggregateCallSlices
+            LD   A,(STG7CRR2)
+            CP   AGGRGTFR
+            JP   NC,STG7PRS2
+%ENDIF
+            LD   A,(CNTRLRTN)
+            CP   CNTRLRT1
+            JR   NZ,TYPDRTNF
+            LD   A,(CNTRLRSL)
+            CALL TYPDEXP2
+            RET  C
+            LD   D,A
+            LD   A,(CNTRLRSL)
+            LD   E,A
+            LD   A,D
+            CALL TYPDCHC0
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCRT5
+            CALL SMNTCSN5
+            RET  C
+            XOR  A
+            LD   (CNTRLSQN),A
+            JP   TYPDPRS9
+%ENDIF
+TYPDRTNF: ;@NUC-GLOBAL TypedRoutineFlowFailure PERMANENT TYPDRTNF
+            LD   A,DGNSTCR0
+            JP   CMPLRSTD
+%IF HybridLL1Full
+%ELSE
+TYPDSTTM: ;@NUC-GLOBAL TypedStatementTransfer PERMANENT TYPDSTTM
+            LD   (DCLRTNIN),A
+            CALL PRSRTK
+            RET  C
+            LD   A,(DCLRTNIN)
+            CALL STRCTRD2
+            RET  C
+            JP   TYPDPRS9
+TYPDPRSW: ;@NUC-GLOBAL TypedParseWrite PERMANENT TYPDPRSW
+            LD   HL,(TKNSTRTO)
+            LD   (EXPRSSNC),HL
+            CALL PRSREXP1
+            RET  C
+            LD   A,SCLRTYPU
+            CALL TYPDEXP2
+            RET  C
+            LD   E,SCLRTYPU
+            CALL TYPDCHC0
+            RET  C
+            CALL PRSREXP2
+            RET  C
+            LD   A,SMNTCWR2
+            CALL SMNTCSN5
+            RET  C
+            LD   HL,(EXPRSSNC)
+            PUSH HL
+            LD   A,L
+            CALL SMNTCSN2
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SMNTCSN2
+            RET  C
+            CALL PRSREXPN
+            RET  C
+            JP   TYPDPRS9
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+TYPDPRSB: ;@NUC-GLOBAL TypedParseAssignment PERMANENT TYPDPRSB
+            CALL SYMBLLKP
+            RET  C
+            LD   (DCLRTNIN),A
+            LD   (DCLRTNPY),BC
+            LD   D,A
+%IF AggregateCallSlices
+            AND  SYMBLAGG
+            JP   NZ,STG7PRS3
+            LD   A,D
+%ENDIF
+            AND  TEPRFLG
+            JP   NZ,TYPDTYPF
+            LD   A,D
+            AND  SYMBLCL3
+            CP   SYMBLCL1
+            JR   NZ,.L00000
+            CALL CNTRLCHC
+            RET  C
+.L00000:
+            LD   A,D
+            AND  SYMBLCL3
+            JP   Z,TYPDTYPF
+            CALL PRSREXP6
+            RET  C
+            LD   A,(DCLRTNIN)
+            AND  SCLRMTTY
+            CALL TYPDEXP2
+            RET  C
+            LD   D,A
+            LD   A,(DCLRTNIN)
+            AND  SCLRMTTY
+            LD   E,A
+            LD   A,D
+            CALL TYPDCHC0
+            RET  C
+            LD   BC,(DCLRTNPY)
+            LD   A,(DCLRTNIN)
+            LD   D,A
+            CALL TYPDEMTS
+            RET  C
+            JP   PRSREXP0
+
+TYPDPRSE: ;@NUC-GLOBAL TypedParseEndMain PERMANENT TYPDPRSE
+            LD   E,TokenEnd
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCEN5
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(FRWRDORD)
+            OR   A
+            JR   NZ,.L00000
+            LD   E,TokenEof
+            JP   PRSREXPC
+
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+.L00000:
+            CALL PRSRPK
+            RET  C
+            CP   TokenSub
+            JP   NZ,.L00003
+            CALL PRSRTK
+            RET  C
+            LD   D,DGNSTCFR
+            CALL PRSREXPG
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,(CNTRLGLB)
+            LD   (SYMBLCNT),A
+            XOR  A
+            LD   (NXTLCLSL),A
+            LD   HL,(FRWRDPRM)
+            LD   (TKNLXMPN),HL
+            LD   A,(FRWRDPR0)
+            LD   (TKNLNGTH),A
+            LD   A,(FRWRDPR1)
+            OR   SYMBLCL2
+            LD   D,A
+            LD   BC,0
+            CALL SYMBLPR0
+            RET  C
+            CALL SYMBLCMM
+            RET  C
+            LD   A,(FRWRDPR1)
+            CALL TYPDTYPW
+            LD   (NXTLCLSL),A
+            LD   A,CNTRLRT1
+            LD   (CNTRLRTN),A
+            LD   A,(FRWRDRSL)
+            LD   (CNTRLRSL),A
+            LD   A,1
+            LD   (CNTRLSQN),A
+            LD   A,SMNTCBG6
+            CALL SMNTCSN5
+            RET  C
+            LD   A,(FRWRDORD)
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(FRWRDPR1)
+            CALL SMNTCSN2
+            RET  C
+.L00001:
+            CALL TYPDPRS8
+            RET  C
+.L00002:
+            CALL TYPDPRSS
+            RET  C
+            LD   A,(CNTRLSQN)
+            OR   A
+            JP   NZ,TYPDRTNF
+            LD   E,TokenEnd
+            CALL PRSREXPC
+            RET  C
+            CALL PRSREXP0
+            RET  C
+            LD   A,SMNTCEN7
+            CALL SMNTCSN5
+            RET  C
+            LD   A,1
+            LD   (FRWRDCMP),A
+            LD   E,TokenEof
+            JP   PRSREXPC
+%ENDIF
+.L00003:
+            LD   A,DGNSTCF0
+            JP   CMPLRSTD

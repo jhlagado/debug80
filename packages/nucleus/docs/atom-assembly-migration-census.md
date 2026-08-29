@@ -99,6 +99,20 @@ Do not use permanent symbols for flattened preview output. Flattening can split
 inside private-label scopes, so it deliberately remains on generated preview
 symbols.
 
+The named permanent-source materialization command writes and checks the
+source-controlled Atom tree:
+
+```bash
+npm run atom:migration:materialize -w nucleus
+npm run atom:migration:materialize:check -w nucleus
+```
+
+The check command regenerates the permanent Atom source into a temporary tree
+and compares it with `packages/nucleus/atom-asm`. It fails on missing, changed,
+or extra files. The write command replaces that tree from the current AZM
+source and migration ledger. Keep the AZM source as the fallback authority until
+the Nucleus compiler and proof runner explicitly select Atom by default.
+
 Generated permanent Atom source hoists top-level feature definitions into the
 entry definition header before `%INCLUDE`, `%IF`, `ORG`, labels, code, data, and
 contract comments. The raw Nucleus source still reports those placements as
@@ -992,10 +1006,9 @@ compatibility-lowered Atom path remains useful for proof comparison and for
 guarding older preview workflows, but it is no longer required to hide source
 structure that permanent Atom source cannot express.
 
-The proof harness now runs every non-measurement, non-overlapping-memory proof
-manifest that has a permanent Atom layout. The remaining migration work is to
-convert more source permanently while preserving the existing fallback until
-all proof images have a permanent Atom route, then curate the human-facing
-permanent symbol names.
+The proof harness now runs every non-measurement proof manifest that has a
+permanent Atom layout. The remaining migration work is to check in the generated
+Atom source tree, preserve the AZM fallback until the compiler and proof runner
+select Atom deliberately, then curate the human-facing permanent symbol names.
 
 The migration should therefore start with tooling, not manual source edits.

@@ -15,6 +15,7 @@ authority. Current authorities live in the
 | `docs/`    | language and runtime authorities, implementation plan, and charter   |
 | `grammar/` | machine-readable Stage 7 grammar, generator, and packed LL(1) tables |
 | `asm/`     | direct-Z80 compiler, runtime, and executable AZM proof fixtures      |
+| `atom-asm/` | generated permanent Atom translation of the Z80 assembly tree        |
 | `proofs/`  | bounded memory profiles and proof-harness manifests                  |
 | `src/`     | host-side grammar, manifest, runtime, and metadata support           |
 | `test/`    | grammar, contract, measurement, and direct-Z80 proof gates           |
@@ -75,6 +76,7 @@ npm run cli -w nucleus -- publish --root path/to/project src/main.nu build/progr
 npm run source:prepare -w nucleus -- --root path/to/project src/main.nu
 npm run proof -w nucleus
 npm run measure -w nucleus
+npm run atom:migration:materialize:check -w nucleus
 npm test -w nucleus
 ```
 
@@ -94,3 +96,9 @@ for Nucleus.
 
 The older direct npm scripts remain compatibility shortcuts while the command
 surface converges.
+
+`npm run atom:migration:materialize -w nucleus` regenerates the permanent Atom
+translation under `atom-asm/`. The matching check command compares that tree
+with a fresh temporary translation and fails on drift. The AZM source in `asm/`
+remains the fallback path until the compiler and proof runner explicitly switch
+their default assembler.

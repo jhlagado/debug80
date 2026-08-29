@@ -1,0 +1,6 @@
+            ORG SRCBS
+PRFSRC: ;@NUC-GLOBAL ProofSource PERMANENT PRFSRC
+            DB  "sub main() fails",10
+            DB  "    writeOutputByte('A') else fail",10
+            DB  "end",10
+PRFSRCEN: ;@NUC-GLOBAL ProofSourceEnd PERMANENT PRFSRCEN

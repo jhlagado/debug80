@@ -1,0 +1,107 @@
+; Compact target descriptor retained by pointer across source parsing. The
+; part-bank array remains adapter-owned and stable for the compilation.
+; The descriptor itself belongs to the operating adapter and remains stable.
+
+TRGTDSCR   EQU 0   ;@NUC-GLOBAL TargetDescriptorRuntimeIdentity PERMANENT TRGTDSCR; word
+TRGTDSC0         EQU 2   ;@NUC-GLOBAL TargetDescriptorImageBase PERMANENT TRGTDSC0; word
+TRGTDSC1     EQU 4   ;@NUC-GLOBAL TargetDescriptorImageCapacity PERMANENT TRGTDSC1; word
+TRGTDSC2      EQU 6   ;@NUC-GLOBAL TargetDescriptorWritableBase PERMANENT TRGTDSC2; word
+TRGTDSC3  EQU 8   ;@NUC-GLOBAL TargetDescriptorWritableCapacity PERMANENT TRGTDSC3; word
+TRGTDSC4             EQU 10  ;@NUC-GLOBAL TargetDescriptorFlags PERMANENT TRGTDSC4; byte
+TRGTDSC5         EQU 11  ;@NUC-GLOBAL TargetDescriptorBankCount PERMANENT TRGTDSC5; byte
+TRGTDSC6         EQU 12  ;@NUC-GLOBAL TargetDescriptorEntryBank PERMANENT TRGTDSC6; byte
+TRGTDSC7  EQU 13  ;@NUC-GLOBAL TargetDescriptorPartBanksPointer PERMANENT TRGTDSC7; word
+TRGTDSC8              EQU 15 ;@NUC-GLOBAL TargetDescriptorSize PERMANENT TRGTDSC8
+TRGTDSC9    EQU 1 ;@NUC-GLOBAL TargetDescriptorEstablishStack PERMANENT TRGTDSC9
+TRGTSTCK            EQU 3840 ;@NUC-GLOBAL TargetStackRequirement PERMANENT TRGTSTCK
+
+; Target-only parse-time aggregate-constant lengths reuse dead post-fixup
+; workspace at the same addresses as the historical segmented proof fields.
+; They do not depend on generated-image publication metadata.
+TRGTBNK0  EQU EMTCNTR6+2 ;@NUC-GLOBAL TargetBankRoLengthBase PERMANENT TRGTBNK0
+TRGTBNK1 EQU TRGTBNK0+2*TRGTBNKC ;@NUC-GLOBAL TargetBankRoLengthLimit PERMANENT TRGTBNK1
+TRGTBNK2      EQU EMTCNTR6+16 ;@NUC-GLOBAL TargetBankStateBase PERMANENT TRGTBNK2
+TRGTBNK3      EQU 4 ;@NUC-GLOBAL TargetBankStateSize PERMANENT TRGTBNK3
+TRGTBNK4    EQU 0  ;@NUC-GLOBAL TargetBankStateCursor PERMANENT TRGTBNK4; word
+TRGTBNK5 EQU 2  ;@NUC-GLOBAL TargetBankStateRemaining PERMANENT TRGTBNK5; word
+TRGTBNK6     EQU TRGTBNK2+TRGTBNK3*TRGTBNKC ;@NUC-GLOBAL TargetBankStateLimit PERMANENT TRGTBNK6
+
+TRGTDSCA EQU SRCMLTPR  ;@NUC-GLOBAL TargetDescriptorPointer PERMANENT TRGTDSCA; word
+TRGTCMPL EQU TRGTDSCA+2 ;@NUC-GLOBAL TargetCompilerWorkspaceEnd PERMANENT TRGTCMPL
+
+; Parsing has completed before these values become live. They reuse the dead
+; LL(1) parser stack beginning at TargetCompilerWorkspaceEnd.
+TRGTLYTB          EQU TRGTCMPL ;@NUC-GLOBAL TargetLayoutBase PERMANENT TRGTLYTB
+TRGTOTPT          EQU TRGTLYTB+$00 ;@NUC-GLOBAL TargetOutputBank PERMANENT TRGTOTPT
+TRGTIMGB           EQU TRGTLYTB+$01  ;@NUC-GLOBAL TargetImageBase PERMANENT TRGTIMGB; word
+TRGTIMGC       EQU TRGTLYTB+$03  ;@NUC-GLOBAL TargetImageCapacity PERMANENT TRGTIMGC; word
+TRGTLNKD   EQU TRGTLYTB+$05  ;@NUC-GLOBAL TargetLinkedRuntimeBase PERMANENT TRGTLNKD; word
+TRGTRDON        EQU TRGTLYTB+$07  ;@NUC-GLOBAL TargetReadOnlyBase PERMANENT TRGTRDON; word
+TRGTRDO0      EQU TRGTLYTB+$09  ;@NUC-GLOBAL TargetReadOnlyLength PERMANENT TRGTRDO0; word
+TRGTCDBS            EQU TRGTLYTB+$0B  ;@NUC-GLOBAL TargetCodeBase PERMANENT TRGTCDBS; word
+TRGTCDLN          EQU TRGTLYTB+$0D  ;@NUC-GLOBAL TargetCodeLength PERMANENT TRGTCDLN; word
+TRGTCDCP        EQU TRGTLYTB+$0F  ;@NUC-GLOBAL TargetCodeCapacity PERMANENT TRGTCDCP; word
+; During lowering these flat-publication fields are otherwise dead and retain
+; the selected bank's aggregate-constant bounds. Banked MAP publication uses
+; the per-bank tables, so the overlay does not destroy required state.
+TRGTCRR1   EQU TRGTCDLN ;@NUC-GLOBAL TargetCurrentRoCapacity PERMANENT TRGTCRR1
+TRGTCRR2       EQU TRGTCDCP ;@NUC-GLOBAL TargetCurrentRoBase PERMANENT TRGTCRR2
+TRGTWRTB        EQU TRGTLYTB+$11  ;@NUC-GLOBAL TargetWritableBase PERMANENT TRGTWRTB; word
+TRGTWRT0    EQU TRGTLYTB+$13  ;@NUC-GLOBAL TargetWritableCapacity PERMANENT TRGTWRT0; word
+TRGTBSSB             EQU TRGTLYTB+$15  ;@NUC-GLOBAL TargetBssBase PERMANENT TRGTBSSB; word
+TRGTLYTM          EQU TRGTLYTB+$17 ;@NUC-GLOBAL TargetLayoutMode PERMANENT TRGTLYTM
+TRGTSTC0           EQU TRGTLYTB+$18 ;@NUC-GLOBAL TargetStackMode PERMANENT TRGTSTC0
+TRGTSTRT       EQU TRGTLYTB+$19  ;@NUC-GLOBAL TargetStartupLength PERMANENT TRGTSTRT; word
+TRGTTRMN     EQU TRGTLYTB+$1B  ;@NUC-GLOBAL TargetTerminalAddress PERMANENT TRGTTRMN; word
+TRGTRNT1      EQU TRGTLYTB+$1D ;@NUC-GLOBAL TargetRuntimeContext PERMANENT TRGTRNT1
+TRGTCNTX  EQU TRGTRNT1+$00  ;@NUC-GLOBAL TargetContextRuntimeBase PERMANENT TRGTCNTX; word
+TRGTCNT0 EQU TRGTRNT1+$02  ;@NUC-GLOBAL TargetContextWritableBase PERMANENT TRGTCNT0; word
+TRGTCNT1 EQU TRGTRNT1+$04  ;@NUC-GLOBAL TargetContextWritableCapacity PERMANENT TRGTCNT1; word
+TRGTCNT2    EQU TRGTRNT1+$06  ;@NUC-GLOBAL TargetContextStateBase PERMANENT TRGTCNT2; word
+TRGTCNT3   EQU TRGTRNT1+$08  ;@NUC-GLOBAL TargetContextVectorBase PERMANENT TRGTCNT3; word
+TRGTCNT4     EQU TRGTRNT1+$0A  ;@NUC-GLOBAL TargetContextDataBase PERMANENT TRGTCNT4; word
+TRGTCNT5 EQU TRGTRNT1+$0C  ;@NUC-GLOBAL TargetContextDataCapacity PERMANENT TRGTCNT5; word
+TRGTCNT6   EQU TRGTRNT1+$0E  ;@NUC-GLOBAL TargetContextRoDataBase PERMANENT TRGTCNT6; word
+TRGTCNT7 EQU TRGTRNT1+$10  ;@NUC-GLOBAL TargetContextRoDataCapacity PERMANENT TRGTCNT7; word
+TRGTCNT8         EQU $12 ;@NUC-GLOBAL TargetContextSize PERMANENT TRGTCNT8
+; Finalization begins only after startup/code emission and any loaded-mode
+; provider request. The complete map therefore reuses dead startup, terminal,
+; and runtime-link-context storage without increasing compiler workspace.
+TRGTFLTM         EQU TRGTSTRT ;@NUC-GLOBAL TargetFlatMapBase PERMANENT TRGTFLTM
+TRGTMPEN        EQU TRGTFLTM+$00 ;@NUC-GLOBAL TargetMapEntryBank PERMANENT TRGTMPEN
+TRGTMPE0     EQU TRGTFLTM+$01  ;@NUC-GLOBAL TargetMapEntryAddress PERMANENT TRGTMPE0; word
+TRGTMPUS       EQU TRGTFLTM+$03  ;@NUC-GLOBAL TargetMapUsedLength PERMANENT TRGTMPUS; word
+TRGTMPRD     EQU TRGTFLTM+$05  ;@NUC-GLOBAL TargetMapReadOnlyBase PERMANENT TRGTMPRD; word
+TRGTMPR0   EQU TRGTFLTM+$07  ;@NUC-GLOBAL TargetMapReadOnlyLength PERMANENT TRGTMPR0; word
+TRGTMPCD         EQU TRGTFLTM+$09  ;@NUC-GLOBAL TargetMapCodeBase PERMANENT TRGTMPCD; word
+TRGTMPC0       EQU TRGTFLTM+$0B  ;@NUC-GLOBAL TargetMapCodeLength PERMANENT TRGTMPC0; word
+TRGTMPWR     EQU TRGTFLTM+$0D  ;@NUC-GLOBAL TargetMapWritableBase PERMANENT TRGTMPWR; word
+TRGTMPW0 EQU TRGTFLTM+$0F  ;@NUC-GLOBAL TargetMapWritableCapacity PERMANENT TRGTMPW0; word
+TRGTMPVC       EQU TRGTFLTM+$11  ;@NUC-GLOBAL TargetMapVectorBase PERMANENT TRGTMPVC; word
+TRGTMPV0     EQU TRGTFLTM+$13  ;@NUC-GLOBAL TargetMapVectorLength PERMANENT TRGTMPV0; word
+TRGTMPIN  EQU TRGTFLTM+$15  ;@NUC-GLOBAL TargetMapInitializedBase PERMANENT TRGTMPIN; word
+TRGTMPI0 EQU TRGTFLTM+$17  ;@NUC-GLOBAL TargetMapInitializedLength PERMANENT TRGTMPI0; word
+TRGTMPBS          EQU TRGTFLTM+$19  ;@NUC-GLOBAL TargetMapBssBase PERMANENT TRGTMPBS; word
+TRGTMPB0        EQU TRGTFLTM+$1B  ;@NUC-GLOBAL TargetMapBssLength PERMANENT TRGTMPB0; word
+TRGTMPST EQU TRGTFLTM+$1D  ;@NUC-GLOBAL TargetMapStackRequirement PERMANENT TRGTMPST; word
+TRGTMPDT     EQU TRGTFLTM+$1F ;@NUC-GLOBAL TargetMapDataLoadBank PERMANENT TRGTMPDT
+TRGTMPD0  EQU TRGTFLTM+$20  ;@NUC-GLOBAL TargetMapDataLoadAddress PERMANENT TRGTMPD0; word
+TRGTMPD1   EQU TRGTFLTM+$22  ;@NUC-GLOBAL TargetMapDataLoadLength PERMANENT TRGTMPD1; word
+TRGTMPAG    EQU TRGTFLTM+$24  ;@NUC-GLOBAL TargetMapAggregateBase PERMANENT TRGTMPAG; word
+TRGTMPA0  EQU TRGTFLTM+$26  ;@NUC-GLOBAL TargetMapAggregateLength PERMANENT TRGTMPA0; word
+TRGTMPSZ             EQU $28 ;@NUC-GLOBAL TargetMapSize PERMANENT TRGTMPSZ
+TRGTLYTE           EQU TRGTFLTM+TRGTMPSZ ;@NUC-GLOBAL TargetLayoutEnd PERMANENT TRGTLYTE
+; The retained descriptor bytes remain live during both parsing and lowering,
+; so they follow the shared 64-byte parser-stack/post-parse-layout overlay.
+TRGTDSCB EQU TRGTLYTE  ;@NUC-GLOBAL TargetDescriptorBankCountValue PERMANENT TRGTDSCB; byte
+TRGTDSCC EQU TRGTDSCB+1  ;@NUC-GLOBAL TargetDescriptorEntryBankValue PERMANENT TRGTDSCC; byte
+TRGTSRCP     EQU TRGTDSCC+1  ;@NUC-GLOBAL TargetSourcePartCount PERMANENT TRGTSRCP; byte
+TRGTWRKS        EQU TRGTSRCP+1 ;@NUC-GLOBAL TargetWorkspaceEnd PERMANENT TRGTWRKS
+
+DGNSTCT2 EQU 95 ;@NUC-GLOBAL DiagnosticTargetConfiguration PERMANENT DGNSTCT2
+DGNSTCT3      EQU 96 ;@NUC-GLOBAL DiagnosticTargetCapacity PERMANENT DGNSTCT3
+DGNSTCT4        EQU 97 ;@NUC-GLOBAL DiagnosticTargetOutput PERMANENT DGNSTCT4
+
+TRGTLYTL EQU 0 ;@NUC-GLOBAL TargetLayoutLoaded PERMANENT TRGTLYTL
+TRGTLYTR    EQU 1 ;@NUC-GLOBAL TargetLayoutRom PERMANENT TRGTLYTR
+TRGTOTP0 EQU $FF ;@NUC-GLOBAL TargetOutputClosed PERMANENT TRGTOTP0

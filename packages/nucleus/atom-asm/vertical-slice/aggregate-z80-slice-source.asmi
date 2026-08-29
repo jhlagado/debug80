@@ -1,0 +1,183 @@
+            ORG SRCBS
+AGGRGTAC: ;@NUC-GLOBAL AggregateAcceptedSource PERMANENT AGGRGTAC
+            DB "record Pixel",10
+            DB "r as u8",10
+            DB "g as u8",10
+            DB "b as u8",10
+            DB "end",10
+            DB "record Entry",10
+            DB "id as u16",10
+            DB "color as Pixel",10
+            DB "label as string[4]",10
+            DB "samples as u8[3]",10
+            DB "end",10
+            DB "var zero as Entry",10
+            DB "var one as Entry = (513,(1,2,3),\"A\\xAf\",[4,5,6])",10
+            DB "var many as Entry[2] = ["
+            DB "(1,(7,8,9),\"xy\",[10,11,12]),"
+            DB "(2,(13,14,15),\"\",[16,17,18])]",10
+            DB "sub main() fails",10
+            DB "end",10
+AGGRGTA0: ;@NUC-GLOBAL AggregateAcceptedSourceEnd PERMANENT AGGRGTA0
+
+AGGRGTCN: ;@NUC-GLOBAL AggregateCountSource PERMANENT AGGRGTCN
+            DB "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            DB "var bad as Pair = (1)",10
+.L00000:
+            DB "sub main() fails",10,"end",10
+AGGRGTC2: ;@NUC-GLOBAL AggregateCountSourceEnd PERMANENT AGGRGTC2
+
+AGGRGTSH: ;@NUC-GLOBAL AggregateShapeSource PERMANENT AGGRGTSH
+            DB "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            DB "var bad as Pair = [1,2]",10
+AGGRGTS1: ;@NUC-GLOBAL AggregateShapeSourceEnd PERMANENT AGGRGTS1
+
+AGGRGTTM: ;@NUC-GLOBAL AggregateTooManySource PERMANENT AGGRGTTM
+            DB "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            DB "var bad as Pair = (1,2,3)",10
+AGGRGTT2: ;@NUC-GLOBAL AggregateTooManySourceEnd PERMANENT AGGRGTT2
+
+AGGRGTCL: ;@NUC-GLOBAL AggregateCloseShapeSource PERMANENT AGGRGTCL
+            DB "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            DB "var bad as Pair = (1,2]",10
+AGGRGTC3: ;@NUC-GLOBAL AggregateCloseShapeSourceEnd PERMANENT AGGRGTC3
+
+AGGRGTT3: ;@NUC-GLOBAL AggregateTypeSource PERMANENT AGGRGTT3
+            DB "var bad as u8 = true",10
+AGGRGTT4: ;@NUC-GLOBAL AggregateTypeSourceEnd PERMANENT AGGRGTT4
+
+AGGRGTR0: ;@NUC-GLOBAL AggregateRecordNameScalarSource PERMANENT AGGRGTR0
+            DB "record R",10,"v as u8",10,"end",10
+            DB "sub main() fails",10
+            DB "writeOutputByte(R) else fail",10
+            DB "end",10
+AGGRGTR1: ;@NUC-GLOBAL AggregateRecordNameScalarSourceEnd PERMANENT AGGRGTR1
+
+AGGRGTOB: ;@NUC-GLOBAL AggregateObjectScalarSource PERMANENT AGGRGTOB
+            DB "record R",10,"v as u8",10,"end",10
+            DB "var item as R",10
+            DB "sub main() fails",10
+            DB "writeOutputByte(item) else fail",10
+            DB "end",10
+AGGRGTO0: ;@NUC-GLOBAL AggregateObjectScalarSourceEnd PERMANENT AGGRGTO0
+
+AGGRGTO1: ;@NUC-GLOBAL AggregateObjectAssignmentSource PERMANENT AGGRGTO1
+            DB "record R",10,"v as u8",10,"end",10
+            DB "var item as R",10
+            DB "sub main() fails",10
+            DB "item = 1",10
+            DB "end",10
+AGGRGTO2: ;@NUC-GLOBAL AggregateObjectAssignmentSourceEnd PERMANENT AGGRGTO2
+
+AGGRGTR2: ;@NUC-GLOBAL AggregateRecordStepSource PERMANENT AGGRGTR2
+            DB "record R",10,"v as u8",10,"end",10
+            DB "sub main() fails",10
+            DB "var i as u8 = 0",10
+            DB "for i = 0 until 10 step "
+.L00000:
+            DB "R",10
+            DB "end",10,"end",10
+AGGRGTR3: ;@NUC-GLOBAL AggregateRecordStepSourceEnd PERMANENT AGGRGTR3
+
+AGGRGTDP: ;@NUC-GLOBAL AggregateDuplicateFieldSource PERMANENT AGGRGTDP
+            DB "record R",10,"first as u8",10
+.L00000:
+            DB "first as u16",10,"end",10
+AGGRGTD0: ;@NUC-GLOBAL AggregateDuplicateFieldSourceEnd PERMANENT AGGRGTD0
+
+AGGRGTS2: ;@NUC-GLOBAL AggregateStringLengthSource PERMANENT AGGRGTS2
+            DB "var bad as string[2] = \"abc\"",10
+AGGRGTS3: ;@NUC-GLOBAL AggregateStringLengthSourceEnd PERMANENT AGGRGTS3
+
+AGGRGTBL: ;@NUC-GLOBAL AggregateBooleanSource PERMANENT AGGRGTBL
+            DB "record Flags",10
+            DB "off as boolean",10,"enabled as boolean",10,"end",10
+            DB "var flags as Flags = (false,true)",10
+            DB "sub main() fails",10,"end",10
+AGGRGTB0: ;@NUC-GLOBAL AggregateBooleanSourceEnd PERMANENT AGGRGTB0
+
+AGGRGTID: ;@NUC-GLOBAL AggregateIdentitySource PERMANENT AGGRGTID
+            DB "record A",10,"x as u8",10,"end",10
+            DB "record B",10,"x as u8",10,"end",10
+            DB "var first as u8[2]",10
+            DB "var second as u8[2]",10
+            DB "sub main() fails",10,"end",10
+AGGRGTI4: ;@NUC-GLOBAL AggregateIdentitySourceEnd PERMANENT AGGRGTI4
+
+AGGRGTML: ;@NUC-GLOBAL AggregateMalformedEscapeSource PERMANENT AGGRGTML
+            DB "var bad as string[1] = \"\\q\"",10
+AGGRGTM0: ;@NUC-GLOBAL AggregateMalformedEscapeSourceEnd PERMANENT AGGRGTM0
+
+AGGRGTS4: ;@NUC-GLOBAL AggregateStringExtentCapacitySource PERMANENT AGGRGTS4
+            DB "var bad as string[25"
+AGGRGTS5: ;@NUC-GLOBAL AggregateStringExtentCapacityDigit PERMANENT AGGRGTS5
+            DB "4"
+.L00000:
+            DB "]",10
+AGGRGTS6: ;@NUC-GLOBAL AggregateStringExtentCapacitySourceEnd PERMANENT AGGRGTS6
+
+AGGRGTEM: ;@NUC-GLOBAL AggregateEmptyRecordSource PERMANENT AGGRGTEM
+            DB "record Empty",10,"end",10
+AGGRGTE2: ;@NUC-GLOBAL AggregateEmptyRecordSourceEnd PERMANENT AGGRGTE2
+
+AGGRGTR4: ;@NUC-GLOBAL AggregateRecordCapacitySource PERMANENT AGGRGTR4
+            DB "record R1",10,"v as u8",10,"end",10
+            DB "record R2",10,"v as u8",10,"end",10
+            DB "record R3",10,"v as u8",10,"end",10
+            DB "record R4",10,"v as u8",10,"end",10
+            DB "record R5",10,"v as u8",10,"end",10
+            DB "record R6",10,"v as u8",10,"end",10
+AGGRGTR5: ;@NUC-GLOBAL AggregateRecordCapacitySourceEnd PERMANENT AGGRGTR5
+
+AGGRGTF0: ;@NUC-GLOBAL AggregateFieldCapacitySource PERMANENT AGGRGTF0
+            DB "record Wide",10
+            DB "a as u8",10,"b as u8",10,"c as u8",10
+            DB "d as u8",10,"e as u8",10,"f as u8",10
+            DB "g as u8",10,"h as u8",10,"i as u8",10
+            DB "j as u8",10,"k as u8",10,"l as u8",10
+            DB "m as u8",10,"end",10
+AGGRGTF1: ;@NUC-GLOBAL AggregateFieldCapacitySourceEnd PERMANENT AGGRGTF1
+
+AGGRGTMT: ;@NUC-GLOBAL AggregateMetadataSource PERMANENT AGGRGTMT
+            DB "record Wide",10
+            DB "a as string[1]",10,"b as string[2]",10
+            DB "c as string[3]",10,"d as string[4]",10
+            DB "e as string[5]",10,"f as string[6]",10
+            DB "g as string[7]",10,"h as string[8]",10
+.L00000:
+            DB "i as string[9]",10,"end",10
+AGGRGTM1: ;@NUC-GLOBAL AggregateMetadataSourceEnd PERMANENT AGGRGTM1
+
+AGGRGTD1: ;@NUC-GLOBAL AggregateDepthSource PERMANENT AGGRGTD1
+            DB "record R1",10,"v as u8",10,"end",10
+            DB "record R2",10,"v as R1",10,"end",10
+            DB "record R3",10,"v as R2",10,"end",10
+            DB "record R4",10,"v as R3",10,"end",10
+            DB "record R5",10,"v as R4",10,"end",10
+            DB "var deep as R5 = (((((1)))))",10
+AGGRGTD2: ;@NUC-GLOBAL AggregateDepthSourceEnd PERMANENT AGGRGTD2
+
+AGGRGTEL: ;@NUC-GLOBAL AggregateElementCapacityAcceptedSource PERMANENT AGGRGTEL
+            DB "var items as u8[31] = ["
+            DB "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            DB "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]",10
+            DB "sub main() fails",10,"end",10
+AGGRGTE3: ;@NUC-GLOBAL AggregateElementCapacityAcceptedSourceEnd PERMANENT AGGRGTE3
+
+AGGRGTE4: ;@NUC-GLOBAL AggregateElementCapacityRejectedSource PERMANENT AGGRGTE4
+            DB "var items as u8[32] = ["
+            DB "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            DB "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]",10
+            DB "sub main() fails",10,"end",10
+AGGRGTE5: ;@NUC-GLOBAL AggregateElementCapacityRejectedSourceEnd PERMANENT AGGRGTE5
+
+AGGRGTDT: ;@NUC-GLOBAL AggregateDataCapacitySource PERMANENT AGGRGTDT
+            DB "var a as u8[255]",10
+            DB "var b as u8"
+.L00000:
+            DB 10
+AGGRGTD3: ;@NUC-GLOBAL AggregateDataCapacitySourceEnd PERMANENT AGGRGTD3
+
+AGGRGTT5: ;@NUC-GLOBAL AggregateTypeExtentCapacitySource PERMANENT AGGRGTT5
+            DB "var huge as u16[128]",10
+AGGRGTT6: ;@NUC-GLOBAL AggregateTypeExtentCapacitySourceEnd PERMANENT AGGRGTT6

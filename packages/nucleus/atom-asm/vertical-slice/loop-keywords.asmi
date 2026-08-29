@@ -1,0 +1,113 @@
+%IF AggregateCallSlices
+LKSRU8 EQU STG8CLLB+STG8SRV8
+LKSRSW EQU STG8CLLB+STG8SRV3
+LKRDIN EQU LKSRU8+STG8SRV0
+LKRDSB EQU LKSRU8+STG8SRV2
+%ENDIF
+
+; Compact variable-length keyword table followed by parser-only names.
+
+KYWRDTBL: ;@NUC-GLOBAL KeywordTable PERMANENT KYWRDTBL
+            DB  3,"var",TokenVar
+            DB  2,"as",TokenAs
+            DB  2,"u8",TokenU8
+            DB  3,"u16",TokenU16
+            DB  7,"boolean",TKNBLN
+            DB  4,"true",TKNTR
+            DB  5,"false",TKNFLS0
+            DB  5,"const",TKNCNST
+            DB  2,"or",TokenOr
+            DB  3,"xor",TokenXor
+            DB  3,"mod",TokenMod
+            DB  6,"assert",TKNASSRT
+            DB  3,"and",TokenAnd
+            DB  3,"not",TokenNot
+            DB  4,"fail",TKNFL
+            DB  3,"end",TokenEnd
+            DB  3,"sub",TokenSub
+            DB  5,"fails",TKNFLS
+            DB  3,"for",TokenFor
+            DB  5,"until",TKNUNTL
+            DB  7,"forward",TKNFRWRD
+            DB  6,"return",TKNRTRN
+            DB  2,"if",TokenIf
+            DB  6,"elseif",TKNELSIF
+            DB  4,"else",TKNELS
+            DB  5,"while",TKNWHL
+            DB  2,"to",TokenTo
+            DB  4,"step",TKNSTP
+            DB  4,"exit",TKNEXT
+            DB  8,"continue",TKNCNTN
+            DB  6,"record",TKNRCRD
+            DB  6,"string",TKNSTRN0
+            DB  6,"handle",TKNHNDL
+KYWRDCNT            EQU 34 ;@NUC-GLOBAL KeywordCount PERMANENT KYWRDCNT
+
+PNCTTNTB: ;@NUC-GLOBAL PunctuationTable PERMANENT PNCTTNTB
+            DB  "=",TKNEQLS
+            DB  ",",TKNCMM
+            DB  "-",TKNMNS
+            DB  "+",TKNPLS
+            DB  "*",TKNSTR
+            DB  "/",TKNSLSH
+            ; High-bit descriptors route numeric prefixes to the based-number
+            ; scanner; the low seven bits retain its one-past digit count.
+%IF AggregateCallSlices
+            DB  ".",TokenDot
+            DB  "$",$85
+            DB  "%",$91
+PNCTTNCN        EQU 9 ;@NUC-GLOBAL PunctuationCount PERMANENT PNCTTNCN
+%ELSE
+            DB  "$",$85
+            DB  "%",$91
+PNCTTNCN        EQU 8 ;@NUC-GLOBAL PunctuationCount PERMANENT PNCTTNCN
+%ENDIF
+
+NameMain:               DB "main"
+%IF LegacyCompilerSlices
+NMINDX:              DB "index" ;@NUC-GLOBAL NameIndex PERMANENT NMINDX
+NMBYTS:              DB "bytes" ;@NUC-GLOBAL NameBytes PERMANENT NMBYTS
+%ENDIF
+%IF AggregateCallSlices
+NMLNGTH:             DB "length" ;@NUC-GLOBAL NameLength PERMANENT NMLNGTH
+
+; Predefined services and error constants remain ordinary names to the
+; tokenizer. The packed table gives the parser one namespace and dispatch
+; authority without installing source-visible symbol entries.
+STG8PRD0: ;@NUC-GLOBAL Stage8PredefinedTable PERMANENT STG8PRD0
+            DB 13
+NMRDINPT: ;@NUC-GLOBAL NameReadInputByte PERMANENT NMRDINPT
+            DB "readInputByte"
+            DB 15
+NMWRTOTP: ;@NUC-GLOBAL NameWriteOutputByte PERMANENT NMWRTOTP
+            DB "writeOutputByte"
+            DB 15,"readStorageByte"
+            DB 18,"rewindStorageInput"
+            DB 16,"writeStorageByte"
+            DB 17,"seekStorageOutput"
+            DB 10,"endOfInput"
+            DB 12,"inputFailure"
+            DB 13,"outputFailure"
+            DB 14,"storageFailure"
+STG8PRD1 EQU 10 ;@NUC-GLOBAL Stage8PredefinedCount PERMANENT STG8PRD1
+
+
+; Complete service selectors: target ID in bits 0..2, argument type in bits
+; 3..4, successful u8 result in bit 5, and service kind in bit 7.
+STG8SRV9: ;@NUC-GLOBAL Stage8ServiceSignatureTable PERMANENT STG8SRV9
+            DB LKRDIN
+            DB STG8CLLB+(SCLRTYPU*8)+STG8SRV1
+            DB LKRDSB
+            DB LKSRSW
+            DB STG8CLLB+(SCLRTYPU*8)+STG8SRV4
+            DB STG8CLLB+(SCLRTYP0*8)+STG8SRV5
+%ELSE
+; Earlier proof fixtures retain their deliberately narrower parsers. These
+; names are their immutable comparison strings and are not a second service
+; namespace in the active packed LL(1) compiler.
+NMRDINPT:      DB "readInputByte" ;@NUC-GLOBAL NameReadInputByte PERMANENT NMRDINPT
+NMWRTOTP:    DB "writeOutputByte" ;@NUC-GLOBAL NameWriteOutputByte PERMANENT NMWRTOTP
+%ENDIF
+%IF LegacyCompilerSlices
+NMRSLT:             DB "result" ;@NUC-GLOBAL NameResult PERMANENT NMRSLT
+%ENDIF

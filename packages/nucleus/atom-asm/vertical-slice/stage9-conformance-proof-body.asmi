@@ -1,0 +1,887 @@
+            ORG $D000
+S9E00 EQU CHPTR21Q-CHPTR21P
+S9E01 EQU CHPTR21U-CHPTR21S
+S9E02 EQU CHPTR22Z-CHPTR22Y
+S9E03 EQU CHPTR232+5-CHPTR231
+S9E04 EQU CHPTR235-CHPTR234
+S9E05 EQU CHPTR238-CHPTR237
+S9E06 EQU CHPTR23B+3-CHPTR23A
+S9E07 EQU CHPTR23E-CHPTR23D
+S9E08 EQU CHPTR23H-CHPTR23G
+S9E09 EQU CHPTR23K-CHPTR23J
+S9E0A EQU CHPTR23N-CHPTR23M
+S9E0B EQU CHPTR23Q-CHPTR23P
+S9E0C EQU CHPTR23T-CHPTR23S
+S9E0D EQU CHPTR23W-CHPTR23V
+S9E0E EQU CHPTR23Z-CHPTR23Y
+S9E0F EQU CHPTR242-CHPTR241
+S9E0G EQU CHPTR245+4-CHPTR244
+S9E0H EQU CHPTR24K-CHPTR24J
+S9E0I EQU CHPTR22C-CHPTR22B
+S9E0J EQU CHPTR22H-CHPTR22G
+S9E0K EQU CHPTR21X-CHPTR21W
+S9E0L EQU CHPTR22O-CHPTR22N
+S9E0M EQU CHPTR22R-CHPTR22Q
+S9E0N EQU CHPTR22W-CHPTR22V
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFSTTS),A
+            LD   (PRFCS),A
+            LD   (PRFMXGNR),A
+            LD   (PRFMXGNR+1),A
+
+            LD   A,2
+            LD   HL,CHPTR21A
+            CALL CMPLAGGR
+            JP   C,PRFCMPLF
+            CALL ENCDAGGR
+            JP   C,PRFENCDF
+            CALL .L00002
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFRNFLR
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRNFLR
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFRNFLR
+            LD   A,(SRVCOTP0)
+            CP   'Y'
+            JP   NZ,PRFRNFLR
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFRNFLR
+
+            LD   A,2
+            LD   (PRFCS),A
+            LD   A,12
+            LD   HL,CHPTR21B
+            LD   DE,CHPTR21C
+            CALL .L00000
+            JP   C,PRFFLD
+            CALL .L0000D
+            LD   A,1
+            LD   (SRVCINPT),A
+            LD   A,'A'
+            LD   (SRVCINP2),A
+            CALL PRFCLLGN
+            JP   C,PRFFLD
+            LD   A,'A'
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,3
+            LD   (PRFCS),A
+            LD   A,13
+            LD   HL,CHPTR21D
+            LD   DE,CHPTR21E
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,4
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,4
+            LD   (PRFCS),A
+            LD   A,14
+            LD   HL,CHPTR21F
+            LD   DE,CHPTR21G
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,'Y'
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,5
+            LD   (PRFCS),A
+            LD   A,15
+            LD   HL,CHPTR21H
+            LD   DE,CHPTR21I
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,'R'
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,6
+            LD   (PRFCS),A
+            LD   A,16
+            LD   HL,CHPTR21J
+            LD   DE,CHPTR21K
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,7
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,7
+            LD   (PRFCS),A
+            LD   A,17
+            LD   HL,CHPTR21L
+            LD   DE,CHPTR21M
+            CALL .L00001
+            JP   C,PRFFLD
+            CALL .L0000G
+            JP   C,PRFFLD
+            LD   A,(SRVCSTR4)
+            CP   2
+            JP   NZ,PRFFLD
+            LD   A,(SRVCSTR5)
+            CP   1
+            JP   NZ,PRFFLD
+            LD   A,(SRVCSTR7)
+            CP   'Z'
+            JP   NZ,PRFFLD
+            LD   A,(SRVCSTR7+1)
+            CP   'B'
+            JP   NZ,PRFFLD
+
+            LD   A,8
+            LD   (PRFCS),A
+            LD   A,18
+            LD   HL,CHPTR21N
+            LD   DE,CHPTR21O
+            CALL .L00001
+            JP   C,PRFFLD
+            CALL .L0000G
+            JP   C,PRFFLD
+
+            LD   A,9
+            LD   (PRFCS),A
+            LD   A,19
+            LD   HL,CHPTR21P
+            LD   DE,CHPTR21R
+            CALL .L00000
+            JP   C,PRFFLD
+            CALL .L0000D
+            LD   A,1
+            LD   (SRVCINPT),A
+            LD   A,2
+            LD   (SRVCINP2),A
+            CALL PRFCLLGN
+            JP   C,PRFFLD
+            LD   A,1
+            LD   BC,S9E00
+            CALL .L0000H
+            JP   C,PRFFLD
+
+            LD   A,10
+            LD   (PRFCS),A
+            LD   A,20
+            LD   HL,CHPTR21S
+            LD   DE,CHPTR21V
+            CALL .L00000
+            JP   C,PRFFLD
+            CALL .L0000D
+            LD   A,1
+            LD   (SRVCINPT),A
+            XOR  A
+            LD   (SRVCINP2),A
+            CALL PRFCLLGN
+            JP   C,PRFFLD
+            LD   A,3
+            LD   BC,S9E01
+            CALL .L0000H
+            JP   C,PRFFLD
+
+            LD   A,21
+            LD   (PRFCS),A
+            LD   A,51
+            LD   B,DGNSTCFL
+            LD   IX,S9E02
+            LD   HL,CHPTR22Y
+            LD   DE,CHPTR230
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,22
+            LD   (PRFCS),A
+            LD   A,52
+            LD   B,DGNSTCTY
+            LD   IX,S9E03
+            LD   HL,CHPTR231
+            LD   DE,CHPTR233
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,23
+            LD   (PRFCS),A
+            LD   A,53
+            LD   B,DGNSTCI3
+            LD   IX,S9E04
+            LD   HL,CHPTR234
+            LD   DE,CHPTR236
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,24
+            LD   (PRFCS),A
+            LD   A,54
+            LD   B,DGNSTCEJ
+            LD   IX,S9E05
+            LD   HL,CHPTR237
+            LD   DE,CHPTR239
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,25
+            LD   (PRFCS),A
+            LD   A,55
+            LD   B,DGNSTCR0
+            LD   IX,S9E06
+            LD   HL,CHPTR23A
+            LD   DE,CHPTR23C
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,26
+            LD   (PRFCS),A
+            LD   A,56
+            LD   B,DGNSTCUN
+            LD   IX,S9E07
+            LD   HL,CHPTR23D
+            LD   DE,CHPTR23F
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,27
+            LD   (PRFCS),A
+            LD   A,57
+            LD   B,DGNSTCE2
+            LD   IX,S9E08
+            LD   HL,CHPTR23G
+            LD   DE,CHPTR23I
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,28
+            LD   (PRFCS),A
+            LD   A,58
+            LD   B,DGNSTCAC
+            LD   IX,S9E09
+            LD   HL,CHPTR23J
+            LD   DE,CHPTR23L
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,60
+            LD   (PRFCS),A
+            LD   A,69
+            LD   B,DGNSTCIN
+            LD   IX,S9E0A
+            LD   HL,CHPTR23M
+            LD   DE,CHPTR23O
+            CALL .L00009
+            JP   C,PRFFLD
+            LD   HL,(DGNSTCLN)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLD
+            LD   HL,(DGNSTCCL)
+            LD   DE,9
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLD
+
+            LD   A,61
+            LD   (PRFCS),A
+            LD   A,70
+            LD   B,DGNSTCIN
+            LD   IX,S9E0B
+            LD   HL,CHPTR23P
+            LD   DE,CHPTR23R
+            CALL .L00009
+            JP   C,PRFFLD
+            LD   HL,(DGNSTCLN)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLD
+            LD   HL,(DGNSTCCL)
+            LD   DE,10
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLD
+
+            LD   A,62
+            LD   (PRFCS),A
+            LD   A,71
+            LD   B,DGNSTCTY
+            LD   IX,S9E0C
+            LD   HL,CHPTR23S
+            LD   DE,CHPTR23U
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,63
+            LD   (PRFCS),A
+            LD   A,72
+            LD   B,DGNSTCTY
+            LD   IX,S9E0D
+            LD   HL,CHPTR23V
+            LD   DE,CHPTR23X
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,29
+            LD   (PRFCS),A
+            LD   A,59
+            LD   B,DGNSTCLX
+            LD   IX,S9E0E
+            LD   HL,CHPTR23Y
+            LD   DE,CHPTR240
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,64
+            LD   (PRFCS),A
+            LD   A,73
+            LD   B,DGNSTCLX
+            LD   IX,S9E0F
+            LD   HL,CHPTR241
+            LD   DE,CHPTR243
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,30
+            LD   (PRFCS),A
+            LD   A,2
+            LD   B,DGNSTCUN
+            LD   C,2
+            LD   IX,S9E0G
+            LD   HL,CHPTR247
+            CALL .L0000A
+            JP   C,PRFFLD
+            LD   HL,(DGNSTCLN)
+            LD   DE,12
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLD
+            LD   HL,(DGNSTCCL)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLD
+
+            LD   A,31
+            LD   (PRFCS),A
+            LD   A,2
+            LD   HL,CHPTR24C
+            CALL CMPLAGGR
+            JP   C,PRFFLD
+            CALL ENCDAGGR
+            JP   C,PRFFLD
+            CALL .L00002
+            CALL .L0000D
+            CALL PRFCLLGN
+            JP   C,PRFFLD
+            LD   A,1
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,32
+            LD   (PRFCS),A
+            LD   A,8
+            LD   HL,CHPTR24H
+            CALL CMPLAGGR
+            JP   C,PRFFLD
+            CALL ENCDAGGR
+            JP   C,PRFFLD
+            CALL .L00002
+            CALL .L0000D
+            CALL PRFCLLGN
+            JP   C,PRFFLD
+            CALL .L0000G
+            JP   C,PRFFLD
+
+            LD   A,33
+            LD   (PRFCS),A
+            XOR  A
+            LD   B,DGNSTCSR
+            LD   C,0
+            LD   IX,0
+            LD   HL,CHPTR24H
+            CALL .L0000A
+            JP   C,PRFFLD
+
+            LD   A,36
+            LD   (PRFCS),A
+            LD   A,1
+            LD   HL,CHPTR24I
+            CALL CMPLAGGR
+            JP   C,PRFFLD
+            CALL ENCDAGGR
+            JP   C,PRFFLD
+            CALL .L00002
+            CALL .L0000D
+            CALL PRFCLLGN
+            JP   C,PRFFLD
+            CALL .L0000G
+            JP   C,PRFFLD
+
+            LD   A,34
+            LD   (PRFCS),A
+            LD   A,2
+            LD   B,DGNSTCLX
+            LD   C,71
+            LD   IX,S9E0H
+            LD   HL,CHPTR24N
+            CALL .L0000A
+            JP   C,PRFFLD
+
+            LD   A,35
+            LD   (PRFCS),A
+            LD   A,2
+            LD   HL,CHPTR24C
+            CALL CMPLAGGR
+            JP   C,PRFFLD
+            CALL ENCDAGGR
+            JP   C,PRFFLD
+            CALL .L00002
+            CALL .L0000D
+            CALL PRFCLLGN
+            JP   C,PRFFLD
+            LD   A,1
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,12
+            LD   (PRFCS),A
+            LD   A,22
+            LD   HL,CHPTR21Z
+            LD   DE,CHPTR220
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,6
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,13
+            LD   (PRFCS),A
+            LD   A,23
+            LD   HL,CHPTR221
+            LD   DE,CHPTR222
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,'Y'
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,14
+            LD   (PRFCS),A
+            LD   A,24
+            LD   HL,CHPTR223
+            LD   DE,CHPTR224
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,'Y'
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,15
+            LD   (PRFCS),A
+            LD   A,25
+            LD   HL,CHPTR225
+            LD   DE,CHPTR226
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,'Y'
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,65
+            LD   (PRFCS),A
+            LD   A,74
+            LD   HL,CHPTR227
+            LD   DE,CHPTR228
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,176
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,66
+            LD   (PRFCS),A
+            LD   A,75
+            LD   HL,CHPTR229
+            LD   DE,CHPTR22A
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,$5A
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,67
+            LD   (PRFCS),A
+            LD   A,76
+            LD   B,DGNSTCTY
+            LD   IX,S9E0I
+            LD   HL,CHPTR22B
+            LD   DE,CHPTR22D
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,68
+            LD   (PRFCS),A
+            LD   A,77
+            LD   HL,CHPTR22E
+            LD   DE,CHPTR22F
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,10
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,69
+            LD   (PRFCS),A
+            LD   A,78
+            LD   B,DGNSTCDV
+            LD   IX,S9E0J
+            LD   HL,CHPTR22G
+            LD   DE,CHPTR22I
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,70
+            LD   (PRFCS),A
+            LD   A,79
+            LD   HL,CHPTR21W
+            LD   DE,CHPTR21Y
+            CALL .L00000
+            JP   C,PRFFLD
+            CALL .L0000D
+            LD   A,1
+            LD   (SRVCINPT),A
+            XOR  A
+            LD   (SRVCINP2),A
+            CALL PRFCLLGN
+            JP   C,PRFFLD
+            LD   A,3
+            LD   BC,S9E0K
+            CALL .L0000H
+            JP   C,PRFFLD
+
+            LD   A,71
+            LD   (PRFCS),A
+            LD   A,80
+            LD   HL,CHPTR22J
+            LD   DE,CHPTR22K
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,128
+            CALL .L0000E
+            JP   C,PRFFLD
+            LD   A,83
+            LD   HL,CHPTR22L
+            LD   DE,CHPTR22M
+            CALL .L00000
+            JP   C,PRFFLD
+            CALL .L00004
+            JP   C,PRFFLD
+
+            LD   A,72
+            LD   (PRFCS),A
+            LD   A,81
+            LD   B,DGNSTCAS
+            LD   IX,S9E0L
+            LD   HL,CHPTR22N
+            LD   DE,CHPTR22P
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,73
+            LD   (PRFCS),A
+            LD   A,82
+            LD   B,DGNSTCTY
+            LD   IX,S9E0M
+            LD   HL,CHPTR22Q
+            LD   DE,CHPTR22S
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,74
+            LD   (PRFCS),A
+            LD   A,83
+            LD   HL,CHPTR22T
+            LD   DE,CHPTR22U
+            CALL .L00001
+            JP   C,PRFFLD
+            LD   A,'Y'
+            CALL .L0000E
+            JP   C,PRFFLD
+
+            LD   A,75
+            LD   (PRFCS),A
+            LD   A,84
+            LD   B,DGNSTCR1
+            LD   IX,S9E0N
+            LD   HL,CHPTR22V
+            LD   DE,CHPTR22X
+            CALL .L00009
+            JP   C,PRFFLD
+
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            XOR  A
+            LD   (PRFCS),A
+            HALT
+
+;@ROUTINE IN A,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+.L00000:
+            CALL CMPLAGG0
+            RET  C
+            CALL ENCDAGGR
+            RET  C
+            JR   .L00002
+
+;@ROUTINE IN A,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+.L00001:
+            CALL .L00000
+            RET  C
+            CALL .L0000D
+            JP   PRFCLLGN
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL
+.L00002:
+            LD   HL,(GNRTDSZ)
+            LD   DE,(GNRTDROD)
+            ADD  HL,DE
+            LD   B,H
+            LD   C,L
+            LD   DE,(PRFMXGNR)
+            OR   A
+            SBC  HL,DE
+            JR   C,.L00003
+            JR   Z,.L00003
+            LD   H,B
+            LD   L,C
+            LD   (PRFMXGNR),HL
+            LD   HL,(GNRTDSZ)
+            LD   (PRFMXGN0),HL
+            LD   HL,(GNRTDROD)
+            LD   (PRFMXGN1),HL
+            LD   HL,(GNRTDDTS)
+            LD   (PRFMXGN2),HL
+            LD   HL,(GNRTDBSS)
+            LD   (PRFMXGN3),HL
+.L00003:
+            XOR  A
+            RET
+
+; The just-published image must match the preceding image retained by
+; BeginProgram. This directly proves that a successful assert contributes no
+; semantic operation or generated byte.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL
+.L00004:
+            LD   HL,(GNRTDSZ)
+            LD   DE,(PBLSHDSZ)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00008
+            LD   HL,(GNRTDROD)
+            LD   DE,(PBLSHDRO)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00008
+            LD   HL,(GNRTDDTS)
+            LD   DE,(PBLSHDDT)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00008
+            LD   HL,(GNRTDBSS)
+            LD   DE,(PBLSHDBS)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00008
+            LD   BC,(GNRTDSZ)
+            LD   HL,GNRTDBS
+            LD   DE,BCKPBS
+.L00005:
+            LD   A,B
+            OR   C
+            JR   Z,.L00006
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,.L00008
+            INC  DE
+            INC  HL
+            DEC  BC
+            JR   .L00005
+.L00006:
+            LD   BC,(GNRTDROD)
+            LD   HL,GNRTDRO0
+            LD   DE,S9BRDO
+.L00007:
+            LD   A,B
+            OR   C
+            RET  Z
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,.L00008
+            INC  DE
+            INC  HL
+            DEC  BC
+            JR   .L00007
+.L00008:
+            SCF
+            RET
+
+;@ROUTINE IN A,B,DE,HL,IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+.L00009:
+            LD   (PRFEXPC9),A
+            LD   A,B
+            LD   (PRFEXPC5),A
+            PUSH IX
+            POP  BC
+            LD   (PRFEXPC3),BC
+            LD   A,(PRFEXPC9)
+            CALL CMPLAGG0
+            JR   NC,.L0000C
+            JR   .L0000B
+
+;@ROUTINE IN A,B,C,HL,IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+.L0000A:
+            LD   (PRFPRTCN),A
+            LD   A,B
+            LD   (PRFEXPC5),A
+            LD   A,C
+            LD   (PRFEXPC9),A
+            PUSH IX
+            POP  BC
+            LD   (PRFEXPC3),BC
+            LD   A,(PRFPRTCN)
+            CALL CMPLAGGR
+            JR   NC,.L0000C
+.L0000B:
+            LD   A,(PRFEXPC5)
+            LD   HL,DGNSTCCD
+            CP   (HL)
+            JR   NZ,.L0000C
+            LD   A,(PRFEXPC9)
+            LD   HL,DGNSTCP0
+            CP   (HL)
+            JR   NZ,.L0000C
+            LD   HL,(DGNSTCOF)
+            LD   DE,(PRFEXPC3)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+.L0000C:
+            SCF
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,HL
+.L0000D:
+            CALL Reset
+            XOR  A
+            LD   (SRVCINPT),A
+            LD   (SRVCSTRG),A
+            RET
+
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,HL
+.L0000E:
+            LD   B,A
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JR   NZ,.L0000F
+            LD   A,(SRVCOTPT)
+            CP   1
+            JR   NZ,.L0000F
+            LD   A,(SRVCOTP0)
+            CP   B
+            JR   NZ,.L0000F
+            LD   A,(ACTVTNDP)
+            OR   A
+            RET  Z
+.L0000F:
+            SCF
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,HL
+.L0000G:
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JR   NZ,.L0000F
+            LD   A,(SRVCOTPT)
+            OR   A
+            JR   NZ,.L0000F
+            LD   A,(ACTVTNDP)
+            OR   A
+            RET  Z
+            SCF
+            RET
+
+;@ROUTINE IN A,BC OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL
+.L0000H:
+            LD   (PRFEXPC8),A
+            LD   (PRFEXPC3),BC
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JR   NZ,.L0000F
+            LD   A,(PRFEXPC8)
+            LD   HL,TRPNMBR
+            CP   (HL)
+            JR   NZ,.L0000F
+            LD   HL,(TRPOFFST)
+            LD   DE,(PRFEXPC3)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L0000F
+            LD   A,(ACTVTNDP)
+            OR   A
+            RET  Z
+            SCF
+            RET
+
+; Generated code must restore the root SP and IX on every terminal path.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCLLGN: ;@NUC-GLOBAL ProofCallGenerated PERMANENT PRFCLLGN
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   IX,$A55A
+            CALL GNRTDBS
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,PRFCLLG1
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFCLLG1: ;@NUC-GLOBAL ProofCallGeneratedFailure PERMANENT PRFCLLG1
+            SCF
+            RET
+
+PRFCMPLF: LD A,1 ;@NUC-GLOBAL ProofCompileFailure PERMANENT PRFCMPLF
+                     JR PRFFLD
+PRFENCDF:  LD A,2 ;@NUC-GLOBAL ProofEncodeFailure PERMANENT PRFENCDF
+                     JR PRFFLD
+PRFRNFLR:     LD A,3 ;@NUC-GLOBAL ProofRunFailure PERMANENT PRFRNFLR
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            HALT
+
+PRFEXPC0: DW 0 ;@NUC-GLOBAL ProofExpectedSP PERMANENT PRFEXPC0
+PRFEXPC3: DW 0 ;@NUC-GLOBAL ProofExpectedOffset PERMANENT PRFEXPC3
+PRFEXPC8: DB 0 ;@NUC-GLOBAL ProofExpectedTrap PERMANENT PRFEXPC8
+PRFMXGNR: DW 0 ;@NUC-GLOBAL ProofMaxGenerated PERMANENT PRFMXGNR
+PRFMXGN0: DW 0 ;@NUC-GLOBAL ProofMaxGeneratedCode PERMANENT PRFMXGN0
+PRFMXGN1: DW 0 ;@NUC-GLOBAL ProofMaxGeneratedRoData PERMANENT PRFMXGN1
+PRFMXGN2: DW 0 ;@NUC-GLOBAL ProofMaxGeneratedData PERMANENT PRFMXGN2
+PRFMXGN3: DW 0 ;@NUC-GLOBAL ProofMaxGeneratedBss PERMANENT PRFMXGN3
+PRFEXPC5: DB 0 ;@NUC-GLOBAL ProofExpectedDiagnostic PERMANENT PRFEXPC5
+PRFEXPC9: DB 0 ;@NUC-GLOBAL ProofExpectedPart PERMANENT PRFEXPC9
+PRFPRTCN: DB 0 ;@NUC-GLOBAL ProofPartCount PERMANENT PRFPRTCN
+PRFSTTS:     DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:       DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+ProofEnd:

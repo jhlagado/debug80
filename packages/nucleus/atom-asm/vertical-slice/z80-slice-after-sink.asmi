@@ -1,0 +1,41 @@
+SNKCDEND: ;@NUC-GLOBAL SinkCodeEnd PERMANENT SNKCDEND
+CMPLRCDE: ;@NUC-GLOBAL CompilerCodeEnd PERMANENT CMPLRCDE
+
+CMPLRIMM: ;@NUC-GLOBAL CompilerImmutableStart PERMANENT CMPLRIMM
+KYWRDSB: ;@NUC-GLOBAL KeywordSub PERMANENT KYWRDSB
+            DB  "sub"
+KYWRDFLS: ;@NUC-GLOBAL KeywordFails PERMANENT KYWRDFLS
+            DB  "fails"
+KYWRDELS: ;@NUC-GLOBAL KeywordElse PERMANENT KYWRDELS
+            DB  "else"
+KYWRDFL: ;@NUC-GLOBAL KeywordFail PERMANENT KYWRDFL
+            DB  "fail"
+KYWRDEND: ;@NUC-GLOBAL KeywordEnd PERMANENT KYWRDEND
+            DB  "end"
+NameMain:
+            DB  "main"
+NMWRTOTP: ;@NUC-GLOBAL NameWriteOutputByte PERMANENT NMWRTOTP
+            DB  "writeOutputByte"
+PRGRMTMP: ;@NUC-GLOBAL ProgramTemplate PERMANENT PRGRMTMP
+            DB  $3E,$00
+            DB  $CD
+            DW  WRTOTPTB
+            DB  $38,$06
+            DB  $3E,RNSCCDD,$32
+            DW  RunState
+            DB  $C9
+            DB  $32
+            DW  TRPERRR
+            DB  $AF,$32
+            DW  TRPRTN
+            DB  $21
+            DW  FLROFFST
+            DB  $22
+            DW  TRPOFFST
+            DB  $3E,$06,$32
+            DW  TRPNMBR
+            DB  $3E,RNTRPPD,$32
+            DW  RunState
+            DB  $C9
+CMPLRIM0: ;@NUC-GLOBAL CompilerImmutableEnd PERMANENT CMPLRIM0
+CMPLRCRE: ;@NUC-GLOBAL CompilerCoreEnd PERMANENT CMPLRCRE

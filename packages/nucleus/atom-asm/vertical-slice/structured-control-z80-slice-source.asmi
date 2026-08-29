@@ -1,0 +1,165 @@
+            ORG SRCBS
+STRCTRDB: ;@NUC-GLOBAL StructuredAcceptedSource PERMANENT STRCTRDB
+            DB "var out as u8 = 0",10
+            DB "var finalI as u8 = 0",10
+            DB "var finalJ as u16 = 0",10
+            DB "forward sub descend(value as u8) as u8",10
+            DB "sub main() fails",10
+            DB "    var i as u8 = 0",10
+            DB "    var j as u16 = 0",10
+            DB "    if false",10
+            DB "        out = 99",10
+            DB "    elseif true",10
+            DB "        out = 1",10
+            DB "    else",10
+            DB "        out = 98",10
+            DB "    end",10
+            DB "    while out < 3",10
+            DB "        out = out + 1",10
+            DB "    end",10
+            DB "    for i = 0 until 4",10
+            DB "        if i = 1",10
+            DB "            continue",10
+            DB "        end",10
+            DB "        if i = 3",10
+            DB "            exit",10
+            DB "        end",10
+            DB "        out = out + i",10
+            DB "    end",10
+            DB "    for j = 3 to 0 step -1",10
+            DB "        out = out + 1",10
+            DB "    end",10
+            DB "    finalI = i",10
+            DB "    finalJ = j",10
+            DB "    out = out + descend(3)",10
+            DB "    writeOutputByte(out) else fail",10
+            DB "end",10
+            DB "sub descend",10
+            DB "    if value = 0",10
+            DB "        return value",10
+            DB "    end",10
+            DB "    return "
+.L00000:
+            DB "descend(value - 1)",10
+            DB "end",10
+STRCTRDD: ;@NUC-GLOBAL StructuredAcceptedSourceEnd PERMANENT STRCTRDD
+
+STRCTRDF: ;@NUC-GLOBAL StructuredRangeSource PERMANENT STRCTRDF
+            DB "var out as u8 = 0",10
+            DB "var snapshot as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    var i as u8 = 0",10
+            DB "    for "
+.L00000:
+            DB "i = 250 to 300 step 10",10
+            DB "        out = out + 1",10
+            DB "        snapshot = i",10
+            DB "    end",10
+            DB "end",10
+STRCTRDH: ;@NUC-GLOBAL StructuredRangeSourceEnd PERMANENT STRCTRDH
+
+STRCTRDI: ;@NUC-GLOBAL StructuredActiveCounterSource PERMANENT STRCTRDI
+            DB "var dummy as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    var i as u8 = 0",10
+            DB "    for i = 0 until 2",10
+            DB "        "
+.L00000:
+            DB "i = i + 1",10
+            DB "    end",10
+            DB "end",10
+STRCTRDJ: ;@NUC-GLOBAL StructuredActiveCounterSourceEnd PERMANENT STRCTRDJ
+
+STRCTRDK: ;@NUC-GLOBAL StructuredExitOutsideSource PERMANENT STRCTRDK
+            DB "var dummy as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    "
+.L00000:
+            DB "exit",10
+            DB "end",10
+STRCTRDL: ;@NUC-GLOBAL StructuredExitOutsideSourceEnd PERMANENT STRCTRDL
+
+STRCTRDZ: ;@NUC-GLOBAL StructuredZeroStepSource PERMANENT STRCTRDZ
+            DB "var dummy as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    var i as u8 = 0",10
+            DB "    for i = 0 until 2 step "
+.L00000:
+            DB "0",10
+            DB "    end",10
+            DB "end",10
+STRCTRDM: ;@NUC-GLOBAL StructuredZeroStepSourceEnd PERMANENT STRCTRDM
+
+STRCTRDN: ;@NUC-GLOBAL StructuredBooleanFlowSource PERMANENT STRCTRDN
+            DB "var flag as boolean = false",10
+            DB "forward sub choose(value as boolean) as boolean",10
+            DB "sub main() fails",10
+            DB "    flag = choose(false)",10
+            DB "end",10
+            DB "sub choose",10
+            DB "    if value",10
+            DB "        return false",10
+            DB "    else",10
+            DB "        return true",10
+            DB "    end",10
+            DB "    value = false",10
+            DB "end",10
+STRCTRDO: ;@NUC-GLOBAL StructuredBooleanFlowSourceEnd PERMANENT STRCTRDO
+
+STRCTRDQ: ;@NUC-GLOBAL StructuredStrayElseSource PERMANENT STRCTRDQ
+            DB "sub main() fails",10
+.L00000:
+            DB "else",10
+STRCTRDT: ;@NUC-GLOBAL StructuredStrayElseSourceEnd PERMANENT STRCTRDT
+STRCTRDU: ;@NUC-GLOBAL StructuredStrayElseIfSource PERMANENT STRCTRDU
+            DB "sub main() fails",10
+.L00000:
+            DB "elseif true",10
+STRCTRDV: ;@NUC-GLOBAL StructuredStrayElseIfSourceEnd PERMANENT STRCTRDV
+
+STRCTRDW: ;@NUC-GLOBAL StructuredSecondForwardSource PERMANENT STRCTRDW
+            DB "forward sub first(value as u8) as u8",10
+            DB "forward sub "
+.L00000:
+            DB "second(value as u8) as u8",10
+STRCTRDX: ;@NUC-GLOBAL StructuredSecondForwardSourceEnd PERMANENT STRCTRDX
+STRCTRDY: ;@NUC-GLOBAL StructuredProgramForwardSource PERMANENT STRCTRDY
+            DB "var clash as u8 = 0",10
+            DB "forward sub "
+.L00000:
+            DB "clash(value as u8) as u8",10
+STRCTR10: ;@NUC-GLOBAL StructuredProgramForwardSourceEnd PERMANENT STRCTR10
+STRCTR11: ;@NUC-GLOBAL StructuredLocalForwardSource PERMANENT STRCTR11
+            DB "forward sub work(value as u8) as u8",10
+            DB "sub main() fails",10
+            DB "    var "
+.L00000:
+            DB "work as u8 = 0",10
+STRCTR12: ;@NUC-GLOBAL StructuredLocalForwardSourceEnd PERMANENT STRCTR12
+STRCTR13: ;@NUC-GLOBAL StructuredMainForwardSource PERMANENT STRCTR13
+            DB "forward sub "
+.L00000:
+            DB "main(value as u8) as u8",10
+STRCTR14: ;@NUC-GLOBAL StructuredMainForwardSourceEnd PERMANENT STRCTR14
+STRCTR15: ;@NUC-GLOBAL StructuredParameterForwardSource PERMANENT STRCTR15
+            DB "forward sub same("
+.L00000:
+            DB "same as u8) as u8",10
+STRCTR16: ;@NUC-GLOBAL StructuredParameterForwardSourceEnd PERMANENT STRCTR16
+
+STRCTR17: ;@NUC-GLOBAL StructuredProgramMainSource PERMANENT STRCTR17
+            DB "var "
+.L00000:
+            DB "main as u8 = 0",10
+STRCTR18: ;@NUC-GLOBAL StructuredProgramMainSourceEnd PERMANENT STRCTR18
+STRCTR19: ;@NUC-GLOBAL StructuredLocalMainSource PERMANENT STRCTR19
+            DB "sub main() fails",10
+            DB "    var "
+.L00000:
+            DB "main as u8 = 0",10
+STRCTR1A: ;@NUC-GLOBAL StructuredLocalMainSourceEnd PERMANENT STRCTR1A
+STRCTR1B: ;@NUC-GLOBAL StructuredParameterMainSource PERMANENT STRCTR1B
+            DB "forward sub work("
+.L00000:
+            DB "main as u8) as u8",10
+STRCTR1C: ;@NUC-GLOBAL StructuredParameterMainSourceEnd PERMANENT STRCTR1C

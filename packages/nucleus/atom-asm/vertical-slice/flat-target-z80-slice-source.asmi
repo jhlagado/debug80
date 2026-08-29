@@ -1,0 +1,273 @@
+            ORG SRCBS
+FLTTRGTS: ;@NUC-GLOBAL FlatTargetSource PERMANENT FLTTRGTS
+            DB "var value as u16 = 3",10
+            DB "var cleared as u8",10
+            DB "sub main()",10
+            DB "value = value * 2",10
+            DB "end",10
+FLTTRGT0: ;@NUC-GLOBAL FlatTargetSourceEnd PERMANENT FLTTRGT0
+
+FLTTRGTP: ;@NUC-GLOBAL FlatTargetParts PERMANENT FLTTRGTP
+            DB 1
+            DW FLTTRGTS,FLTTRGT0
+FLTTRGT1: DB 0 ;@NUC-GLOBAL FlatTargetPartBanks PERMANENT FLTTRGT1
+
+FLTTRGTT: ;@NUC-GLOBAL FlatTargetTrapSource PERMANENT FLTTRGTT
+            DB "var divisor as u8",10
+            DB "sub main()",10
+            DB "var value as u8 = 1 / divisor",10
+            DB "end",10
+FLTTRGT2: ;@NUC-GLOBAL FlatTargetTrapSourceEnd PERMANENT FLTTRGT2
+FLTTRGT3: ;@NUC-GLOBAL FlatTargetTrapParts PERMANENT FLTTRGT3
+            DB 1
+            DW FLTTRGTT,FLTTRGT2
+
+FLTTRGTU: ;@NUC-GLOBAL FlatTargetUnhandledSource PERMANENT FLTTRGTU
+            DB "sub failer() fails",10
+            DB "fail 7",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "failer() else fail",10
+            DB "end",10
+FLTTRGT4: ;@NUC-GLOBAL FlatTargetUnhandledSourceEnd PERMANENT FLTTRGT4
+FLTTRGT5: ;@NUC-GLOBAL FlatTargetUnhandledParts PERMANENT FLTTRGT5
+            DB 1
+            DW FLTTRGTU,FLTTRGT4
+
+BNKDTRGT: ;@NUC-GLOBAL BankedTargetLibrarySource PERMANENT BNKDTRGT
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var shared as Box = (4)",10
+            DB "var countdown as u8 = 1",10
+            DB "var result as u8",10
+            ; The first constant byte is a proof-only far-jump destination.
+            DB "const Lookup as u8[2] = [$76, 5]",10
+            DB "sub recursive()",10
+            DB "if countdown = 0",10
+            DB "return",10
+            DB "end",10
+            DB "countdown = countdown - 1",10
+            DB "recursive()",10
+            DB "end",10
+            DB "sub readBox(box as Box, add as u8) as u8",10
+            DB "return box.value + add",10
+            DB "end",10
+            DB "sub failRemote() fails",10
+            DB "fail 7",10
+            DB "end",10
+BNKDTRG0: ;@NUC-GLOBAL BankedTargetLibrarySourceEnd PERMANENT BNKDTRG0
+BNKDTRG1: ;@NUC-GLOBAL BankedTargetMainSource PERMANENT BNKDTRG1
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "recursive()",10
+            DB "result = readBox(shared, 1)",10
+            DB "failRemote() handle code",10
+            DB "result = result + code",10
+            DB "end",10
+            DB "end",10
+BNKDTRG2: ;@NUC-GLOBAL BankedTargetMainSourceEnd PERMANENT BNKDTRG2
+BNKDTRG3: ;@NUC-GLOBAL BankedTargetParts PERMANENT BNKDTRG3
+            DB 1
+            DW BNKDTRGT,BNKDTRG0
+            DB 2
+            DW BNKDTRG1,BNKDTRG2
+BNKDTRG4: DB 1,0 ;@NUC-GLOBAL BankedTargetPartBanks PERMANENT BNKDTRG4
+BNKDTRG5: ;@NUC-GLOBAL BankedTargetEntry1Source PERMANENT BNKDTRG5
+            DB "var result as u8",10
+            DB "sub main()",10
+            DB "result = 12",10
+            DB "end",10
+BNKDTRG6: ;@NUC-GLOBAL BankedTargetEntry1SourceEnd PERMANENT BNKDTRG6
+BNKDTRG7: ;@NUC-GLOBAL BankedTargetEntry1Parts PERMANENT BNKDTRG7
+            DB 1
+            DW BNKDTRG5,BNKDTRG6
+BNKDTRG8: DB 1 ;@NUC-GLOBAL BankedTargetEntry1PartBanks PERMANENT BNKDTRG8
+
+BNKDCNST: ;@NUC-GLOBAL BankedConstantFailurePart1 PERMANENT BNKDCNST
+            DB "const Bytes as u8[2] = [1, 2]",10
+            DB "sub take(value as u8[2])",10
+            DB "end",10
+BNKDCNS0: ;@NUC-GLOBAL BankedConstantFailurePart1End PERMANENT BNKDCNS0
+BNKDCNS1: ;@NUC-GLOBAL BankedConstantFailurePart2 PERMANENT BNKDCNS1
+            DB "sub main()",10
+            DB "take(Bytes)",10
+            DB "end",10
+BNKDCNS2: ;@NUC-GLOBAL BankedConstantFailurePart2End PERMANENT BNKDCNS2
+BNKDCNS3: ;@NUC-GLOBAL BankedConstantFailureParts PERMANENT BNKDCNS3
+            DB 1
+            DW BNKDCNST,BNKDCNS0
+            DB 2
+            DW BNKDCNS1,BNKDCNS2
+
+BNKDPRMT: ;@NUC-GLOBAL BankedParameterFailurePart1 PERMANENT BNKDPRMT
+            DB "record Box",10,"value as u8",10,"end",10
+            DB "sub take(first as Box, second as Box)",10,"end",10
+BNKDPRM0: ;@NUC-GLOBAL BankedParameterFailurePart1End PERMANENT BNKDPRM0
+BNKDPRM1: ;@NUC-GLOBAL BankedParameterFailurePart2 PERMANENT BNKDPRM1
+            DB "var shared as Box = (1)",10
+            DB "sub give() as Box",10,"return shared",10,"end",10
+            DB "sub main()",10,"take(shared, give())",10,"end",10
+BNKDPRM2: ;@NUC-GLOBAL BankedParameterFailurePart2End PERMANENT BNKDPRM2
+BNKDPRM3: ;@NUC-GLOBAL BankedParameterFailureParts PERMANENT BNKDPRM3
+            DB 1
+            DW BNKDPRMT,BNKDPRM0
+            DB 2
+            DW BNKDPRM1,BNKDPRM2
+
+BNKDRSLT: ;@NUC-GLOBAL BankedResultFailurePart1 PERMANENT BNKDRSLT
+            DB "record Box",10,"value as u8",10,"end",10
+            DB "var shared as Box = (1)",10
+            DB "sub give() as Box",10,"return shared",10,"end",10
+BNKDRSL0: ;@NUC-GLOBAL BankedResultFailurePart1End PERMANENT BNKDRSL0
+BNKDRSL1: ;@NUC-GLOBAL BankedResultFailurePart2 PERMANENT BNKDRSL1
+            DB "var output as Box",10
+            DB "sub main()",10
+            DB "output = give()",10
+            DB "end",10
+BNKDRSL2: ;@NUC-GLOBAL BankedResultFailurePart2End PERMANENT BNKDRSL2
+BNKDRSL3: ;@NUC-GLOBAL BankedResultFailureParts PERMANENT BNKDRSL3
+            DB 1
+            DW BNKDRSLT,BNKDRSL0
+            DB 2
+            DW BNKDRSL1,BNKDRSL2
+
+BNKDFRWR: ;@NUC-GLOBAL BankedForwardFailurePart1 PERMANENT BNKDFRWR
+            DB "forward sub later()",10
+BNKDFRW0: ;@NUC-GLOBAL BankedForwardFailurePart1End PERMANENT BNKDFRW0
+BNKDFRW1: ;@NUC-GLOBAL BankedForwardFailurePart2 PERMANENT BNKDFRW1
+            DB "sub later",10,"return",10,"end",10
+            DB "sub main()",10,"later()",10,"end",10
+BNKDFRW2: ;@NUC-GLOBAL BankedForwardFailurePart2End PERMANENT BNKDFRW2
+BNKDFRW3: ;@NUC-GLOBAL BankedForwardFailureParts PERMANENT BNKDFRW3
+            DB 1
+            DW BNKDFRWR,BNKDFRW0
+            DB 2
+            DW BNKDFRW1,BNKDFRW2
+BNKDTRPP: ;@NUC-GLOBAL BankedTrapPart1 PERMANENT BNKDTRPP
+            DB "var result as u8",10
+            DB "sub trapRemote(divisor as u8)",10
+            DB "result = 1 / divisor",10
+            DB "end",10
+BNKDTRP0: ;@NUC-GLOBAL BankedTrapPart1End PERMANENT BNKDTRP0
+BNKDTRP1: ;@NUC-GLOBAL BankedTrapPart2 PERMANENT BNKDTRP1
+            DB "sub main()",10
+            DB "trapRemote(0)",10
+            DB "end",10
+BNKDTRP2: ;@NUC-GLOBAL BankedTrapPart2End PERMANENT BNKDTRP2
+BNKDTRP3: ;@NUC-GLOBAL BankedTrapParts PERMANENT BNKDTRP3
+            DB 1
+            DW BNKDTRPP,BNKDTRP0
+            DB 2
+            DW BNKDTRP1,BNKDTRP2
+BNKDLRGP: ;@NUC-GLOBAL BankedLargePart1 PERMANENT BNKDLRGP
+            DB "const First as string[253] = ",34,34,10
+            DB "const Second as string[253] = ",34,34,10
+BNKDLRG0: ;@NUC-GLOBAL BankedLargePart1End PERMANENT BNKDLRG0
+BNKDLRG1: ;@NUC-GLOBAL BankedLargePart2 PERMANENT BNKDLRG1
+            DB "sub main()",10,"end",10
+BNKDLRG2: ;@NUC-GLOBAL BankedLargePart2End PERMANENT BNKDLRG2
+BNKDLRG3: ;@NUC-GLOBAL BankedLargeParts PERMANENT BNKDLRG3
+            DB 1
+            DW BNKDLRGP,BNKDLRG0
+            DB 2
+            DW BNKDLRG1,BNKDLRG2
+BNKDFLRP: DB 1,0 ;@NUC-GLOBAL BankedFailurePartBanks PERMANENT BNKDFLRP
+BNKDINVL: DB 2,0 ;@NUC-GLOBAL BankedInvalidPartBanks PERMANENT BNKDINVL
+
+FLTTRGTD: ;@NUC-GLOBAL FlatTargetDescriptor PERMANENT FLTTRGTD
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$1000
+            DB 1
+            DB 1,0
+            DW FLTTRGT1
+FLTTRGTL: ;@NUC-GLOBAL FlatTargetLoadedDescriptor PERMANENT FLTTRGTL
+            DW NCLSRNTM
+            DW $8000,$2000
+            DW $9000,$1000
+            DB 0
+            DB 1,0
+            DW FLTTRGT1
+FLTTRGTE: ;@NUC-GLOBAL FlatTargetEarlyWritableDescriptor PERMANENT FLTTRGTE
+            DW NCLSRNTM
+            DW $8000,$2000
+            DW $8100,$1000
+            DB 0
+            DB 1,0
+            DW FLTTRGT1
+FLTTRGTB: ;@NUC-GLOBAL FlatTargetBadFlagsDescriptor PERMANENT FLTTRGTB
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$1000
+            DB 2
+            DB 1,0
+            DW FLTTRGT1
+FLTTRGT6: ;@NUC-GLOBAL FlatTargetStackExactDescriptor PERMANENT FLTTRGT6
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$0F4B
+            DB 1
+            DB 1,0
+            DW FLTTRGT1
+FLTTRGT7: ;@NUC-GLOBAL FlatTargetStackOverflowDescriptor PERMANENT FLTTRGT7
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$0F4A
+            DB 1
+            DB 1,0
+            DW FLTTRGT1
+BNKDTRG9: ;@NUC-GLOBAL BankedTargetDescriptor PERMANENT BNKDTRG9
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$1000
+            DB 1
+            DB 2,0
+            DW BNKDTRG4
+BNKDTRGA: ;@NUC-GLOBAL BankedTargetEntry1Descriptor PERMANENT BNKDTRGA
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$1000
+            DB 1
+            DB 2,1
+            DW BNKDTRG8
+BNKDFLRD: ;@NUC-GLOBAL BankedFailureDescriptor PERMANENT BNKDFLRD
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$1000
+            DB 1
+            DB 2,0
+            DW BNKDFLRP
+BNKDWRNG: ;@NUC-GLOBAL BankedWrongEntryDescriptor PERMANENT BNKDWRNG
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$1000
+            DB 1
+            DB 2,1
+            DW BNKDTRG4
+BNKDINV0: ;@NUC-GLOBAL BankedInvalidPartDescriptor PERMANENT BNKDINV0
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$1000
+            DB 1
+            DB 2,0
+            DW BNKDINVL
+BNKDENTR: ;@NUC-GLOBAL BankedEntryOverflowDescriptor PERMANENT BNKDENTR
+            DW NCLSRNTM
+            DW $8000,$02BC
+            DW $4000,$1000
+            DB 1
+            DB 2,0
+            DW BNKDTRG4
+BNKDOTHR: ;@NUC-GLOBAL BankedOtherOverflowDescriptor PERMANENT BNKDOTHR
+            DW NCLSRNTM
+            DW $8000,$0352
+            DW $4000,$1000
+            DB 1
+            DB 2,0
+            DW BNKDFLRP
+
+; The accepted multipart program from Chapter 21.1 is compiled through the
+; production target entry and executed only from its committed NOBJ image.
+; Its source occupies part of the address space released by retiring the old
+; complete-image staging buffer.

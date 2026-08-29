@@ -1,0 +1,115 @@
+            ORG SPRBS
+STG8CNS3: ;@NUC-GLOBAL Stage8ConstantsSource PERMANENT STG8CNS3
+            DB "sub main() fails",10
+            DB "if endOfInput = 1 and inputFailure = 2 and outputFailure = 3 and storageFailure = 4",10
+            DB "writeOutputByte('C') else fail",10
+            DB "end",10
+            DB "end",10
+STG8CNS4: ;@NUC-GLOBAL Stage8ConstantsSourceEnd PERMANENT STG8CNS4
+
+STG8STRG: ;@NUC-GLOBAL Stage8StorageSuccessSource PERMANENT STG8STRG
+            DB "sub main() fails",10
+            DB "var first as u8",10
+            DB "var again as u8",10
+            DB "first = readStorageByte() else fail",10
+            DB "rewindStorageInput() else fail",10
+            DB "again = readStorageByte() else fail",10
+            DB "writeStorageByte(first) else fail",10
+            DB "writeStorageByte('B') else fail",10
+            DB "seekStorageOutput(0) else fail",10
+            DB "writeStorageByte('Z') else fail",10
+            DB "writeOutputByte(again) else fail",10
+            DB "end",10
+STG8STR0: ;@NUC-GLOBAL Stage8StorageSuccessSourceEnd PERMANENT STG8STR0
+
+STG8WRTF: ;@NUC-GLOBAL Stage8WriteFailureSource PERMANENT STG8WRTF
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "writeStorageByte('Z') handle code",10
+            DB "writeOutputByte(code) else fail",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8WRT2: ;@NUC-GLOBAL Stage8WriteFailureSourceEnd PERMANENT STG8WRT2
+
+STG8SKFL: ;@NUC-GLOBAL Stage8SeekFailureSource PERMANENT STG8SKFL
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "seekStorageOutput(3) handle code",10
+            DB "writeOutputByte(code) else fail",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8SKF0: ;@NUC-GLOBAL Stage8SeekFailureSourceEnd PERMANENT STG8SKF0
+
+STG8RWND: ;@NUC-GLOBAL Stage8RewindFailureSource PERMANENT STG8RWND
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "rewindStorageInput() handle code",10
+            DB "writeOutputByte(code) else fail",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8RWN0: ;@NUC-GLOBAL Stage8RewindFailureSourceEnd PERMANENT STG8RWN0
+
+STG8RDST: ;@NUC-GLOBAL Stage8ReadStorageFailureSource PERMANENT STG8RDST
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "var value as u8",10
+            DB "value = readStorageByte() handle code",10
+            DB "writeOutputByte(code) else fail",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8RDS0: ;@NUC-GLOBAL Stage8ReadStorageFailureSourceEnd PERMANENT STG8RDS0
+
+STG8WRTO: ;@NUC-GLOBAL Stage8WriteOutputFailureSource PERMANENT STG8WRTO
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "writeOutputByte('X') handle code",10
+            DB "if code = outputFailure",10
+            DB "return",10
+            DB "end",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8WRT3: ;@NUC-GLOBAL Stage8WriteOutputFailureSourceEnd PERMANENT STG8WRT3
+
+STG8MTLF: ;@NUC-GLOBAL Stage8MutualForwardSource PERMANENT STG8MTLF
+            DB "forward sub odd(value as u16) as boolean fails",10
+            DB "sub even(value as u16) as boolean fails",10
+            DB "var result as boolean",10
+            DB "if value = 0",10
+            DB "return true",10
+            DB "end",10
+            DB "result = odd(value - 1) else fail",10
+            DB "return result",10
+            DB "end",10
+            DB "sub odd",10
+            DB "var result as boolean",10
+            DB "if value = 0",10
+            DB "return false",10
+            DB "end",10
+            DB "result = even(value - 1) else fail",10
+            DB "return result",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var result as boolean = even(2) else fail",10
+            DB "if result",10
+            DB "writeOutputByte('M') else fail",10
+            DB "end",10
+            DB "end",10
+STG8MTL0: ;@NUC-GLOBAL Stage8MutualForwardSourceEnd PERMANENT STG8MTL0
+
+STG8INC1: ;@NUC-GLOBAL Stage8IncompleteForwardSource PERMANENT STG8INC1
+            DB "forward sub missing(value as u8)",10
+            DB "sub main()",10
+            DB "end",10
+STG8INC2: ;@NUC-GLOBAL Stage8IncompleteForwardSourceEnd PERMANENT STG8INC2
+
+            ; Later negative and trap sources live beyond the transactional
+            ; backup region so repeated encoding cannot overwrite them.

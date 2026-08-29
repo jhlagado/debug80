@@ -1,0 +1,18 @@
+; Permanent Atom layout for the z80-slice proof.
+            %DEFINE AggregateCallSlices 0
+            %INCLUDE "memory-map.asmi"
+            %INCLUDE "compiler-state.asmi"
+            %INCLUDE "z80-state.asmi"
+            %INCLUDE "z80-slice-code-begin.asmi"
+            %INCLUDE "source-adapter.asm"
+            %INCLUDE "tokenizer.asm"
+            %INCLUDE "semantic-sink.asm"
+            %INCLUDE "parser.asm"
+            %INCLUDE "z80-slice-sink-begin.asmi"
+            %INCLUDE "z80-sink.asm"
+            %INCLUDE "z80-slice-after-sink.asmi"
+            %INCLUDE "z80-slice-source.asmi"
+            %INCLUDE "z80-slice-runtime-begin.asmi"
+            %INCLUDE "z80-runtime.asm"
+            %INCLUDE "z80-slice-proof-body.asmi"
+            %INCLUDE "z80-slice-end.asmi"

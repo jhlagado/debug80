@@ -1,0 +1,907 @@
+; Correctness-first direct-Z80 backend for the complete scalar-expression
+; increment. All evaluation values use canonical 16-bit carriers on the Z80
+; stack. Declared u8/boolean objects still occupy one byte; u16 occupies two.
+
+; Typed dispatch and loop dispatch are currently mutually exclusive. These
+; aliases make the temporary reuse visible; merging the dispatchers requires
+; dedicated storage or a new liveness proof.
+EMTTYPDT EQU EMTLPHD ;@NUC-GLOBAL EmitTypedTrapPosition PERMANENT EMTTYPDT
+EMTTYPDW        EQU EMTCDSTR ;@NUC-GLOBAL EmitTypedWidth PERMANENT EMTTYPDW
+
+TEZACTD EQU ACTVTNDP-STTBS ; runtime state offset for ActivationDepth
+TEZRTSP EQU RootSP-STTBS          ; runtime state offset for saved root SP
+TEZRTIX EQU RootIX-STTBS          ; runtime state offset for saved root IX
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDDSPT: ;@NUC-GLOBAL TypedDispatch PERMANENT TYPDDSPT
+            LD   HL,SMNTCBFF+1
+            LD   (SMNTCRDC),HL
+            XOR  A
+            LD   (EMTBLNFX),A
+            LD   (EMTCNTRL),A
+            LD   HL,EMTCNTR0
+            LD   B,EMTCNTR1
+.L00000:
+            LD   (HL),A
+            INC  HL
+            DJNZ .L00000
+            LD   A,(SMNTCBFF)
+            OR   A
+            RET  Z
+            LD   B,A
+.L00001:
+            PUSH BC
+            CALL NXTSMNTC
+            SUB  SMNTCDFN
+            CP   TYPDOPR0
+            JR   NC,.L00003
+            ADD  A,A
+            LD   E,A
+            LD   D,0
+            LD   HL,TYPDOPRT
+            ADD  HL,DE
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            EX   DE,HL
+            LD   DE,.L00002
+            PUSH DE
+            JP   (HL)
+.L00002:
+            POP  BC
+            RET  C
+            DJNZ .L00001
+            JP   STRCTR1M
+.L00003:
+            POP  BC
+TYPDINTR: ;@NUC-GLOBAL TypedInternalOperation PERMANENT TYPDINTR
+            JP   TYPDEXP1
+TYPDBLNF: ;@NUC-GLOBAL TypedBooleanFixupCapacity PERMANENT TYPDBLNF
+            LD   A,DGNSTCBL
+            JP   CMPLRSTD
+
+TYPDOPRT: ;@NUC-GLOBAL TypedOperationTable PERMANENT TYPDOPRT
+            DW .L00000          ; 20
+            DW .L00002        ; 21
+            DW TYPDDCL0         ; 22
+            DW TYPDINTR ; 23 retired literal8
+            DW TYPDLDPR     ; 24
+            DW TYPDLDL0       ; 25
+            DW TYPDINTR ; 26 retired multiply8
+            DW TYPDINTR ; 27 retired add8
+            DW TYPDSTRP    ; 28
+            DW TYPDSTRL      ; 29
+            DW TYPDWRT8           ; 30
+            DW TYPDENDM          ; 31
+            DW .L00001         ; 32
+            DW TYPDDCL1        ; 33
+            DW TYPDLTRL        ; 34
+            DW TYPDLDP0    ; 35
+            DW TYPDLDL1      ; 36
+            DW TYPDADD8             ; 37
+            DW TYPDADD1            ; 38
+            DW TYPDSBTR        ; 39
+            DW TYPDSBT0       ; 40
+            DW TYPDMLTP        ; 41
+            DW TYPDMLT0       ; 42
+            DW TYPDDVD8          ; 43
+            DW TYPDDVD1         ; 44
+            DW TYPDNGT8          ; 45
+            DW TYPDNGT1         ; 46
+            DW TYPDNT8             ; 47
+            DW TYPDNT16            ; 48
+            DW TYPDNTBL       ; 49
+            DW TYPDAND8             ; 50
+            DW TYPDAND1            ; 51
+            DW TypedOr8              ; 52
+            DW TYPDOR16             ; 53
+            DW TYPDXR8             ; 54
+            DW TYPDXR16            ; 55
+            DW TYPDMDL8          ; 56
+            DW TYPDMDL1         ; 57
+            DW TYPDCMP1          ; 58
+            DW TYPDCMP1          ; 59
+            DW TYPDCMP1          ; 60
+            DW TYPDNRR0          ; 61
+            DW TYPDSTR0   ; 62
+            DW TYPDSTR1     ; 63
+            DW TYPDBGNA         ; 64
+            DW TYPDBGNO          ; 65
+            DW TYPDENDB       ; 66
+            DW STRCTR1I       ; 67
+            DW STRCTR1K ; 68
+            DW STRCTR1L        ; 69
+            DW STRCTR1P    ; 70
+            DW STRCTR1Q     ; 71
+            DW STRCTR1R     ; 72
+            DW STRCTR1S  ; 73
+            DW TYPDBGNR     ; 74
+            DW TYPDLDL0       ; 75 parameter u8
+            DW TYPDLDL1      ; 76 parameter u16
+            DW TYPDCLLS       ; 77
+            DW TYPDRTRN     ; 78
+            DW TYPDSTRL      ; 79 parameter u8
+            DW TYPDSTR1     ; 80 parameter u16
+            DW TYPDENDR       ; 81
+%IF AggregateCallSlices
+            DW STG7BGNR    ; 82
+            DW STG7BNDP   ; 83
+            DW STG7CLL            ; 84
+            DW STG7RTRN ; 85
+            DW STG7ENDR      ; 86
+            DW STG7LDPR ; 87
+            DW STG7LDP0 ; 88
+            DW STG7SLCT     ; 89
+            DW STG7SLC0     ; 90
+            DW STG7LDIN   ; 91
+            DW STG7LDI0  ; 92
+            DW STG7STRI  ; 93
+            DW STG7STR0 ; 94
+            DW STG7CPYA   ; 95
+            DW STG7STRN    ; 96
+            DW STG7STR1     ; 97
+            DW STG8FLRT     ; 98
+            DW STG8FLMN        ; 99
+            DW STG8RTRN   ; 100
+            DW STG8RTRN   ; 101
+            DW STG8ENDF ; 102
+            DW STG8SKPH     ; 103
+            DW STG8BGNH    ; 104
+            DW STG8ENDH      ; 105
+            DW STG8BGNC ; 106
+            DW STG7LDRD ; 107
+TYPDOPR0 EQU 88 ;@NUC-GLOBAL TypedOperationCount PERMANENT TYPDOPR0
+%ELSE
+TYPDOPR0 EQU 62 ;@NUC-GLOBAL TypedOperationCount PERMANENT TYPDOPR0
+%ENDIF
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+.L00000:
+            CALL NXTSMNTC     ; byte offset
+            CALL NXTSMNTC     ; value
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+.L00001:
+            CALL NXTSMNTC     ; byte offset
+            CALL NXTSMNTC
+            CALL EmitByte
+            RET  C
+            CALL NXTSMNTC
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+.L00002:
+            CALL TYPDBGNP
+            RET  C
+            LD   HL,EXPRSS12
+            JP   EMTEGHT
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDBGNP: ;@NUC-GLOBAL TypedBeginProgramFrame PERMANENT TYPDBGNP
+            LD   DE,(EMTDTFXP)
+            LD   HL,(EMTCRSR)
+            CALL PTCHWRD
+            JP   TYPDSVRT
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+TYPDDCL0: ;@NUC-GLOBAL TypedDeclare8 PERMANENT TYPDDCL0
+            CALL NXTSMNTC
+            LD   A,$3B                    ; DEC SP
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+TYPDDCL1: ;@NUC-GLOBAL TypedDeclare16 PERMANENT TYPDDCL1
+            CALL NXTSMNTC
+            LD   A,$3B
+            CALL EmitByte
+            RET  C
+            LD   A,$3B
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDLTRL: ;@NUC-GLOBAL TypedLiteral16 PERMANENT TYPDLTRL
+            CALL NXTSMNTC
+            LD   C,A
+            CALL NXTSMNTC
+            LD   H,A
+            LD   L,C
+            LD   A,$21                    ; LD HL,nn
+;@ROUTINE IN A,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDEMT2: ;@NUC-GLOBAL TypedEmitOpcodeWordPushHL PERMANENT TYPDEMT2
+            CALL EMTOPCDW
+            RET  C
+            LD   A,$E5                    ; PUSH HL
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TYPDLDPR: ;@NUC-GLOBAL TypedLoadProgram8 PERMANENT TYPDLDPR
+            CALL EXPRSSNH
+            LD   A,$3A                    ; LD A,(nn)
+            CALL EMTOPCDW
+            RET  C
+            LD   HL,TYPDATHL
+            JP   EmitFour
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TYPDLDP0: ;@NUC-GLOBAL TypedLoadProgram16 PERMANENT TYPDLDP0
+            CALL EXPRSSNH
+            LD   A,$2A                    ; LD HL,(nn)
+            JR   TYPDEMT2
+
+; C receives -(byte offset + 1), the displacement of the low byte from IX.
+;@ROUTINE OUT A,C,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+TYPDLCLD: ;@NUC-GLOBAL TypedLocalDisplacement PERMANENT TYPDLCLD
+            CALL NXTSMNTC
+            CPL
+            LD   C,A
+            OR   A
+            RET
+
+;@ROUTINE IN C,HL OUT A,C,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+TYPDEMTI: ;@NUC-GLOBAL TypedEmitIndexed PERMANENT TYPDEMTI
+            LD   B,0
+            PUSH BC
+            LD   B,2
+            CALL EMTBYTS
+            POP  BC
+            RET  C
+            LD   A,C
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+TYPDEMT3: ;@NUC-GLOBAL TypedEmitPopHL PERMANENT TYPDEMT3
+            LD   A,$E1                    ; POP HL
+            JP   EmitByte
+
+;@ROUTINE OUT A,C,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+TYPDLDLC: ;@NUC-GLOBAL TypedLoadLocalLowIndexed PERMANENT TYPDLDLC
+            CALL TYPDLCLD
+            LD   HL,TYPDLDL2
+            JP   TYPDEMTI
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+TYPDLDL0: ;@NUC-GLOBAL TypedLoadLocal8 PERMANENT TYPDLDL0
+            CALL TYPDLDLC
+            RET  C
+            LD   HL,TYPDZRHG
+            JP   EMTTHR
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+TYPDLDL1: ;@NUC-GLOBAL TypedLoadLocal16 PERMANENT TYPDLDL1
+            CALL TYPDLDLC
+            RET  C
+            DEC  C
+            LD   HL,TYPDLDL3
+            CALL TYPDEMTI
+            RET  C
+            LD   A,$E5
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+TYPDPPOP: ;@NUC-GLOBAL TypedPopOperands PERMANENT TYPDPPOP
+            LD   HL,TYPDPPO0
+            JP   EmitPair
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+TYPDPSHH: ;@NUC-GLOBAL TypedPushHL PERMANENT TYPDPSHH
+            LD   A,$E5
+            JP   EmitByte
+
+;@ROUTINE IN B,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDEMT4: ;@NUC-GLOBAL TypedEmitSequence PERMANENT TYPDEMT4
+            PUSH BC
+            PUSH HL
+            CALL TYPDPPOP
+            POP  HL
+            POP  BC
+            RET  C
+            CALL EMTBYTS
+            RET  C
+            JR   TYPDPSHH
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDADD8: ;@NUC-GLOBAL TypedAdd8 PERMANENT TYPDADD8
+            LD   HL,TYPDADD0
+            JR   TYPDBNRY
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDSBTR: ;@NUC-GLOBAL TypedSubtract8 PERMANENT TYPDSBTR
+            LD   HL,TYPDSBT1
+            JR   TYPDBNRY
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDXR8: ;@NUC-GLOBAL TypedXor8 PERMANENT TYPDXR8
+            LD   HL,TYPDXR8B
+            JR   TYPDBNRY
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDAND8: ;@NUC-GLOBAL TypedAnd8 PERMANENT TYPDAND8
+            LD   HL,TYPDAND0
+            JR   TYPDBNRY
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TypedOr8:
+            LD   HL,TYPDOR8B
+;@ROUTINE IN HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDBNRY: ;@NUC-GLOBAL TypedBinary5 PERMANENT TYPDBNRY
+            LD   B,5
+            JR   TYPDEMT4
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDXR16: ;@NUC-GLOBAL TypedXor16 PERMANENT TYPDXR16
+            LD   HL,TYPDXR10
+            JR   TYPDBNR0
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDAND1: ;@NUC-GLOBAL TypedAnd16 PERMANENT TYPDAND1
+            LD   HL,TYPDAND2
+            JR   TYPDBNR0
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDOR16: ;@NUC-GLOBAL TypedOr16 PERMANENT TYPDOR16
+            LD   HL,TYPDOR10
+;@ROUTINE IN HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDBNR0: ;@NUC-GLOBAL TypedBinary6 PERMANENT TYPDBNR0
+            LD   B,6
+            JR   TYPDEMT4
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDADD1: ;@NUC-GLOBAL TypedAdd16 PERMANENT TYPDADD1
+            LD   HL,TYPDADD2
+            LD   B,1
+            JR   TYPDEMT4
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDSBT0: ;@NUC-GLOBAL TypedSubtract16 PERMANENT TYPDSBT0
+            LD   HL,TYPDSBT2
+            LD   B,3
+            JR   TYPDEMT4
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDMLTP: ;@NUC-GLOBAL TypedMultiply8 PERMANENT TYPDMLTP
+            CALL TYPDMLT1
+            RET  C
+            LD   HL,TYPDZRH0
+            CALL   EmitPair
+            RET  C
+            JR   TYPDPSHH
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDMLT0: ;@NUC-GLOBAL TypedMultiply16 PERMANENT TYPDMLT0
+            CALL TYPDMLT1
+            RET  C
+            JR   TYPDPSHH
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDMLT1: ;@NUC-GLOBAL TypedMultiply PERMANENT TYPDMLT1
+            CALL TYPDPPOP
+            RET  C
+%IF TargetStreamingOutput
+            LD   DE,NCLSRNTH
+            JP   EMTRNTMC
+%ELSE
+            LD   HL,MLTPLYU1
+            JP   EmitCall
+%ENDIF
+
+; Emit a call whose carry-clear success path must skip a generated failure
+; outcome. DE returns the branch operand for the caller to patch.
+;@ROUTINE IN HL OUT A,DE,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,HL
+TYPDEMTF: ;@NUC-GLOBAL TypedEmitFailableCall PERMANENT TYPDEMTF
+            CALL EmitCall
+            RET  C
+            JP   EMTJRNCP
+
+%IF TargetStreamingOutput
+;@ROUTINE IN DE OUT A,DE,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,HL
+TYPDEMT5: ;@NUC-GLOBAL TypedEmitFailableRuntimeCall PERMANENT TYPDEMT5
+            CALL EMTRNTMC
+            RET  C
+            JP   EMTJRNCP
+%ENDIF
+
+;@ROUTINE OUT A,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TYPDRDTR: ;@NUC-GLOBAL TypedReadTrapPosition PERMANENT TYPDRDTR
+            CALL RDSMNTCW
+            LD   (EMTTYPDT),DE
+            RET
+
+;@ROUTINE IN DE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDEMTT: ;@NUC-GLOBAL TypedEmitTrapHead PERMANENT TYPDEMTT
+            LD   (EMTEXTFX),DE
+            LD   HL,(EMTTYPDT)
+            JP   EMTLDHL
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDDVD8: ;@NUC-GLOBAL TypedDivide8 PERMANENT TYPDDVD8
+            LD   C,1
+            JR   TYPDDVD
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDDVD1: ;@NUC-GLOBAL TypedDivide16 PERMANENT TYPDDVD1
+            LD   C,0
+            JR   TYPDDVD
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDMDL8: ;@NUC-GLOBAL TypedModulo8 PERMANENT TYPDMDL8
+            LD   C,3
+            JR   TYPDDVD
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDMDL1: ;@NUC-GLOBAL TypedModulo16 PERMANENT TYPDMDL1
+            LD   C,2
+TYPDDVD: ;@NUC-GLOBAL TypedDivide PERMANENT TYPDDVD
+            CALL TYPDRDTR
+            LD   A,C
+            LD   (EMTTYPDW),A
+            CALL TYPDPPOP
+            RET  C
+%IF TargetStreamingOutput
+            LD   DE,NCLSRNTI
+%ELSE
+            LD   HL,DVDU16
+%ENDIF
+            LD   A,(EMTTYPDW)
+            BIT  1,A
+            JR   Z,.L00000
+%IF TargetStreamingOutput
+            LD   DE,NCLSRNTJ
+%ELSE
+            LD   HL,MDLU16
+%ENDIF
+.L00000:
+%IF TargetStreamingOutput
+            CALL TYPDEMT5
+%ELSE
+            CALL TYPDEMTF
+%ENDIF
+            RET  C
+            LD   A,3
+            CALL TYPDEMT9
+            RET  C
+            LD   A,(EMTTYPDW)
+            AND  1
+            JR   Z,.L00001
+            LD   HL,TYPDZRH0
+            CALL   EmitPair
+            RET  C
+.L00001:
+            JP   TYPDPSHH
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDNGT8: ;@NUC-GLOBAL TypedNegate8 PERMANENT TYPDNGT8
+            LD   HL,TYPDNGT0
+            LD   B,6
+            JR   TYPDUNR1
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDNGT1: ;@NUC-GLOBAL TypedNegate16 PERMANENT TYPDNGT1
+            LD   HL,TYPDNGT2
+            LD   B,8
+            JR   TYPDUNR1
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDNT8: ;@NUC-GLOBAL TypedNot8 PERMANENT TYPDNT8
+            LD   HL,TYPDNT8B
+            LD   B,6
+            JR   TYPDUNR1
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDNT16: ;@NUC-GLOBAL TypedNot16 PERMANENT TYPDNT16
+            LD   HL,TYPDNT10
+            LD   B,7
+            JR   TYPDUNR1
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDNTBL: ;@NUC-GLOBAL TypedNotBoolean PERMANENT TYPDNTBL
+            LD   HL,TYPDNTB0
+            LD   B,7
+TYPDUNR1: ;@NUC-GLOBAL TypedUnarySequence PERMANENT TYPDUNR1
+            CALL EMTBYTS
+            RET  C
+            JP   TYPDPSHH
+
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDEMTC: ;@NUC-GLOBAL TypedEmitCompare PERMANENT TYPDEMTC
+            CALL EMTLDAMM
+            RET  C
+%IF TargetStreamingOutput
+            LD   DE,NCLSRNTK
+            JP   EMTRNTMC
+%ELSE
+            LD   HL,CMPRU16
+            JP   EmitCall
+%ENDIF
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDCMP1: ;@NUC-GLOBAL TypedCompare PERMANENT TYPDCMP1
+            CALL NXTSMNTC
+            LD   C,A
+            PUSH BC
+            CALL TYPDPPOP
+            POP  BC
+            RET  C
+            LD   A,C
+            CALL TYPDEMTC
+            RET  C
+            JP   TYPDPSHH
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDNRR0: ;@NUC-GLOBAL TypedNarrow8 PERMANENT TYPDNRR0
+            CALL TYPDRDTR
+            CALL TYPDEMT3
+            RET  C
+            LD   HL,TYPDTSTH
+            CALL   EmitPair
+            RET  C
+            LD   A,$28                    ; JR Z,success
+            CALL EMTRLTVP
+            RET  C
+            LD   A,2
+            CALL TYPDEMT9
+            RET  C
+            JP   TYPDPSHH
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TYPDSTRP: ;@NUC-GLOBAL TypedStoreProgram8 PERMANENT TYPDSTRP
+            CALL EXPRSSNH
+            PUSH HL
+            LD   HL,TYPDPPHL
+            CALL   EmitPair
+            POP  HL
+            RET  C
+            LD   A,$32
+            JP   EMTOPCDW
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TYPDSTR0: ;@NUC-GLOBAL TypedStoreProgram16 PERMANENT TYPDSTR0
+            CALL EXPRSSNH
+            PUSH HL
+            CALL TYPDEMT3
+            POP  HL
+            RET  C
+            LD   A,$22
+            JP   EMTOPCDW
+
+;@ROUTINE OUT A,C,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+TYPDSTRL: ;@NUC-GLOBAL TypedStoreLocal8 PERMANENT TYPDSTRL
+            CALL TYPDLCLD
+            CALL TYPDEMT3
+            RET  C
+            LD   HL,TYPDSTR2
+            JP   TYPDEMTI
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
+TYPDSTR1: ;@NUC-GLOBAL TypedStoreLocal16 PERMANENT TYPDSTR1
+            CALL TYPDSTRL
+            RET  C
+            DEC  C
+            LD   HL,TYPDSTR3
+            JP   TYPDEMTI
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDWRT8: ;@NUC-GLOBAL TypedWrite8 PERMANENT TYPDWRT8
+            CALL TYPDRDTR
+            LD   HL,TYPDPPHL
+            CALL   EmitPair
+            RET  C
+%IF TargetStreamingOutput
+            LD   A,1
+            CALL EMTTRGTV
+            RET  C
+            CALL EMTJRNCP
+%ELSE
+            LD   HL,WRTOTPTB
+            CALL TYPDEMTF
+%ENDIF
+            RET  C
+            CALL TYPDEMTT
+            RET  C
+            CALL EMTUNHND
+            RET  C
+            JR   TYPDEMTA
+
+; Every terminal typed-expression trap must dismantle the routine frame before
+; emitting the common trap record and RET. Without this epilogue the generated
+; return consumes local bytes or the saved IX value as its return address.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDEMT6: ;@NUC-GLOBAL TypedEmitTrapEnding PERMANENT TYPDEMT6
+            CALL TYPDRST1
+            RET  C
+            LD   A,$F5                    ; PUSH AF, preserve trap reason
+            CALL EmitByte
+            RET  C
+            LD   A,$AF                    ; XOR A
+            CALL EmitByte
+            RET  C
+%IF TargetStreamingOutput
+            LD   DE,TEZACTD
+            CALL EMTSTRTR
+%ELSE
+            LD   HL,ACTVTNDP
+            CALL EMTSTRA
+%ENDIF
+            RET  C
+            LD   A,$F1                    ; POP AF
+            CALL EmitByte
+            RET  C
+            JP   EMTTRPEN
+
+; Emit the common terminal trap body for source position HL and trap code A.
+; The caller owns and patches the conditional branch around this terminal path.
+;@ROUTINE IN A,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDEMT7: ;@NUC-GLOBAL TypedEmitTrapBody PERMANENT TYPDEMT7
+            PUSH AF
+            CALL EMTLDHL
+            JR   C,TYPDEMT8
+            POP  AF
+            CALL EMTLDAMM
+            RET  C
+            JR   TYPDEMT6
+TYPDEMT8: ;@NUC-GLOBAL TypedEmitTrapBodyFailure PERMANENT TYPDEMT8
+            LD   L,A
+            POP  BC
+            LD   A,L
+            SCF
+            RET
+
+; Emit and patch a terminal trap using the retained typed-expression source
+; position. A is the trap code and DE the success-branch operand.
+;@ROUTINE IN A,DE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDEMT9: ;@NUC-GLOBAL TypedEmitCurrentTrap PERMANENT TYPDEMT9
+            PUSH AF
+            CALL TYPDEMTT
+            JR   C,TYPDEMT8
+            POP  AF
+            CALL EMTLDAMM
+            RET  C
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDEMTA: ;@NUC-GLOBAL TypedEmitTrapTail PERMANENT TYPDEMTA
+            CALL TYPDEMT6
+            RET  C
+            LD   DE,(EMTEXTFX)
+            JP   PTCHHR
+
+; Save the outer machine frame before main allocates locals, and restore that
+; exact frame on every terminal trap, including a trap inside recursive calls.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDSVRT: ;@NUC-GLOBAL TypedSaveRootFrame PERMANENT TYPDSVRT
+            LD   HL,TYPDSTRS
+            JR   TYPDRTFR
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDRST1: ;@NUC-GLOBAL TypedRestoreRootFrame PERMANENT TYPDRST1
+            LD   HL,TYPDLDSP
+;@ROUTINE IN HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDRTFR: ;@NUC-GLOBAL TypedRootFrameReady PERMANENT TYPDRTFR
+            PUSH HL
+            CALL   EmitPair
+            POP  HL
+            RET  C
+            PUSH HL
+%IF TargetStreamingOutput
+            LD   DE,TEZRTSP
+            CALL TRGTSTTA
+%ELSE
+            LD   HL,RootSP
+%ENDIF
+            CALL EmitWord
+            POP  HL
+            RET  C
+            INC  HL
+            INC  HL
+            CALL   EmitPair
+            RET  C
+%IF TargetStreamingOutput
+            LD   DE,TEZRTIX
+            CALL TRGTSTTA
+%ELSE
+            LD   HL,RootIX
+%ENDIF
+            JP   EmitWord
+
+; Begin the single retained value routine. Operand bytes are routine ordinal
+; and parameter type. HL carries the copied argument into this entry.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TYPDBGNR: ;@NUC-GLOBAL TypedBeginRoutine PERMANENT TYPDBGNR
+            CALL NXTSMNTC
+            CALL NXTSMNTC
+            LD   (EMTTYPDW),A
+            LD   C,CNTRLRT2
+            CALL STRCTR1J
+            RET  C
+            LD   HL,EXPRSS12
+            CALL   EMTEGHT
+            RET  C
+            LD   A,(EMTTYPDW)
+            CP   SCLRTYP0
+            LD   HL,TYPDPRM9
+            LD   B,4
+            JR   NZ,.L00000
+            LD   HL,TYPDPRMT
+            LD   B,8
+.L00000:
+            JP   EMTBYTS
+
+; Evaluate has already left the copied argument as one canonical carrier.
+; Claim activation capacity before the callee begins, then call the fixed
+; forward label. The result returns in HL and becomes the enclosing carrier.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TYPDCLLS: ;@NUC-GLOBAL TypedCallScalar PERMANENT TYPDCLLS
+            CALL NXTSMNTC     ; ordinal
+            CALL NXTSMNTC     ; result type
+            LD   (EMTTYPDW),A
+            CALL TYPDRDTR
+            CALL TYPDEMT3           ; argument
+            RET  C
+%IF TargetStreamingOutput
+            LD   DE,NCLSRNT9
+            CALL TYPDEMT5
+%ELSE
+            LD   HL,ACTVTNCL
+            CALL TYPDEMTF
+%ENDIF
+            RET  C
+            LD   A,5
+            CALL TYPDEMT9
+            RET  C
+            LD   C,CNTRLRT2
+            LD   A,$CD                    ; CALL nn
+            CALL STRCTR1H
+            RET  C
+%IF TargetStreamingOutput
+            LD   DE,NCLSRNTA
+            CALL EMTRNTMC
+%ELSE
+            LD   HL,ACTVTNRL
+            CALL EmitCall
+%ENDIF
+            RET  C
+            LD   A,$E5                    ; PUSH HL result carrier
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+TYPDRTRN: ;@NUC-GLOBAL TypedReturnScalar PERMANENT TYPDRTRN
+            CALL TYPDEMT3           ; result
+            RET  C
+            CALL EXPRSS10
+            RET  C
+            LD   A,$C9
+            JP   EmitByte
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TYPDENDR: ;@NUC-GLOBAL TypedEndRoutine PERMANENT TYPDENDR
+            XOR  A
+            RET
+
+;@ROUTINE IN DE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDPSHB: ;@NUC-GLOBAL TypedPushBooleanFixup PERMANENT TYPDPSHB
+            LD   A,(EMTBLNFX)
+            CP   EMTBLNF1
+            JP   NC,TYPDBLNF
+            LD   C,A
+            LD   B,0
+            LD   HL,EMTBLNF0
+            ADD  HL,BC
+            ADD  HL,BC
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
+            LD   A,(EMTBLNFX)
+            INC  A
+            LD   (EMTBLNFX),A
+            OR   A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO,DE CLOBBERS SIGN,PARITY,HALFCARRY,B,C,HL
+TYPDPPBL: ;@NUC-GLOBAL TypedPopBooleanFixup PERMANENT TYPDPPBL
+            LD   A,(EMTBLNFX)
+            OR   A
+            JP   Z,TYPDINTR
+            DEC  A
+            LD   (EMTBLNFX),A
+            LD   C,A
+            LD   B,0
+            LD   HL,EMTBLNF0
+            ADD  HL,BC
+            ADD  HL,BC
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            OR   A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDBGNA: ;@NUC-GLOBAL TypedBeginAnd PERMANENT TYPDBGNA
+            LD   HL,TYPDBGN0
+            LD   B,6
+            JR   TYPDBGNB
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDBGNO: ;@NUC-GLOBAL TypedBeginOr PERMANENT TYPDBGNO
+            LD   HL,TYPDBGN1
+            LD   B,6
+TYPDBGNB: ;@NUC-GLOBAL TypedBeginBoolean PERMANENT TYPDBGNB
+            CALL EMTBYTS
+            RET  C
+            CALL EMTJRPLC
+            RET  C
+            JR   TYPDPSHB
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL
+TYPDENDB: ;@NUC-GLOBAL TypedEndBoolean PERMANENT TYPDENDB
+            CALL TYPDPPBL
+            RET  C
+            JP   PTCHHR
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
+TYPDENDM: ;@NUC-GLOBAL TypedEndMain PERMANENT TYPDENDM
+            LD   A,(EMTBLNFX)
+            OR   A
+            JP   NZ,TYPDINTR
+            CALL EXPRSS10
+            RET  C
+            JP   EMTSCCSS
+
+; Entry point used by the typed-expression proof.
+.L00000:
+%IF TargetStreamingOutput
+%ELSE
+;@ROUTINE IN HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+ENCDPRG0: ;@NUC-GLOBAL EncodeProgramHeader PERMANENT ENCDPRG0
+            CALL BGNPRGRM
+%IF AggregateCallSlices
+            JR   ENCDPRG1
+
+; Emit startup into the code segment. Prepared bytes are copied from rodata
+; into initialized RAM, then the complete BSS allocation is cleared before the
+; existing entry jump transfers to main.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+ENCDSGMN: ;@NUC-GLOBAL EncodeSegmentedProgramHeader PERMANENT ENCDSGMN
+            LD   HL,(STTCIMGL)
+            LD   A,H
+            OR   L
+            JR   Z,.L00000
+            LD   HL,GNRTDRO0
+            CALL EMTLDHL
+            RET  C
+            LD   DE,PRGRMDTB
+            CALL EMTLDDEI
+            RET  C
+            LD   HL,(STTCIMGL)
+            CALL EMTLDBCI
+            RET  C
+            LD   HL,SGMNTDCP
+            CALL EmitPair
+            RET  C
+.L00000:
+            LD   HL,(PRGRMBSS)
+            LD   A,H
+            OR   L
+            JR   Z,.L00001
+            LD   HL,PRGRMBS0
+            CALL EMTLDHL
+            RET  C
+            LD   HL,(PRGRMBSS)
+            CALL EMTLDBCI
+            RET  C
+%IF TargetStreamingOutput
+            LD   DE,NCLSRNTF
+            CALL EMTRNTMC
+%ELSE
+            LD   HL,INTLZBSS
+            CALL EmitCall
+%ENDIF
+            RET  C
+.L00001:
+%ENDIF
+ENCDPRG1: ;@NUC-GLOBAL EncodeProgramEntry PERMANENT ENCDPRG1
+            LD   A,$C3
+            CALL EmitByte
+            RET  C
+            LD   HL,(EMTCRSR)
+            LD   (EMTDTFXP),HL
+            LD   HL,0
+            JP   EmitWord
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+ENCDTYPD: ;@NUC-GLOBAL EncodeTypedExpressionProgram PERMANENT ENCDTYPD
+            LD   HL,GNRTDLMT
+            CALL ENCDPRG0
+            JP   C,ABRTPRGR
+%IF AggregateCallSlices
+            JP   AGGRGTDS
+%ELSE
+            CALL TYPDDSPT
+            JP   C,ABRTPRGR
+            JP   FNSHPRGR
+%ENDIF
+.L00000:
+%ENDIF
+
+%IF AggregateCallSlices
+SGMNTDCP: DB $ED,$B0            ;@NUC-GLOBAL SegmentedCopyBytes PERMANENT SGMNTDCP; LDIR
+%ENDIF

@@ -1,0 +1,419 @@
+            ORG PRFBS
+SCAREC EQU $2A0
+SCRGCOF EQU $56
+SCACTOF EQU $57
+SCEXTOT EQU $29
+SCZEROF EQU $54
+SCSTELF EQU $11
+SCSTEIF EQU $11
+SCSECOF EQU $31
+SCPRFOF EQU $20
+SCLOFOF EQU $3D
+SCMAFOF EQU $0C
+SCPAFOF EQU $11
+SCPRMOF EQU $04
+SCLOMOF EQU $19
+SCPAMOF EQU $11
+SCLBCOF EQU $141
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFCS),A
+            LD   (PRFSTTS),A
+            LD   (SRVCFLRC),A
+
+            LD   A,110
+            LD   HL,STRCTRDB
+            LD   DE,STRCTRDD
+            CALL CMPLSLC
+            JP   C,PRFFLACC
+            CALL ENCDTYPD
+            JP   C,PRFFLAC0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLAC4
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLAC5
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFLAC6
+            LD   A,(SRVCOTP0)
+            LD   (ACCPTDOB),A
+            ; The harness independently checks the observed byte while this
+            ; proof continues to discriminate storage and final counters.
+            LD   A,(GNRTDBS+3)
+            LD   (ACCPTDO0),A
+            LD   A,(GNRTDBS+4)
+            LD   (ACCPTDO1),A
+            LD   HL,(GNRTDBS+5)
+            LD   (ACCPTDO2),HL
+            LD   HL,(GNRTDSZ)
+            LD   (STRCTRDG),HL
+
+            ; A failed Z80-emission transaction must leave the published
+            ; program byte-for-byte runnable.
+            LD   A,(GNRTDBS)
+            LD   (ATMCOBSR),A
+            LD   HL,GNRTDBS+1
+            CALL BGNPRGRM
+            XOR  A
+            CALL EmitByte
+            JP   C,PRFFLAT2
+            CALL EmitByte
+            JP   NC,PRFFLATM
+            CALL ABRTPRGR
+            LD   A,(GNRTDBS)
+            LD   B,A
+            LD   A,(ATMCOBSR)
+            CP   B
+            JP   NZ,PRFFLAT3
+            LD   HL,(GNRTDSZ)
+            LD   DE,(STRCTRDG)
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLAT0
+
+            ; The same program must unwind a capacity trap from recursive
+            ; routine depth back to the outer machine frame.
+            CALL Reset
+            LD   A,3
+            LD   (ACTVTNLM),A
+            CALL PRFCLLGN
+            JP   C,PRFFLCP9
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLCP2
+            LD   A,(TRPNMBR)
+            CP   5
+            JP   NZ,PRFFLCPA
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFFLCPB
+            LD   HL,(TRPOFFST)
+            LD   DE,SCAREC
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLCP6
+
+            LD   A,111
+            LD   HL,STRCTRDF
+            LD   DE,STRCTRDH
+            CALL CMPLSLC
+            JP   C,PRFFLRNG
+            CALL ENCDTYPD
+            JP   C,PRFFLRN1
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLRN2
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFFLRN3
+            LD   A,(TRPNMBR)
+            CP   4
+            JP   NZ,PRFFLRN4
+            LD   HL,(TRPOFFST)
+            LD   DE,SCRGCOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLRN5
+            LD   A,(GNRTDBS+3)
+            LD   (RNGOBSRV),A
+            LD   A,(GNRTDBS+4)
+            LD   (RNGOBSR0),A
+
+            LD   A,112
+            LD   HL,STRCTRDI
+            LD   DE,STRCTRDJ
+            LD   B,DGNSTCAC
+            LD   IX,SCACTOF
+            CALL PRFEXPCT
+            LD   A,(DGNSTCCD)
+            LD   (ACTVOBSR),A
+            LD   HL,(DGNSTCOF)
+            LD   (ACTVOBS0),HL
+
+            LD   A,113
+            LD   HL,STRCTRDK
+            LD   DE,STRCTRDL
+            LD   B,DGNSTCEM
+            LD   IX,SCEXTOT
+            CALL PRFEXPCT
+            LD   A,(DGNSTCCD)
+            LD   (EXTOBSRV),A
+            LD   HL,(DGNSTCOF)
+            LD   (EXTOBSR0),HL
+
+            LD   A,114
+            LD   HL,STRCTRDZ
+            LD   DE,STRCTRDM
+            LD   B,DGNSTCL0
+            LD   IX,SCZEROF
+            CALL PRFEXPCT
+            LD   A,(DGNSTCCD)
+            LD   (STPOBSRV),A
+            LD   HL,(DGNSTCOF)
+            LD   (STPOBSR0),HL
+
+            LD   A,115
+            LD   HL,STRCTRDN
+            LD   DE,STRCTRDO
+            CALL CMPLSLC
+            JP   C,PRFFLBL0
+            CALL ENCDTYPD
+            JP   C,PRFFLBL1
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFLBL2
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFLBL3
+            LD   A,(GNRTDBS+3)
+            CP   1
+            JP   NZ,PRFFLBL4
+
+            LD   A,116
+            LD   HL,STRCTRDQ
+            LD   DE,STRCTRDT
+            LD   B,DGNSTCE9
+            LD   IX,SCSTELF
+            CALL PRFEXPCT
+            JP   C,PRFFLSTD
+            LD   A,117
+            LD   HL,STRCTRDU
+            LD   DE,STRCTRDV
+            LD   B,DGNSTCE9
+            LD   IX,SCSTEIF
+            CALL PRFEXPCT
+            JP   C,PRFFLSTE
+
+            LD   A,118
+            LD   HL,STRCTRDW
+            LD   DE,STRCTRDX
+            LD   B,DGNSTCDP
+            LD   IX,SCSECOF
+            CALL PRFEXPCT
+            JP   C,PRFFLSCN
+            LD   A,119
+            LD   HL,STRCTRDY
+            LD   DE,STRCTR10
+            LD   B,DGNSTCDP
+            LD   IX,SCPRFOF
+            CALL PRFEXPCT
+            JP   C,PRFFLPRG
+            LD   A,120
+            LD   HL,STRCTR11
+            LD   DE,STRCTR12
+            LD   B,DGNSTCDP
+            LD   IX,SCLOFOF
+            CALL PRFEXPCT
+            JP   C,PRFFLLCL
+            LD   A,121
+            LD   HL,STRCTR13
+            LD   DE,STRCTR14
+            LD   B,DGNSTCDP
+            LD   IX,SCMAFOF
+            CALL PRFEXPCT
+            JP   C,PRFFLMNF
+            LD   A,122
+            LD   HL,STRCTR15
+            LD   DE,STRCTR16
+            LD   B,DGNSTCDP
+            LD   IX,SCPAFOF
+            CALL PRFEXPCT
+            JP   C,PRFFLPR1
+            LD   A,124
+            LD   HL,STRCTR17
+            LD   DE,STRCTR18
+            LD   B,DGNSTCDP
+            LD   IX,SCPRMOF
+            CALL PRFEXPCT
+            JP   C,PRFFLPR2
+            LD   A,125
+            LD   HL,STRCTR19
+            LD   DE,STRCTR1A
+            LD   B,DGNSTCDP
+            LD   IX,SCLOMOF
+            CALL PRFEXPCT
+            JP   C,PRFFLLC0
+            LD   A,126
+            LD   HL,STRCTR1B
+            LD   DE,STRCTR1C
+            LD   B,DGNSTCDP
+            LD   IX,SCPAMOF
+            CALL PRFEXPCT
+            JP   C,PRFFLPR3
+            LD   A,123
+            LD   HL,STRCTR1D
+            LD   DE,STRCTR1E
+            LD   B,DGNSTCC0
+            LD   IX,SCLBCOF
+            CALL PRFEXPCT
+            JP   C,PRFFLLBL
+
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+; A part, HL..DE source, B diagnostic, IX expected offset.
+;@ROUTINE IN A,B,DE,HL,IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IY
+PRFEXPCT: ;@NUC-GLOBAL ProofExpectDiagnostic PERMANENT PRFEXPCT
+            PUSH BC
+            PUSH IX
+            CALL CMPLSLC
+            POP  IX
+            POP  BC
+            RET  NC
+            LD   A,(DGNSTCCD)
+            CP   B
+            JR   NZ,PRFEXPCA
+            LD   HL,(DGNSTCOF)
+            PUSH IX
+            POP  DE
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFEXPCA: ;@NUC-GLOBAL ProofExpectedDiagnosticNo PERMANENT PRFEXPCA
+            SCF
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCLLGN: ;@NUC-GLOBAL ProofCallGenerated PERMANENT PRFCLLGN
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   IX,$A55A
+            CALL GNRTDBS
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,PRFCLLG0
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFCLLG0: ;@NUC-GLOBAL ProofCallGeneratedNo PERMANENT PRFCLLG0
+            SCF
+            RET
+
+PRFFLACC:     LD A,1 ;@NUC-GLOBAL ProofFailAcceptedCompile PERMANENT PRFFLACC
+                              JP PRFFLD
+PRFFLAC0:      LD A,2 ;@NUC-GLOBAL ProofFailAcceptedEncode PERMANENT PRFFLAC0
+                              JP PRFFLD
+PRFFLAC4:       LD A,3 ;@NUC-GLOBAL ProofFailAcceptedFrame PERMANENT PRFFLAC4
+                              JP PRFFLD
+PRFFLAC5:       LD A,4 ;@NUC-GLOBAL ProofFailAcceptedState PERMANENT PRFFLAC5
+                              JP PRFFLD
+PRFFLAC6:      LD A,5 ;@NUC-GLOBAL ProofFailAcceptedOutput PERMANENT PRFFLAC6
+                              JP PRFFLD
+PRFFLAC7:       LD A,6 ;@NUC-GLOBAL ProofFailAcceptedValue PERMANENT PRFFLAC7
+                              JP PRFFLD
+PRFFLAC8:       LD A,7 ;@NUC-GLOBAL ProofFailAcceptedStore PERMANENT PRFFLAC8
+                              JP PRFFLD
+.L00000:     LD A,8
+                              JP PRFFLD
+.L00001:  LD A,9
+                              JP PRFFLD
+PRFFLDNR:              JP PRFFLD ;@NUC-GLOBAL ProofFailedNear PERMANENT PRFFLDNR
+PRFFLCP9:       LD A,21 ;@NUC-GLOBAL ProofFailCapacityFrame PERMANENT PRFFLCP9
+                              JR PRFFLDNR
+PRFFLCP2:       LD A,22 ;@NUC-GLOBAL ProofFailCapacityState PERMANENT PRFFLCP2
+                              JR PRFFLDNR
+PRFFLCPA:      LD A,23 ;@NUC-GLOBAL ProofFailCapacityNumber PERMANENT PRFFLCPA
+                              JR PRFFLDNR
+PRFFLCPB:       LD A,24 ;@NUC-GLOBAL ProofFailCapacityDepth PERMANENT PRFFLCPB
+                              JR PRFFLDNR
+PRFFLCP6:      LD A,25 ;@NUC-GLOBAL ProofFailCapacityOffset PERMANENT PRFFLCP6
+                              JR PRFFLDNR
+PRFFLRNG:        LD A,10 ;@NUC-GLOBAL ProofFailRangeCompile PERMANENT PRFFLRNG
+                              JR PRFFLDNR
+PRFFLRN1:         LD A,11 ;@NUC-GLOBAL ProofFailRangeEncode PERMANENT PRFFLRN1
+                              JR PRFFLDNR
+PRFFLRN2:          LD A,12 ;@NUC-GLOBAL ProofFailRangeFrame PERMANENT PRFFLRN2
+                              JR PRFFLDNR
+PRFFLRN3:          LD A,13 ;@NUC-GLOBAL ProofFailRangeState PERMANENT PRFFLRN3
+                              JR PRFFLDNR
+PRFFLRN4:         LD A,14 ;@NUC-GLOBAL ProofFailRangeNumber PERMANENT PRFFLRN4
+                              JR PRFFLDNR
+PRFFLRN5:         LD A,15 ;@NUC-GLOBAL ProofFailRangeOffset PERMANENT PRFFLRN5
+                              JR PRFFLDNR
+.L00000:         LD A,16
+                              JR PRFFLDNR
+.L00001:         LD A,17
+                              JR PRFFLDNR
+.L00002:       LD A,18
+                              JR PRFFLDNR
+.L00003:         LD A,19
+                              JR PRFFLDNR
+.L00004:            LD A,20
+                              JR PRFFLDNR
+PRFFLAT2:         LD A,26 ;@NUC-GLOBAL ProofFailAtomicSetup PERMANENT PRFFLAT2
+                              JR PRFFLDNR
+PRFFLATM:      LD A,27 ;@NUC-GLOBAL ProofFailAtomicAccepted PERMANENT PRFFLATM
+                              JR PRFFLDNR
+PRFFLAT3:          LD A,28 ;@NUC-GLOBAL ProofFailAtomicByte PERMANENT PRFFLAT3
+                              JR PRFFLDNR
+PRFFLAT0:          LD A,29 ;@NUC-GLOBAL ProofFailAtomicSize PERMANENT PRFFLAT0
+                              JR PRFFLDNR
+PRFFLBL0:  LD A,30 ;@NUC-GLOBAL ProofFailBooleanFlowCompile PERMANENT PRFFLBL0
+                              JR PRFFLDNR
+PRFFLBL1:   LD A,31 ;@NUC-GLOBAL ProofFailBooleanFlowEncode PERMANENT PRFFLBL1
+                              JR PRFFLDNR
+PRFFLBL2:    LD A,32 ;@NUC-GLOBAL ProofFailBooleanFlowFrame PERMANENT PRFFLBL2
+                              JR PRFFLDNR
+PRFFLBL3:    LD A,33 ;@NUC-GLOBAL ProofFailBooleanFlowState PERMANENT PRFFLBL3
+                              JR PRFFLDNR
+PRFFLBL4:    LD A,34 ;@NUC-GLOBAL ProofFailBooleanFlowValue PERMANENT PRFFLBL4
+                              JR PRFFLDNR
+PRFFLSTD:           LD A,35 ;@NUC-GLOBAL ProofFailStrayElse PERMANENT PRFFLSTD
+                              JR PRFFLDNR
+PRFFLSTE:         LD A,36 ;@NUC-GLOBAL ProofFailStrayElseIf PERMANENT PRFFLSTE
+                              JR PRFFLDNR
+PRFFLSCN:       LD A,37 ;@NUC-GLOBAL ProofFailSecondForward PERMANENT PRFFLSCN
+                              JR PRFFLDNR
+PRFFLPRG:      LD A,38 ;@NUC-GLOBAL ProofFailProgramForward PERMANENT PRFFLPRG
+                              JR PRFFLDNR
+PRFFLLCL:        LD A,39 ;@NUC-GLOBAL ProofFailLocalForward PERMANENT PRFFLLCL
+                              JR PRFFLDNR
+PRFFLMNF:         LD A,40 ;@NUC-GLOBAL ProofFailMainForward PERMANENT PRFFLMNF
+                              JR PRFFLDNR
+PRFFLPR1:    LD A,41 ;@NUC-GLOBAL ProofFailParameterForward PERMANENT PRFFLPR1
+                              JR PRFFLD
+PRFFLLBL:       LD A,42 ;@NUC-GLOBAL ProofFailLabelCapacity PERMANENT PRFFLLBL
+                              JR PRFFLD
+PRFFLPR2:         LD A,43 ;@NUC-GLOBAL ProofFailProgramMain PERMANENT PRFFLPR2
+                              JR PRFFLD
+PRFFLLC0:           LD A,44 ;@NUC-GLOBAL ProofFailLocalMain PERMANENT PRFFLLC0
+                              JR PRFFLD
+PRFFLPR3:       LD A,45 ;@NUC-GLOBAL ProofFailParameterMain PERMANENT PRFFLPR3
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            LD   A,$E0
+            LD   (PRFSTTS),A
+            HALT
+
+PRFEXPC0:              DW 0 ;@NUC-GLOBAL ProofExpectedSP PERMANENT PRFEXPC0
+STRCTRDG:     DW 0 ;@NUC-GLOBAL StructuredGeneratedSize PERMANENT STRCTRDG
+ACCPTDOB:      DB 0 ;@NUC-GLOBAL AcceptedObservedOutput PERMANENT ACCPTDOB
+ACCPTDO0:       DB 0 ;@NUC-GLOBAL AcceptedObservedStore PERMANENT ACCPTDO0
+ACCPTDO1:     DB 0 ;@NUC-GLOBAL AcceptedObservedCounter PERMANENT ACCPTDO1
+ACCPTDO2:  DW 0 ;@NUC-GLOBAL AcceptedObservedDescending PERMANENT ACCPTDO2
+RNGOBSRV:         DB 0 ;@NUC-GLOBAL RangeObservedEffect PERMANENT RNGOBSRV
+RNGOBSR0:         DB 0 ;@NUC-GLOBAL RangeObservedAtomic PERMANENT RNGOBSR0
+ACTVOBSR:    DB 0 ;@NUC-GLOBAL ActiveObservedDiagnostic PERMANENT ACTVOBSR
+ACTVOBS0:        DW 0 ;@NUC-GLOBAL ActiveObservedOffset PERMANENT ACTVOBS0
+EXTOBSRV:      DB 0 ;@NUC-GLOBAL ExitObservedDiagnostic PERMANENT EXTOBSRV
+EXTOBSR0:          DW 0 ;@NUC-GLOBAL ExitObservedOffset PERMANENT EXTOBSR0
+STPOBSRV:      DB 0 ;@NUC-GLOBAL StepObservedDiagnostic PERMANENT STPOBSRV
+STPOBSR0:          DW 0 ;@NUC-GLOBAL StepObservedOffset PERMANENT STPOBSR0
+ATMCOBSR:          DB 0 ;@NUC-GLOBAL AtomicObservedByte PERMANENT ATMCOBSR
+PRFSTTS:                  DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:                    DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+GNRTDTYP            EQU GNRTDBS+715 ;@NUC-GLOBAL GeneratedTypedEnd PERMANENT GNRTDTYP
+ProofEnd:

@@ -1,0 +1,39 @@
+            ORG CMPLRCRB
+;@ROUTINE OUT A,BC,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,D,DE,HL
+PRSRPK: ;@NUC-GLOBAL ParserPeek PERMANENT PRSRPK
+            LD   A,(MCKPKFLR)
+            OR   A
+            JR   Z,.L00000
+            LD   A,DGNSTCEN
+            JP   CMPLRSTD
+.L00000:
+            LD   HL,(MCKTKNCR)
+            LD   A,(HL)
+            OR   A
+            RET
+;@ROUTINE OUT A,BC,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,D,DE,HL
+PRSRTK: ;@NUC-GLOBAL ParserTake PERMANENT PRSRTK
+            CALL PRSRPK
+            RET  C
+            LD   HL,(MCKTKNCR)
+            INC  HL
+            LD   (MCKTKNCR),HL
+            OR   A
+            RET
+;@ROUTINE IN E OUT A,C,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,D,DE,HL
+PRSREXPC: ;@NUC-GLOBAL ParserExpect PERMANENT PRSREXPC
+            PUSH DE
+            CALL PRSRTK
+            POP  DE
+            RET  C
+            CP   E
+            RET  Z
+            LD   A,E
+            OR   DGNSTCEN
+;@ROUTINE IN A OUT A,CARRY CLOBBERS ZERO,SIGN,PARITY,HALFCARRY,DE,HL
+CMPLRSTD: ;@NUC-GLOBAL CompilerSetDiagnostic PERMANENT CMPLRSTD
+            LD   (DGNSTCCD),A
+            SCF
+            RET
+
+HYBRDL35: ;@NUC-GLOBAL HybridLL1MeasuredStart PERMANENT HYBRDL35

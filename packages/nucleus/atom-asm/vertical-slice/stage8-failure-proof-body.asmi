@@ -1,0 +1,1538 @@
+            ORG $D000
+S8E00 EQU STG8MNF0-STG8MNFL
+S8E01 EQU STG8INF6-STG8INF5
+S8E02 EQU STG8FLR2+5-STG8FLR1
+S8E03 EQU STG8FLR4-1-STG8FLRF
+S8E04 EQU STG8PRP2-STG8PRP1
+S8E05 EQU STG8RDI0-STG8RDIN
+S8E06 EQU STG8INC2-STG8INC1
+S8E07 EQU STG8PRD3-STG8PRD2
+S8E08 EQU STG8PRD6-STG8PRD5
+S8E09 EQU STG8PRD9-STG8PRD8
+S8E0A EQU STG8WRT0+4-STG8WRTS
+S8E0B EQU STG8SKS0+4-STG8SKST
+S8E0C EQU STG8SCN0-STG8SCND
+S8E0D EQU STG8UNK0-STG8UNKN
+S8E0E EQU STG8UNC0-1-STG8UNCN
+S8E0F EQU STG8NST0-STG8NSTD
+S8E0G EQU STG8SRVB+15-STG8SRVA
+S8E0H EQU STG8CMP0-STG8CMPS
+S8E0I EQU STG8AGG0-STG8AGGR
+S8E0J EQU STG8IND0-STG8INDX
+S8E0K EQU STG8AGG3-STG8AGG2
+S8E0L EQU STG8TRPR-STG8TRPB
+S8E0M EQU STG8INC0-STG8INCM
+S8E0N EQU STG8BND0-STG8BNDS
+S8E0O EQU STG8NRR0-STG8NRRW
+S8E0P EQU STG8DVD0-STG8DVDT
+S8E0Q EQU STG8LPR0-STG8LPRN
+S8E0R EQU STG8HND0-STG8HNDL
+S8E0S EQU STG8BRL0-STG8BRLC
+S8E0T EQU STG8BRA0-STG8BRAS
+S8E0U EQU STG8LGC0-STG8LGCY
+S8E0V EQU STG8LGC3-STG8LGC2
+S8E0W EQU STG8INF0-STG8INFL
+S8E0X EQU STG8INF3-STG8INF2
+S8E0Y EQU STG8DBL0-STG8DBLC
+S8E0Z EQU STG8LCL0-STG8LCLH
+S8E10 EQU STG8RSL2-STG8RSL1
+S8E11 EQU STG8FRR0-STG8FRRT
+S8E12 EQU STG8MSS0-STG8MSSN
+S8E13 EQU STG8UNK3-STG8UNK2
+S8E14 EQU STG8WDH0-STG8WDHN
+S8E15 EQU STG8CNS1-STG8CNST
+S8E16 EQU STG8AGG8-STG8AGG7
+S8E17 EQU STG8CNT0-STG8CNTR
+
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFSTTS),A
+            LD   (PRFCS),A
+
+            LD   A,170
+            LD   HL,STG8MNFL
+            LD   DE,STG8MNF1
+            CALL CMPLAGG0
+            JP   C,PRFCMPLF
+            CALL ENCDAGGR
+            JP   C,PRFENCDF
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFRMFL
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFTRPST
+            LD   A,(TRPNMBR)
+            CP   6
+            JP   NZ,PRFTRPRS
+            LD   A,(TRPERRR)
+            CP   7
+            JP   NZ,PRFTRPER
+            LD   HL,(TRPOFFST)
+            LD   DE,S8E00
+            LD   (PRFACTLT),HL
+            LD   (PRFEXPC7),DE
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFTRPOF
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFACTVT
+
+            LD   A,DGNSTCFL
+            LD   BC,S8E01
+            LD   HL,STG8INF5
+            LD   DE,STG8INF7
+            CALL PRFEXPCT
+            JP   C,PRFINFLL
+
+            LD   A,DGNSTCIN
+            LD   BC,S8E02
+            LD   HL,STG8FLR1
+            LD   DE,STG8FLR3
+            CALL PRFEXPCT
+            JP   C,PRFRNGFL
+
+            LD   A,DGNSTCR0
+            LD   BC,S8E03
+            LD   HL,STG8FLRF
+            LD   DE,STG8FLR5
+            CALL PRFEXPCT
+            JP   C,PRFFLWFL
+
+            LD   A,172
+            LD   HL,STG8PRPG
+            LD   DE,STG8PRP0
+            CALL CMPLAGG0
+            JP   C,PRFPRPGT
+            CALL ENCDAGGR
+            JP   C,PRFPRPG0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFPRPG1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFPRPG1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFPRPG1
+            LD   A,(SRVCOTP0)
+            CP   'A'
+            JP   NZ,PRFPRPG1
+
+            LD   A,173
+            LD   HL,STG8PRP1
+            LD   DE,STG8PRP3
+            CALL CMPLAGG0
+            JP   C,PRFPRPG2
+            CALL ENCDAGGR
+            JP   C,PRFPRPG3
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFPRPG4
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFPRPG4
+            LD   A,(TRPNMBR)
+            CP   6
+            JP   NZ,PRFPRPG4
+            LD   A,(TRPERRR)
+            CP   10
+            JP   NZ,PRFPRPG4
+            LD   HL,(TRPOFFST)
+            LD   DE,S8E04
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFPRPG4
+
+            LD   A,174
+            LD   HL,STG8BRRT
+            LD   DE,STG8BRR0
+            CALL CMPLAGG0
+            JP   C,PRFBRRTR
+            CALL ENCDAGGR
+            JP   C,PRFBRRT0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFBRRT1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFBRRT1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFBRRT1
+            LD   A,(SRVCOTP0)
+            OR   A
+            JP   NZ,PRFBRRT1
+
+            LD   A,175
+            LD   HL,STG8SXTN
+            LD   DE,STG8SXT0
+            CALL CMPLAGG0
+            JP   C,PRFSXTNC
+            CALL ENCDAGGR
+            JP   C,PRFSXTNE
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFSXTNR
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFSXTNR
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFSXTNR
+            LD   A,(SRVCOTP0)
+            CP   16
+            JP   NZ,PRFSXTNR
+
+            LD   A,176
+            LD   HL,STG8LCL2
+            LD   DE,STG8LCL3
+            CALL CMPLAGG0
+            JP   C,PRFHNDLR
+            CALL ENCDAGGR
+            JP   C,PRFHNDL0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFHNDL1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFHNDL1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFHNDL1
+            LD   A,(SRVCOTP0)
+            CP   7
+            JP   NZ,PRFHNDL1
+
+            LD   A,204
+            LD   HL,STG8PRGR
+            LD   DE,STG8PRG0
+            CALL CMPLAGG0
+            JP   C,PRFPRGRM
+            CALL ENCDAGGR
+            JP   C,PRFPRGR0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFPRGR1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFPRGR1
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFPRGR1
+            LD   A,(PRGRMBS0)
+            CP   7
+            JP   NZ,PRFPRGR1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFPRGR1
+            LD   A,(SRVCOTP0)
+            CP   8
+            JP   NZ,PRFPRGR1
+
+            LD   A,177
+            LD   HL,STG8RDIN
+            LD   DE,STG8RDI1
+            CALL CMPLAGG0
+            JP   C,PRFRDSCC
+            CALL ENCDAGGR
+            JP   C,PRFRDSC0
+            CALL Reset
+            LD   A,1
+            LD   (SRVCINPT),A
+            LD   A,'Q'
+            LD   (SRVCINP2),A
+            CALL PRFCLLGN
+            JP   C,PRFRDSC1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRDSC1
+            LD   A,(SRVCINP0)
+            CP   1
+            JP   NZ,PRFRDSC1
+            LD   A,(SRVCOTP0)
+            CP   'Q'
+            JP   NZ,PRFRDSC1
+            CALL Reset
+            LD   A,1
+            LD   (SRVCINPT),A
+            LD   A,'Q'
+            LD   (SRVCINP2),A
+            LD   A,1
+            LD   (SRVCFLRC),A
+            CALL PRFCLLGN
+            JP   C,PRFRDSC1
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFRDSC1
+            LD   A,(TRPERRR)
+            CP   3
+            JP   NZ,PRFRDSC1
+            LD   HL,(TRPOFFST)
+            LD   DE,S8E05
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFRDSC1
+
+            LD   A,117
+            LD   (PRFCS),A
+            LD   A,178
+            LD   HL,STG8SRVE
+            LD   DE,STG8SRVF
+            CALL CMPLAGG0
+            JP   C,PRFRDSGN
+            CALL ENCDAGGR
+            JP   C,PRFRDSGN
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFRDSGN
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRDSGN
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFRDSGN
+            LD   A,(SRVCOTP0)
+            CP   1
+            JP   NZ,PRFRDSGN
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFRDSGN
+
+            LD   A,178
+            LD   HL,STG8RDI2
+            LD   DE,STG8RDI3
+            CALL CMPLAGG0
+            JP   C,PRFRDHND
+            CALL ENCDAGGR
+            JP   C,PRFRDHN0
+            CALL Reset
+            XOR  A
+            LD   (SRVCINPT),A
+            CALL PRFCLLGN
+            JP   C,PRFRDHN1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRDHN1
+            LD   A,(SRVCINP0)
+            OR   A
+            JP   NZ,PRFRDHN1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFRDHN1
+            LD   A,(SRVCOTP0)
+            CP   1
+            JP   NZ,PRFRDHN1
+
+            ; The same handler must receive inputFailure without advancing the
+            ; cursor or converting the recoverable error into a trap.
+            CALL Reset
+            LD   A,2
+            LD   (SRVCINP1),A
+            CALL PRFCLLGN
+            JP   C,PRFRDHN1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRDHN1
+            LD   A,(SRVCINP0)
+            OR   A
+            JP   NZ,PRFRDHN1
+            LD   A,(SRVCOTP0)
+            CP   2
+            JP   NZ,PRFRDHN1
+
+            ; A distinct reset run must not inherit the configured failure.
+            CALL Reset
+            LD   A,(SRVCINP1)
+            OR   A
+            JP   NZ,PRFRDHN1
+            LD   A,1
+            LD   (SRVCINPT),A
+            LD   A,'Q'
+            LD   (SRVCINP2),A
+            CALL PRFCLLGN
+            JP   C,PRFRDHN1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRDHN1
+            LD   A,(SRVCINP0)
+            CP   1
+            JP   NZ,PRFRDHN1
+            LD   A,(SRVCOTP0)
+            CP   'Q'
+            JP   NZ,PRFRDHN1
+
+            LD   A,179
+            LD   HL,STG8CNS3
+            LD   DE,STG8CNS4
+            CALL CMPLAGG0
+            JP   C,PRFCNST4
+            CALL ENCDAGGR
+            JP   C,PRFCNST5
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFCNST6
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFCNST6
+            LD   A,(SRVCOTP0)
+            CP   'C'
+            JP   NZ,PRFCNST6
+
+            LD   A,180
+            LD   HL,STG8STRG
+            LD   DE,STG8STR0
+            CALL CMPLAGG0
+            JP   C,PRFSTRGC
+            CALL ENCDAGGR
+            JP   C,PRFSTRGE
+            CALL Reset
+            XOR  A
+            LD   (SRVCSTR1),A
+            LD   (SRVCSTR6),A
+            INC  A
+            LD   (SRVCSTRG),A
+            LD   A,'A'
+            LD   (SRVCSTR2),A
+            CALL PRFCLLGN
+            JP   C,PRFSTRGR
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFSTRGR
+            LD   A,(SRVCSTR0)
+            CP   1
+            JP   NZ,PRFSTRGR
+            LD   A,(SRVCSTR4)
+            CP   2
+            JP   NZ,PRFSTRGR
+            LD   A,(SRVCSTR5)
+            CP   1
+            JP   NZ,PRFSTRGR
+            LD   A,(SRVCSTR7)
+            CP   'Z'
+            JP   NZ,PRFSTRGR
+            LD   A,(SRVCSTR7+1)
+            CP   'B'
+            JP   NZ,PRFSTRGR
+            LD   A,(SRVCOTP0)
+            CP   'A'
+            JP   NZ,PRFSTRGR
+
+            LD   A,181
+            LD   HL,STG8WRTF
+            LD   DE,STG8WRT2
+            CALL CMPLAGG0
+            JP   C,PRFWRTFL
+            CALL ENCDAGGR
+            JP   C,PRFWRTF0
+            CALL Reset
+            LD   A,1
+            LD   (SRVCSTR6),A
+            LD   (SRVCSTR5),A
+            INC  A
+            LD   (SRVCSTR4),A
+            LD   A,'X'
+            LD   (SRVCSTR7),A
+            LD   A,'Y'
+            LD   (SRVCSTR7+1),A
+            CALL PRFCLLGN
+            JP   C,PRFWRTF1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFWRTF1
+            LD   A,(SRVCSTR4)
+            CP   2
+            JP   NZ,PRFWRTF1
+            LD   A,(SRVCSTR5)
+            CP   1
+            JP   NZ,PRFWRTF1
+            LD   A,(SRVCSTR7)
+            CP   'X'
+            JP   NZ,PRFWRTF1
+            LD   A,(SRVCSTR7+1)
+            CP   'Y'
+            JP   NZ,PRFWRTF1
+            LD   A,(SRVCOTP0)
+            CP   4
+            JP   NZ,PRFWRTF1
+
+            LD   A,182
+            LD   HL,STG8SKFL
+            LD   DE,STG8SKF0
+            CALL CMPLAGG0
+            JP   C,PRFSKFLR
+            CALL ENCDAGGR
+            JP   C,PRFSKFL0
+            CALL Reset
+            XOR  A
+            LD   (SRVCSTR6),A
+            INC  A
+            LD   (SRVCSTR5),A
+            INC  A
+            LD   (SRVCSTR4),A
+            CALL PRFCLLGN
+            JP   C,PRFSKFL1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFSKFL1
+            LD   A,(SRVCSTR5)
+            CP   1
+            JP   NZ,PRFSKFL1
+            LD   A,(SRVCOTP0)
+            CP   4
+            JP   NZ,PRFSKFL1
+
+            LD   A,183
+            LD   HL,STG8RWND
+            LD   DE,STG8RWN0
+            CALL CMPLAGG0
+            JP   C,PRFRWNDF
+            CALL ENCDAGGR
+            JP   C,PRFRWND0
+            CALL Reset
+            LD   A,1
+            LD   (SRVCSTR1),A
+            INC  A
+            LD   (SRVCSTR0),A
+            CALL PRFCLLGN
+            JP   C,PRFRWND1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRWND1
+            LD   A,(SRVCSTR0)
+            CP   2
+            JP   NZ,PRFRWND1
+            LD   A,(SRVCOTP0)
+            CP   4
+            JP   NZ,PRFRWND1
+
+            LD   A,184
+            LD   HL,STG8RDST
+            LD   DE,STG8RDS0
+            CALL CMPLAGG0
+            JP   C,PRFRDSTR
+            CALL ENCDAGGR
+            JP   C,PRFRDST0
+            CALL Reset
+            XOR  A
+            LD   (SRVCSTR1),A
+            LD   (SRVCSTRG),A
+            CALL PRFCLLGN
+            JP   C,PRFRDST1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRDST1
+            LD   A,(SRVCSTR0)
+            OR   A
+            JP   NZ,PRFRDST1
+            LD   A,(SRVCOTP0)
+            CP   1
+            JP   NZ,PRFRDST1
+
+            LD   A,185
+            LD   HL,STG8WRTO
+            LD   DE,STG8WRT3
+            CALL CMPLAGG0
+            JP   C,PRFWRTOT
+            CALL ENCDAGGR
+            JP   C,PRFWRTO0
+            CALL Reset
+            LD   A,1
+            LD   (SRVCFLRC),A
+            CALL PRFCLLGN
+            JP   C,PRFWRTO1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFWRTO1
+            LD   A,(SRVCOTPT)
+            OR   A
+            JP   NZ,PRFWRTO1
+            XOR  A
+            LD   (SRVCFLRC),A
+
+            LD   A,186
+            LD   HL,STG8MTLF
+            LD   DE,STG8MTL0
+            CALL CMPLAGG0
+            JP   C,PRFMTLCM
+            CALL ENCDAGGR
+            JP   C,PRFMTLEN
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFMTLRN
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFMTLRN
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFMTLRN
+            LD   A,(SRVCOTP0)
+            CP   'M'
+            JP   NZ,PRFMTLRN
+
+            LD   A,DGNSTCF0
+            LD   BC,S8E06
+            LD   HL,STG8INC1
+            LD   DE,STG8INC2
+            CALL PRFEXPCT
+            JP   C,PRFINCMP
+
+            LD   A,DGNSTCDP
+            LD   BC,S8E07
+            LD   HL,STG8PRD2
+            LD   DE,STG8PRD4
+            CALL PRFEXPCT
+            JP   C,PRFPRDFN
+            LD   HL,(DGNSTCLN)
+            LD   DE,1
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFPRDFN
+            LD   HL,(DGNSTCCL)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFPRDFN
+
+            LD   A,DGNSTCDP
+            LD   BC,S8E08
+            LD   HL,STG8PRD5
+            LD   DE,STG8PRD7
+            CALL PRFEXPCT
+            JP   C,PRFPRDF0
+
+            LD   A,DGNSTCDP
+            LD   BC,S8E09
+            LD   HL,STG8PRD8
+            LD   DE,STG8PRDA
+            CALL PRFEXPCT
+            JP   C,PRFPRDF1
+
+            LD   A,DGNSTCTY
+            LD   BC,S8E0A
+            LD   HL,STG8WRTS
+            LD   DE,STG8WRT1
+            CALL PRFEXPCT
+            JP   C,PRFWRTST
+
+            LD   A,DGNSTCTY
+            LD   BC,S8E0B
+            LD   HL,STG8SKST
+            LD   DE,STG8SKS1
+            CALL PRFEXPCT
+            JP   C,PRFSKSTR
+
+            LD   A,DGNSTCDP
+            LD   BC,S8E0C
+            LD   HL,STG8SCND
+            LD   DE,STG8SCN1
+            CALL PRFEXPCT
+            JP   C,PRFSCNDF
+
+            LD   A,DGNSTCUN
+            LD   BC,S8E0D
+            LD   HL,STG8UNKN
+            LD   DE,STG8UNK1
+            CALL PRFEXPCT
+            JP   C,PRFUNKNW
+
+            LD   A,DGNSTCFL
+            LD   BC,S8E0E
+            LD   HL,STG8UNCN
+            LD   DE,STG8UNC1
+            CALL PRFEXPCT
+            JP   C,PRFUNCNS
+
+            LD   A,DGNSTCFL
+            LD   BC,S8E0F
+            LD   HL,STG8NSTD
+            LD   DE,STG8NST1
+            CALL PRFEXPCT
+            JP   C,PRFNSTDS
+
+            LD   A,DGNSTCFL
+            LD   BC,S8E0G
+            LD   HL,STG8SRVA
+            LD   DE,STG8SRVD
+            CALL PRFEXPCT
+            JP   C,PRFSRVCA
+
+            LD   A,DGNSTCFL
+            LD   BC,S8E0H
+            LD   HL,STG8CMPS
+            LD   DE,STG8CMP1
+            CALL PRFEXPCT
+            JP   C,PRFCMPSD
+
+            LD   A,DGNSTCFL
+            LD   BC,S8E0I
+            LD   HL,STG8AGGR
+            LD   DE,STG8AGG1
+            CALL PRFEXPCT
+            JP   C,PRFAGGRG
+
+            LD   A,DGNSTCFL
+            LD   BC,S8E0J
+            LD   HL,STG8INDX
+            LD   DE,STG8IND1
+            CALL PRFEXPCT
+            JP   C,PRFINDXF
+
+            LD   A,DGNSTCFL
+            LD   BC,S8E0K
+            LD   HL,STG8AGG2
+            LD   DE,STG8AGG4
+            CALL PRFEXPCT
+            JP   C,PRFAGGR0
+
+            LD   A,192
+            LD   HL,STG8NST2
+            LD   DE,STG8NST3
+            CALL CMPLAGG0
+            JP   C,PRFNSTDF
+            CALL ENCDAGGR
+            JP   C,PRFNSTD0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFNSTD1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFNSTD1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFNSTD1
+            LD   A,(SRVCOTP0)
+            CP   'N'
+            JP   NZ,PRFNSTD1
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFNSTD1
+
+            LD   A,193
+            LD   HL,STG8PRDB
+            LD   DE,STG8PRDC
+            CALL CMPLAGG0
+            JP   C,PRFPRDF2
+            CALL ENCDAGGR
+            JP   C,PRFPRDF3
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFPRDF4
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFPRDF4
+            LD   A,(SRVCOTPT)
+            CP   2
+            JP   NZ,PRFPRDF4
+            LD   A,(SRVCOTP0)
+            CP   'S'
+            JP   NZ,PRFPRDF4
+            LD   A,(SRVCOTP0+1)
+            CP   'S'
+            JP   NZ,PRFPRDF4
+
+            LD   A,115
+            LD   (PRFCS),A
+            LD   A,198
+            LD   HL,STG8RTN2
+            LD   DE,STG8RTN3
+            CALL CMPLAGG0
+            JP   C,PRFRTNDF
+            LD   HL,(STG8CLLM)
+            INC  HL
+            INC  HL
+            LD   A,(HL)
+            CP   1
+            JP   NZ,PRFRTND2
+            INC  HL
+            LD   A,(HL)
+            CP   SMNTCSTR
+            JP   NZ,PRFRTND3
+
+            LD   A,194
+            LD   HL,STG8INDR
+            LD   DE,STG8IND2
+            CALL CMPLAGG0
+            JP   C,PRFINDRC
+            CALL ENCDAGGR
+            JP   C,PRFINDR0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFINDR1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFINDR1
+            LD   A,(SRVCOTPT)
+            CP   2
+            JP   NZ,PRFINDR1
+            LD   A,(SRVCOTP0)
+            CP   7
+            JP   NZ,PRFINDR1
+            LD   A,(SRVCOTP0+1)
+            CP   9
+            JP   NZ,PRFINDR1
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFINDR1
+
+            LD   A,195
+            LD   HL,STG8AGG5
+            LD   DE,STG8AGG6
+            CALL CMPLAGG0
+            JP   C,PRFAGGR1
+            CALL ENCDAGGR
+            JP   C,PRFAGGR2
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFAGGR3
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFAGGR3
+            LD   A,(SRVCOTPT)
+            CP   3
+            JP   NZ,PRFAGGR3
+            LD   A,(SRVCOTP0)
+            CP   5
+            JP   NZ,PRFAGGR3
+            LD   A,(SRVCOTP0+1)
+            CP   7
+            JP   NZ,PRFAGGR3
+            LD   A,(SRVCOTP0+2)
+            CP   5
+            JP   NZ,PRFAGGR3
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFAGGR3
+
+            LD   A,196
+            LD   HL,STG8RTN0
+            LD   DE,STG8RTN1
+            CALL CMPLAGG0
+            JP   C,PRFRTNDR
+            CALL ENCDAGGR
+            JP   C,PRFRTND0
+            CALL Reset
+            LD   A,4
+            LD   (SRVCSTR1),A
+            CALL PRFCLLGN
+            JP   C,PRFRTND1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRTND1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFRTND1
+            LD   A,(SRVCOTP0)
+            CP   4
+            JP   NZ,PRFRTND1
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFRTND1
+
+            LD   A,197
+            LD   HL,STG8IND3
+            LD   DE,STG8IND4
+            CALL CMPLAGG0
+            JP   C,PRFINDR2
+            CALL ENCDAGGR
+            JP   C,PRFINDR3
+            CALL Reset
+            XOR  A
+            LD   (SRVCINPT),A
+            CALL PRFCLLGN
+            JP   C,PRFINDR4
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFINDR4
+            LD   A,(SRVCOTPT)
+            CP   2
+            JP   NZ,PRFINDR4
+            LD   A,(SRVCOTP0)
+            CP   1
+            JP   NZ,PRFINDR4
+            LD   A,(SRVCOTP0+1)
+            CP   9
+            JP   NZ,PRFINDR4
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFINDR4
+
+            LD   A,187
+            LD   HL,STG8TRPB
+            LD   DE,STG8TRP0
+            CALL CMPLAGG0
+            JP   C,PRFTRPBY
+            CALL ENCDAGGR
+            JP   C,PRFTRPB0
+            CALL Reset
+            LD   A,2
+            LD   (ACTVTNLM),A
+            CALL PRFCLLGN
+            JP   C,PRFTRPB1
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFTRPB2
+            LD   A,(TRPNMBR)
+            CP   5
+            JP   NZ,PRFTRPB2
+            LD   HL,(TRPOFFST)
+            LD   DE,S8E0L
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFTRPB2
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFTRPB2
+            LD   A,(SRVCOTPT)
+            OR   A
+            JP   NZ,PRFTRPB2
+
+            LD   A,188
+            LD   HL,STG8RSLT
+            LD   DE,STG8RSL0
+            CALL CMPLAGG0
+            JP   C,PRFRSLTF
+            CALL ENCDAGGR
+            JP   C,PRFRSLT0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFRSLT1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRSLT1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFRSLT1
+            LD   A,(SRVCOTP0)
+            CP   'R'
+            JP   NZ,PRFRSLT1
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFRSLT1
+
+            LD   A,189
+            LD   HL,STG8FRW0
+            LD   DE,STG8FRW1
+            CALL CMPLAGG0
+            JP   C,PRFFRWR0
+            CALL ENCDAGGR
+            JP   C,PRFFRWR1
+            CALL PRFVLDTP
+            JP   C,PRFPBLCT
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFFRWR2
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFFRWR2
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFFRWR2
+            LD   A,(SRVCOTP0)
+            CP   'M'
+            JP   NZ,PRFFRWR2
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFFRWR2
+
+            LD   A,191
+            LD   HL,STG8RCRS
+            LD   DE,STG8RCR0
+            CALL CMPLAGG0
+            JP   C,PRFRCRSV
+            CALL ENCDAGGR
+            JP   C,PRFRCRS0
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFRCRS1
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRCRS1
+            LD   A,(SRVCOTPT)
+            CP   1
+            JP   NZ,PRFRCRS1
+            LD   A,(SRVCOTP0)
+            CP   'D'
+            JP   NZ,PRFRCRS1
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFRCRS1
+
+            LD   A,DGNSTCF0
+            LD   BC,S8E0M
+            LD   HL,STG8INCM
+            LD   DE,STG8INC0
+            CALL PRFEXPCT
+            JP   C,PRFINCM0
+
+            LD   A,1
+            LD   BC,S8E0N
+            LD   HL,STG8BNDS
+            LD   DE,STG8BND1
+            CALL PRFEXPC6
+            JP   C,PRFBNDST
+
+            LD   A,2
+            LD   BC,S8E0O
+            LD   HL,STG8NRRW
+            LD   DE,STG8NRR1
+            CALL PRFEXPC6
+            JP   C,PRFNRRWT
+
+            LD   A,3
+            LD   BC,S8E0P
+            LD   HL,STG8DVDT
+            LD   DE,STG8DVD1
+            CALL PRFEXPC6
+            JP   C,PRFDVDTR
+
+            LD   A,4
+            LD   BC,S8E0Q
+            LD   HL,STG8LPRN
+            LD   DE,STG8LPR1
+            CALL PRFEXPC6
+            JP   C,PRFLPRNG
+
+            LD   A,198
+            LD   HL,STG8IMMD
+            LD   DE,STG8IMM0
+            CALL CMPLAGG0
+            JP   C,PRFRDSGN
+            CALL ENCDAGGR
+            JP   C,PRFRDSGN
+            CALL Reset
+            CALL PRFCLLGN
+            JP   C,PRFRDSGN
+            LD   A,(RunState)
+            CP   RNSCCDD
+            JP   NZ,PRFRDSGN
+            LD   A,(SRVCOTPT)
+            CP   2
+            JP   NZ,PRFRDSGN
+            LD   A,(SRVCOTP0)
+            CP   'H'
+            JP   NZ,PRFRDSGN
+            LD   A,(SRVCOTP0+1)
+            CP   7
+            JP   NZ,PRFRDSGN
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFRDSGN
+
+            LD   A,116
+            LD   (PRFCS),A
+            LD   A,199
+            LD   HL,STG8HNDL
+            LD   DE,STG8HND1
+            CALL CMPLAGG0
+            JP   C,PRFRDSGN
+            CALL ENCDAGGR
+            JP   C,PRFRDSGN
+            CALL Reset
+            LD   A,1
+            LD   (SRVCFLRC),A
+            CALL PRFCLLGN
+            JP   C,PRFRDSGN
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JP   NZ,PRFRDSGN
+            LD   A,(TRPNMBR)
+            CP   6
+            JP   NZ,PRFRDSGN
+            LD   A,(TRPERRR)
+            CP   3
+            JP   NZ,PRFRDSGN
+            LD   HL,(TRPOFFST)
+            LD   DE,S8E0R
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFRDSGN
+            LD   A,(ACTVTNDP)
+            OR   A
+            JP   NZ,PRFRDSGN
+
+            LD   A,117
+            LD   (PRFCS),A
+            LD   A,DGNSTCFL
+            LD   BC,S8E0S
+            LD   HL,STG8BRLC
+            LD   DE,STG8BRL1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,118
+            LD   (PRFCS),A
+            LD   A,DGNSTCFL
+            LD   BC,S8E0T
+            LD   HL,STG8BRAS
+            LD   DE,STG8BRA1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,119
+            LD   (PRFCS),A
+            LD   A,DGNSTCFL
+            LD   BC,S8E0U
+            LD   HL,STG8LGCY
+            LD   DE,STG8LGC1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,120
+            LD   (PRFCS),A
+            LD   A,DGNSTCFL
+            LD   BC,S8E0V
+            LD   HL,STG8LGC2
+            LD   DE,STG8LGC4
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,121
+            LD   (PRFCS),A
+            LD   A,DGNSTCFL
+            LD   BC,S8E0W
+            LD   HL,STG8INFL
+            LD   DE,STG8INF1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,122
+            LD   (PRFCS),A
+            LD   A,DGNSTCFL
+            LD   BC,S8E0X
+            LD   HL,STG8INF2
+            LD   DE,STG8INF4
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,123
+            LD   (PRFCS),A
+            LD   A,DGNSTCFL
+            LD   BC,S8E0Y
+            LD   HL,STG8DBLC
+            LD   DE,STG8DBL1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,124
+            LD   (PRFCS),A
+            LD   A,DGNSTCE4
+            LD   BC,S8E0Z
+            LD   HL,STG8LCLH
+            LD   DE,STG8LCL1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,125
+            LD   (PRFCS),A
+            LD   A,DGNSTCFL
+            LD   BC,S8E10
+            LD   HL,STG8RSL1
+            LD   DE,STG8RSL3
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,126
+            LD   (PRFCS),A
+            LD   A,DGNSTCR0
+            LD   BC,S8E11
+            LD   HL,STG8FRRT
+            LD   DE,STG8FRR1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+
+            LD   A,127
+            LD   (PRFCS),A
+            LD   A,DGNSTCEO
+            LD   BC,S8E12
+            LD   HL,STG8MSSN
+            LD   DE,STG8MSS1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,128
+            LD   (PRFCS),A
+            LD   A,DGNSTCUN
+            LD   BC,S8E13
+            LD   HL,STG8UNK2
+            LD   DE,STG8UNK4
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,129
+            LD   (PRFCS),A
+            LD   A,DGNSTCTY
+            LD   BC,S8E14
+            LD   HL,STG8WDHN
+            LD   DE,STG8WDH1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,130
+            LD   (PRFCS),A
+            LD   A,DGNSTCTY
+            LD   BC,S8E15
+            LD   HL,STG8CNST
+            LD   DE,STG8CNS2
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,131
+            LD   (PRFCS),A
+            LD   A,DGNSTCTY
+            LD   BC,S8E16
+            LD   HL,STG8AGG7
+            LD   DE,STG8AGG9
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+            LD   A,132
+            LD   (PRFCS),A
+            LD   A,DGNSTCAC
+            LD   BC,S8E17
+            LD   HL,STG8CNTR
+            LD   DE,STG8CNT1
+            CALL PRFEXPCT
+            JP   C,PRFRDSGN
+
+            XOR  A
+            LD   (PRFCS),A
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+; A is the expected diagnostic, BC its offset, HL/DE the source range.
+;@ROUTINE IN A,BC,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFEXPCT: ;@NUC-GLOBAL ProofExpectDiagnostic PERMANENT PRFEXPCT
+            LD   (PRFEXPC5),A
+            LD   (PRFEXPC3),BC
+            LD   A,171
+            CALL CMPLAGG0
+            JR   NC,PRFEXPC2
+            LD   A,(PRFEXPC5)
+            LD   HL,DGNSTCCD
+            CP   (HL)
+            JR   NZ,PRFEXPC2
+            LD   HL,(DGNSTCOF)
+            LD   DE,(PRFEXPC3)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFEXPC2: ;@NUC-GLOBAL ProofExpectedDiagnosticFailure PERMANENT PRFEXPC2
+            SCF
+            RET
+
+; Check publication before a later diagnostic overlays the emission cursor.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,DE,HL
+PRFVLDTP: ;@NUC-GLOBAL ProofValidatePublication PERMANENT PRFVLDTP
+            LD   HL,(GNRTDSZ)
+            LD   DE,GNRTDBS
+            ADD  HL,DE
+            LD   DE,(EMTCRSR)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+            SCF
+            RET
+
+; A/BC select the exact trap and source offset; HL/DE select the source. Input
+; byte zero is supplied for the bounds/division cases and is inert otherwise.
+;@ROUTINE IN A,BC,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFEXPC6: ;@NUC-GLOBAL ProofExpectRuntimeTrap PERMANENT PRFEXPC6
+            LD   (PRFEXPC8),A
+            LD   (PRFEXPC3),BC
+            LD   A,190
+            CALL CMPLAGG0
+            RET  C
+            CALL ENCDAGGR
+            RET  C
+            CALL Reset
+            LD   A,1
+            LD   (SRVCINPT),A
+            LD   A,(PRFEXPC8)
+            CP   1
+            LD   A,0
+            JR   NZ,.L00000
+            LD   A,2
+.L00000:
+            LD   (SRVCINP2),A
+            CALL PRFCLLGN
+            RET  C
+            LD   A,(RunState)
+            CP   RNTRPPD
+            JR   NZ,.L00001
+            LD   A,(PRFEXPC8)
+            LD   HL,TRPNMBR
+            CP   (HL)
+            JR   NZ,.L00001
+            LD   HL,(TRPOFFST)
+            LD   DE,(PRFEXPC3)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,.L00001
+            LD   A,(ACTVTNDP)
+            OR   A
+            JR   NZ,.L00001
+            LD   A,(SRVCOTPT)
+            OR   A
+            RET  Z
+.L00001:
+            SCF
+            RET
+
+; Generated code must restore the root SP and IX on terminal failure.
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
+PRFCLLGN: ;@NUC-GLOBAL ProofCallGenerated PERMANENT PRFCLLGN
+            LD   HL,0
+            ADD  HL,SP
+            LD   (PRFEXPC0),HL
+            LD   IX,$A55A
+            CALL GNRTDBS
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,PRFCLLG1
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(PRFEXPC0)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+PRFCLLG1: ;@NUC-GLOBAL ProofCallGeneratedFailure PERMANENT PRFCLLG1
+            SCF
+            RET
+
+PRFCMPLF:     LD A,1 ;@NUC-GLOBAL ProofCompileFailure PERMANENT PRFCMPLF
+                         JP PRFFLD
+PRFENCDF:      LD A,2 ;@NUC-GLOBAL ProofEncodeFailure PERMANENT PRFENCDF
+                         JP PRFFLD
+PRFFRMFL:       LD A,3 ;@NUC-GLOBAL ProofFrameFailure PERMANENT PRFFRMFL
+                         JP PRFFLD
+PRFTRPST:   LD A,4 ;@NUC-GLOBAL ProofTrapStateFailure PERMANENT PRFTRPST
+                         JP PRFFLD
+PRFTRPRS:  LD A,5 ;@NUC-GLOBAL ProofTrapReasonFailure PERMANENT PRFTRPRS
+                         JP PRFFLD
+PRFTRPER:   LD A,6 ;@NUC-GLOBAL ProofTrapErrorFailure PERMANENT PRFTRPER
+                         JP PRFFLD
+PRFTRPOF:  LD A,7 ;@NUC-GLOBAL ProofTrapOffsetFailure PERMANENT PRFTRPOF
+                         JP PRFFLD
+PRFACTVT:  LD A,8 ;@NUC-GLOBAL ProofActivationFailure PERMANENT PRFACTVT
+                         JP PRFFLD
+PRFINFLL:  LD A,9 ;@NUC-GLOBAL ProofInfallibleFailure PERMANENT PRFINFLL
+                         JP PRFFLD
+PRFRNGFL:       LD A,10 ;@NUC-GLOBAL ProofRangeFailure PERMANENT PRFRNGFL
+                         JP PRFFLD
+PRFFLWFL:        LD A,11 ;@NUC-GLOBAL ProofFlowFailure PERMANENT PRFFLWFL
+                         JP PRFFLD
+PRFPRPGT: LD A,12 ;@NUC-GLOBAL ProofPropagationSuccessCompileFailure PERMANENT PRFPRPGT
+                         JP PRFFLD
+PRFPRPG0:  LD A,13 ;@NUC-GLOBAL ProofPropagationSuccessEncodeFailure PERMANENT PRFPRPG0
+                         JP PRFFLD
+PRFPRPG1:     LD A,14 ;@NUC-GLOBAL ProofPropagationSuccessRunFailure PERMANENT PRFPRPG1
+                         JP PRFFLD
+PRFPRPG2: LD A,15 ;@NUC-GLOBAL ProofPropagationFailureCompileFailure PERMANENT PRFPRPG2
+                         JP PRFFLD
+PRFPRPG3:  LD A,16 ;@NUC-GLOBAL ProofPropagationFailureEncodeFailure PERMANENT PRFPRPG3
+                         JP PRFFLD
+PRFPRPG4:     LD A,17 ;@NUC-GLOBAL ProofPropagationFailureRunFailure PERMANENT PRFPRPG4
+                         JP PRFFLD
+PRFBRRTR: LD A,18 ;@NUC-GLOBAL ProofBareReturnCompileFailure PERMANENT PRFBRRTR
+                         JP PRFFLD
+PRFBRRT0:  LD A,19 ;@NUC-GLOBAL ProofBareReturnEncodeFailure PERMANENT PRFBRRT0
+                         JP PRFFLD
+PRFBRRT1:     LD A,20 ;@NUC-GLOBAL ProofBareReturnRunFailure PERMANENT PRFBRRT1
+                         JP PRFFLD
+PRFSXTNC:    LD A,21 ;@NUC-GLOBAL ProofSixteenCompileFailure PERMANENT PRFSXTNC
+                         JP PRFFLD
+PRFSXTNE:     LD A,22 ;@NUC-GLOBAL ProofSixteenEncodeFailure PERMANENT PRFSXTNE
+                         JP PRFFLD
+PRFSXTNR:        LD A,23 ;@NUC-GLOBAL ProofSixteenRunFailure PERMANENT PRFSXTNR
+                         JP PRFFLD
+PRFHNDLR:    LD A,24 ;@NUC-GLOBAL ProofHandlerCompileFailure PERMANENT PRFHNDLR
+                         JP PRFFLD
+PRFHNDL0:     LD A,25 ;@NUC-GLOBAL ProofHandlerEncodeFailure PERMANENT PRFHNDL0
+                         JP PRFFLD
+PRFHNDL1:        LD A,26 ;@NUC-GLOBAL ProofHandlerRunFailure PERMANENT PRFHNDL1
+                         JP PRFFLD
+PRFRDSCC: LD A,27 ;@NUC-GLOBAL ProofReadSuccessCompileFailure PERMANENT PRFRDSCC
+                         JP PRFFLD
+PRFRDSC0:  LD A,28 ;@NUC-GLOBAL ProofReadSuccessEncodeFailure PERMANENT PRFRDSC0
+                         JP PRFFLD
+PRFRDSC1:     LD A,29 ;@NUC-GLOBAL ProofReadSuccessRunFailure PERMANENT PRFRDSC1
+                         JP PRFFLD
+PRFRDHND: LD A,30 ;@NUC-GLOBAL ProofReadHandlerCompileFailure PERMANENT PRFRDHND
+                         JP PRFFLD
+PRFRDHN0:  LD A,31 ;@NUC-GLOBAL ProofReadHandlerEncodeFailure PERMANENT PRFRDHN0
+                         JP PRFFLD
+PRFRDHN1:     LD A,32 ;@NUC-GLOBAL ProofReadHandlerRunFailure PERMANENT PRFRDHN1
+                         JP PRFFLD
+PRFCNST4:   LD A,33 ;@NUC-GLOBAL ProofConstantsCompileFailure PERMANENT PRFCNST4
+                         JP PRFFLD
+PRFCNST5:    LD A,34 ;@NUC-GLOBAL ProofConstantsEncodeFailure PERMANENT PRFCNST5
+                         JP PRFFLD
+PRFCNST6:       LD A,35 ;@NUC-GLOBAL ProofConstantsRunFailure PERMANENT PRFCNST6
+                         JP PRFFLD
+PRFSTRGC:     LD A,36 ;@NUC-GLOBAL ProofStorageCompileFailure PERMANENT PRFSTRGC
+                         JP PRFFLD
+PRFSTRGE:      LD A,37 ;@NUC-GLOBAL ProofStorageEncodeFailure PERMANENT PRFSTRGE
+                         JP PRFFLD
+PRFSTRGR:         LD A,38 ;@NUC-GLOBAL ProofStorageRunFailure PERMANENT PRFSTRGR
+                         JP PRFFLD
+PRFWRTFL:       LD A,39 ;@NUC-GLOBAL ProofWriteFailureCompile PERMANENT PRFWRTFL
+                         JP PRFFLD
+PRFWRTF0:        LD A,40 ;@NUC-GLOBAL ProofWriteFailureEncode PERMANENT PRFWRTF0
+                         JP PRFFLD
+PRFWRTF1:           LD A,41 ;@NUC-GLOBAL ProofWriteFailureRun PERMANENT PRFWRTF1
+                         JP PRFFLD
+PRFSKFLR:        LD A,42 ;@NUC-GLOBAL ProofSeekFailureCompile PERMANENT PRFSKFLR
+                         JP PRFFLD
+PRFSKFL0:         LD A,43 ;@NUC-GLOBAL ProofSeekFailureEncode PERMANENT PRFSKFL0
+                         JP PRFFLD
+PRFSKFL1:            LD A,44 ;@NUC-GLOBAL ProofSeekFailureRun PERMANENT PRFSKFL1
+                         JP PRFFLD
+PRFRWNDF:      LD A,45 ;@NUC-GLOBAL ProofRewindFailureCompile PERMANENT PRFRWNDF
+                         JP PRFFLD
+PRFRWND0:       LD A,46 ;@NUC-GLOBAL ProofRewindFailureEncode PERMANENT PRFRWND0
+                         JP PRFFLD
+PRFRWND1:          LD A,47 ;@NUC-GLOBAL ProofRewindFailureRun PERMANENT PRFRWND1
+                         JP PRFFLD
+PRFRDSTR: LD A,48 ;@NUC-GLOBAL ProofReadStorageFailureCompile PERMANENT PRFRDSTR
+                         JP PRFFLD
+PRFRDST0:  LD A,49 ;@NUC-GLOBAL ProofReadStorageFailureEncode PERMANENT PRFRDST0
+                         JP PRFFLD
+PRFRDST1:     LD A,50 ;@NUC-GLOBAL ProofReadStorageFailureRun PERMANENT PRFRDST1
+                         JP PRFFLD
+PRFWRTOT: LD A,51 ;@NUC-GLOBAL ProofWriteOutputFailureCompile PERMANENT PRFWRTOT
+                         JP PRFFLD
+PRFWRTO0:  LD A,52 ;@NUC-GLOBAL ProofWriteOutputFailureEncode PERMANENT PRFWRTO0
+                         JP PRFFLD
+PRFWRTO1:     LD A,53 ;@NUC-GLOBAL ProofWriteOutputFailureRun PERMANENT PRFWRTO1
+                         JP PRFFLD
+PRFMTLCM:      LD A,54 ;@NUC-GLOBAL ProofMutualCompileFailure PERMANENT PRFMTLCM
+                         JP PRFFLD
+PRFMTLEN:       LD A,55 ;@NUC-GLOBAL ProofMutualEncodeFailure PERMANENT PRFMTLEN
+                         JP PRFFLD
+PRFMTLRN:          LD A,56 ;@NUC-GLOBAL ProofMutualRunFailure PERMANENT PRFMTLRN
+                         JP PRFFLD
+PRFINCMP:  LD A,57 ;@NUC-GLOBAL ProofIncompleteForwardFailure PERMANENT PRFINCMP
+                         JP PRFFLD
+PRFPRDFN: LD A,58 ;@NUC-GLOBAL ProofPredefinedVariableFailure PERMANENT PRFPRDFN
+                         JP PRFFLD
+PRFPRDF0:  LD A,59 ;@NUC-GLOBAL ProofPredefinedRoutineFailure PERMANENT PRFPRDF0
+                         JP PRFFLD
+PRFPRDF1: LD A,60 ;@NUC-GLOBAL ProofPredefinedParameterFailure PERMANENT PRFPRDF1
+                         JP PRFFLD
+PRFWRTST:   LD A,61 ;@NUC-GLOBAL ProofWriteStorageTypeFailure PERMANENT PRFWRTST
+                         JP PRFFLD
+PRFSKSTR:    LD A,62 ;@NUC-GLOBAL ProofSeekStorageTypeFailure PERMANENT PRFSKSTR
+                         JP PRFFLD
+PRFSCNDF:      LD A,63 ;@NUC-GLOBAL ProofSecondForwardFailure PERMANENT PRFSCNDF
+                         JP PRFFLD
+PRFUNKNW:  LD A,64 ;@NUC-GLOBAL ProofUnknownCompletionFailure PERMANENT PRFUNKNW
+                         JP PRFFLD
+PRFUNCNS:  LD A,65 ;@NUC-GLOBAL ProofUnconsumedServiceFailure PERMANENT PRFUNCNS
+                         JP PRFFLD
+PRFNSTDS:      LD A,66 ;@NUC-GLOBAL ProofNestedServiceFailure PERMANENT PRFNSTDS
+                         JP PRFFLD
+PRFTRPBY:  LD A,67 ;@NUC-GLOBAL ProofTrapBypassCompileFailure PERMANENT PRFTRPBY
+                         JP PRFFLD
+PRFTRPB0:   LD A,68 ;@NUC-GLOBAL ProofTrapBypassEncodeFailure PERMANENT PRFTRPB0
+                         JP PRFFLD
+PRFTRPB1:    LD A,69 ;@NUC-GLOBAL ProofTrapBypassFrameFailure PERMANENT PRFTRPB1
+                         JP PRFFLD
+PRFTRPB2:      LD A,70 ;@NUC-GLOBAL ProofTrapBypassRunFailure PERMANENT PRFTRPB2
+                         JP PRFFLD
+PRFRSLTF: LD A,71 ;@NUC-GLOBAL ProofResultFreeReturnCompileFailure PERMANENT PRFRSLTF
+                         JP PRFFLD
+PRFRSLT0:  LD A,72 ;@NUC-GLOBAL ProofResultFreeReturnEncodeFailure PERMANENT PRFRSLT0
+                         JP PRFFLD
+PRFRSLT1:     LD A,73 ;@NUC-GLOBAL ProofResultFreeReturnRunFailure PERMANENT PRFRSLT1
+                         JP PRFFLD
+PRFFRWR0: LD A,74 ;@NUC-GLOBAL ProofForwardMainCompileFailure PERMANENT PRFFRWR0
+                         JP PRFFLD
+PRFFRWR1:  LD A,75 ;@NUC-GLOBAL ProofForwardMainEncodeFailure PERMANENT PRFFRWR1
+                         JP PRFFLD
+PRFFRWR2:     LD A,76 ;@NUC-GLOBAL ProofForwardMainRunFailure PERMANENT PRFFRWR2
+                         JP PRFFLD
+PRFINCM0: LD A,77 ;@NUC-GLOBAL ProofIncompleteForwardMainFailure PERMANENT PRFINCM0
+                         JP PRFFLD
+PRFPBLCT:          LD A,78 ;@NUC-GLOBAL ProofPublicationFailure PERMANENT PRFPBLCT
+                         JP PRFFLD
+PRFBNDST:           LD A,79 ;@NUC-GLOBAL ProofBoundsTrapFailure PERMANENT PRFBNDST
+                         JP PRFFLD
+PRFNRRWT:           LD A,80 ;@NUC-GLOBAL ProofNarrowTrapFailure PERMANENT PRFNRRWT
+                         JP PRFFLD
+PRFDVDTR:           LD A,81 ;@NUC-GLOBAL ProofDivideTrapFailure PERMANENT PRFDVDTR
+                         JP PRFFLD
+PRFLPRNG:        LD A,82 ;@NUC-GLOBAL ProofLoopRangeTrapFailure PERMANENT PRFLPRNG
+                         JP PRFFLD
+PRFRCRSV: LD A,83 ;@NUC-GLOBAL ProofRecursiveMainCompileFailure PERMANENT PRFRCRSV
+                         JP PRFFLD
+PRFRCRS0:  LD A,84 ;@NUC-GLOBAL ProofRecursiveMainEncodeFailure PERMANENT PRFRCRS0
+                         JP PRFFLD
+PRFRCRS1:     LD A,85 ;@NUC-GLOBAL ProofRecursiveMainRunFailure PERMANENT PRFRCRS1
+                         JP PRFFLD
+PRFSRVCA:      LD A,86 ;@NUC-GLOBAL ProofServiceArgumentFailure PERMANENT PRFSRVCA
+                         JP PRFFLD
+PRFCMPSD:     LD A,87 ;@NUC-GLOBAL ProofComposedFailableFailure PERMANENT PRFCMPSD
+                         JP PRFFLD
+PRFAGGRG: LD A,88 ;@NUC-GLOBAL ProofAggregateSuffixFailableFailure PERMANENT PRFAGGRG
+                         JP PRFFLD
+PRFINDXF:        LD A,89 ;@NUC-GLOBAL ProofIndexFailableFailure PERMANENT PRFINDXF
+                         JP PRFFLD
+PRFAGGR0: LD A,102 ;@NUC-GLOBAL ProofAggregateArgumentFailableFailure PERMANENT PRFAGGR0
+                         JP PRFFLD
+PRFNSTDF:   LD A,90 ;@NUC-GLOBAL ProofNestedFrameCompileFailure PERMANENT PRFNSTDF
+                         JP PRFFLD
+PRFNSTD0:    LD A,91 ;@NUC-GLOBAL ProofNestedFrameEncodeFailure PERMANENT PRFNSTD0
+                         JP PRFFLD
+PRFNSTD1:       LD A,92 ;@NUC-GLOBAL ProofNestedFrameRunFailure PERMANENT PRFNSTD1
+                         JP PRFFLD
+PRFPRDF2: LD A,93 ;@NUC-GLOBAL ProofPredefinedStepCompileFailure PERMANENT PRFPRDF2
+                         JP PRFFLD
+PRFPRDF3: LD A,94 ;@NUC-GLOBAL ProofPredefinedStepEncodeFailure PERMANENT PRFPRDF3
+                         JP PRFFLD
+PRFPRDF4:    LD A,95 ;@NUC-GLOBAL ProofPredefinedStepRunFailure PERMANENT PRFPRDF4
+                         JP PRFFLD
+PRFINDRC: LD A,96 ;@NUC-GLOBAL ProofIndirectHandlerCompileFailure PERMANENT PRFINDRC
+                         JP PRFFLD
+PRFINDR0: LD A,97 ;@NUC-GLOBAL ProofIndirectHandlerEncodeFailure PERMANENT PRFINDR0
+                         JP PRFFLD
+PRFINDR1:   LD A,98 ;@NUC-GLOBAL ProofIndirectHandlerRunFailure PERMANENT PRFINDR1
+                         JP PRFFLD
+PRFAGGR1: LD A,99 ;@NUC-GLOBAL ProofAggregateCopyHandlerCompileFailure PERMANENT PRFAGGR1
+                         JP PRFFLD
+PRFAGGR2: LD A,100 ;@NUC-GLOBAL ProofAggregateCopyHandlerEncodeFailure PERMANENT PRFAGGR2
+                         JP PRFFLD
+PRFAGGR3: LD A,101 ;@NUC-GLOBAL ProofAggregateCopyHandlerRunFailure PERMANENT PRFAGGR3
+                         JP PRFFLD
+PRFRTNDR: LD A,103 ;@NUC-GLOBAL ProofRetainedResetCompileFailure PERMANENT PRFRTNDR
+                         JP PRFFLD
+PRFRTND0: LD A,104 ;@NUC-GLOBAL ProofRetainedResetEncodeFailure PERMANENT PRFRTND0
+                         JP PRFFLD
+PRFRTND1: LD A,105 ;@NUC-GLOBAL ProofRetainedResetRunFailure PERMANENT PRFRTND1
+                         JP PRFFLD
+PRFINDR2: LD A,106 ;@NUC-GLOBAL ProofIndirectServiceCompileFailure PERMANENT PRFINDR2
+                         JP PRFFLD
+PRFINDR3: LD A,107 ;@NUC-GLOBAL ProofIndirectServiceEncodeFailure PERMANENT PRFINDR3
+                         JP PRFFLD
+PRFINDR4: LD A,108 ;@NUC-GLOBAL ProofIndirectServiceRunFailure PERMANENT PRFINDR4
+                         JP PRFFLD
+PRFRTNDF: LD A,109 ;@NUC-GLOBAL ProofRetainedFieldCompileFailure PERMANENT PRFRTNDF
+                         JP PRFFLD
+PRFRTND2: LD A,110 ;@NUC-GLOBAL ProofRetainedFieldValueFailure PERMANENT PRFRTND2
+                         JP PRFFLD
+PRFRTND3: LD A,111 ;@NUC-GLOBAL ProofRetainedFieldWidthFailure PERMANENT PRFRTND3
+                         JP PRFFLD
+PRFPRGRM: LD A,112 ;@NUC-GLOBAL ProofProgramHandlerCompileFailure PERMANENT PRFPRGRM
+                         JP PRFFLD
+PRFPRGR0: LD A,113 ;@NUC-GLOBAL ProofProgramHandlerEncodeFailure PERMANENT PRFPRGR0
+                         JP PRFFLD
+PRFPRGR1: LD A,114 ;@NUC-GLOBAL ProofProgramHandlerRunFailure PERMANENT PRFPRGR1
+                         JP PRFFLD
+PRFRDSGN: ;@NUC-GLOBAL ProofRedesignFailure PERMANENT PRFRDSGN
+            HALT
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            HALT
+
+PRFEXPC0:         DW 0 ;@NUC-GLOBAL ProofExpectedSP PERMANENT PRFEXPC0
+PRFACTLT:   DW 0 ;@NUC-GLOBAL ProofActualTrapOffset PERMANENT PRFACTLT
+PRFEXPC7: DW 0 ;@NUC-GLOBAL ProofExpectedTrapOffset PERMANENT PRFEXPC7
+PRFEXPC3:     DW 0 ;@NUC-GLOBAL ProofExpectedOffset PERMANENT PRFEXPC3
+PRFEXPC5: DB 0 ;@NUC-GLOBAL ProofExpectedDiagnostic PERMANENT PRFEXPC5
+PRFEXPC8:       DB 0 ;@NUC-GLOBAL ProofExpectedTrap PERMANENT PRFEXPC8
+PRFSTTS:             DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+PRFCS:               DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+ProofEnd:

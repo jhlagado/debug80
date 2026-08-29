@@ -1,0 +1,62 @@
+            ORG SRCBS
+EXPRSSN0: ;@NUC-GLOBAL ExpressionProofSource PERMANENT EXPRSSN0
+            DB "var bytes as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    var left as u8 = 2",10
+            DB "    var right as u8 = 3",10
+            DB "    //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",10
+            DB "    bytes = left + right * 4",10
+            DB "    "
+EXPRSSNO: ;@NUC-GLOBAL ExpressionOutputCall PERMANENT EXPRSSNO
+            DB "writeOutputByte(bytes) else fail",10
+            DB "end",10
+EXPRSSN1: ;@NUC-GLOBAL ExpressionProofSourceEnd PERMANENT EXPRSSN1
+
+DPLCTSCL: ;@NUC-GLOBAL DuplicateScalarSource PERMANENT DPLCTSCL
+            DB "var total as u8 = 0",10
+            DB "var "
+DPLCTSC0: ;@NUC-GLOBAL DuplicateScalarName PERMANENT DPLCTSC0
+            DB "total as u8 = 1",10
+            DB "sub main() fails",10
+            DB "end",10
+DPLCTSC1: ;@NUC-GLOBAL DuplicateScalarSourceEnd PERMANENT DPLCTSC1
+
+UNKNWNSC: ;@NUC-GLOBAL UnknownScalarSource PERMANENT UNKNWNSC
+            DB "var total as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    "
+UNKNWNS0: ;@NUC-GLOBAL UnknownScalarName PERMANENT UNKNWNS0
+            DB "missing = total",10
+            DB "end",10
+UNKNWNS1: ;@NUC-GLOBAL UnknownScalarSourceEnd PERMANENT UNKNWNS1
+
+MLFRMDEX: ;@NUC-GLOBAL MalformedExpressionSource PERMANENT MLFRMDEX
+            DB "var total as u8 = 0",10
+            DB "sub main() fails",10
+            DB "    total = 1 +"
+MLFRMDE0: ;@NUC-GLOBAL MalformedExpressionPoint PERMANENT MLFRMDE0
+            DB 10
+            DB "end",10
+MLFRMDE1: ;@NUC-GLOBAL MalformedExpressionSourceEnd PERMANENT MLFRMDE1
+
+FLLSCLRS: ;@NUC-GLOBAL FullScalarSource PERMANENT FLLSCLRS
+            DB "var a as u8 = 0",10
+            DB "var b as u8 = 0",10
+            DB "var c as u8 = 0",10
+            DB "var d as u8 = 0",10
+            DB "var e as u8 = 0",10
+            DB "var f as u8 = 0",10
+            DB "var g as u8 = 0",10
+            DB "var h as u8 = 0",10
+            DB "var i as u8 = 0",10
+            DB "var j as u8 = 0",10
+            DB "var k as u8 = 0",10
+            DB "var l as u8 = 0",10
+            DB "var m as u8 = 0",10
+            DB "var n as u8 = 0",10
+            DB "var o as u8 = 0",10
+            DB "var p as u8 = 0",10
+            DB "var "
+FLLSCLRN: ;@NUC-GLOBAL FullScalarName PERMANENT FLLSCLRN
+            DB "q as u8 = 0",10
+FLLSCLR0: ;@NUC-GLOBAL FullScalarSourceEnd PERMANENT FLLSCLR0

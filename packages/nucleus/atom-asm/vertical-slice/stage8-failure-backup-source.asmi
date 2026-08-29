@@ -1,0 +1,497 @@
+            ORG BCKPLMT
+STG8PRD2: ;@NUC-GLOBAL Stage8PredefinedVariableSource PERMANENT STG8PRD2
+            DB "var "
+STG8PRD3: ;@NUC-GLOBAL Stage8PredefinedVariablePoint PERMANENT STG8PRD3
+            DB "readInputByte as u8 = 1 + 2",10
+            DB "sub main()",10
+            DB "end",10
+STG8PRD4: ;@NUC-GLOBAL Stage8PredefinedVariableSourceEnd PERMANENT STG8PRD4
+
+STG8PRD5: ;@NUC-GLOBAL Stage8PredefinedRoutineSource PERMANENT STG8PRD5
+            DB "sub "
+STG8PRD6: ;@NUC-GLOBAL Stage8PredefinedRoutinePoint PERMANENT STG8PRD6
+            DB "writeStorageByte(value as u8) fails",10
+            DB "end",10
+            DB "sub main()",10
+            DB "end",10
+STG8PRD7: ;@NUC-GLOBAL Stage8PredefinedRoutineSourceEnd PERMANENT STG8PRD7
+
+STG8PRD8: ;@NUC-GLOBAL Stage8PredefinedParameterSource PERMANENT STG8PRD8
+            DB "sub helper("
+STG8PRD9: ;@NUC-GLOBAL Stage8PredefinedParameterPoint PERMANENT STG8PRD9
+            DB "outputFailure as u8)",10
+            DB "end",10
+            DB "sub main()",10
+            DB "end",10
+STG8PRDA: ;@NUC-GLOBAL Stage8PredefinedParameterSourceEnd PERMANENT STG8PRDA
+
+STG8WRTS: ;@NUC-GLOBAL Stage8WriteStorageTypeSource PERMANENT STG8WRTS
+            DB "sub main() fails",10
+            DB "var word as u16 = 300",10
+            DB "writeStorageByte("
+STG8WRT0: ;@NUC-GLOBAL Stage8WriteStorageTypePoint PERMANENT STG8WRT0
+            DB "word) else fail",10
+            DB "end",10
+STG8WRT1: ;@NUC-GLOBAL Stage8WriteStorageTypeSourceEnd PERMANENT STG8WRT1
+
+STG8SKST: ;@NUC-GLOBAL Stage8SeekStorageTypeSource PERMANENT STG8SKST
+            DB "sub main() fails",10
+            DB "var flag as boolean = true",10
+            DB "seekStorageOutput("
+STG8SKS0: ;@NUC-GLOBAL Stage8SeekStorageTypePoint PERMANENT STG8SKS0
+            DB "flag) else fail",10
+            DB "end",10
+STG8SKS1: ;@NUC-GLOBAL Stage8SeekStorageTypeSourceEnd PERMANENT STG8SKS1
+
+STG8SCND: ;@NUC-GLOBAL Stage8SecondForwardSource PERMANENT STG8SCND
+            DB "forward sub duplicate(value as u8)",10
+            DB "forward sub "
+STG8SCN0: ;@NUC-GLOBAL Stage8SecondForwardPoint PERMANENT STG8SCN0
+            DB "duplicate(value as u8)",10
+            DB "sub duplicate",10
+            DB "end",10
+            DB "sub main()",10
+            DB "end",10
+STG8SCN1: ;@NUC-GLOBAL Stage8SecondForwardSourceEnd PERMANENT STG8SCN1
+
+STG8UNKN: ;@NUC-GLOBAL Stage8UnknownCompletionSource PERMANENT STG8UNKN
+            DB "sub "
+STG8UNK0: ;@NUC-GLOBAL Stage8UnknownCompletionPoint PERMANENT STG8UNK0
+            DB "missing",10
+            DB "end",10
+            DB "sub main()",10
+            DB "end",10
+STG8UNK1: ;@NUC-GLOBAL Stage8UnknownCompletionSourceEnd PERMANENT STG8UNK1
+
+STG8UNCN: ;@NUC-GLOBAL Stage8UnconsumedServiceSource PERMANENT STG8UNCN
+            DB "sub main() fails",10
+            DB "writeOutputByte('A')",10
+STG8UNC0: ;@NUC-GLOBAL Stage8UnconsumedServicePoint PERMANENT STG8UNC0
+            DB "end",10
+STG8UNC1: ;@NUC-GLOBAL Stage8UnconsumedServiceSourceEnd PERMANENT STG8UNC1
+
+STG8NSTD: ;@NUC-GLOBAL Stage8NestedServiceSource PERMANENT STG8NSTD
+            DB "sub main() fails",10
+            DB "writeOutputByte(readInputByte()"
+STG8NST0: ;@NUC-GLOBAL Stage8NestedServicePoint PERMANENT STG8NST0
+            DB ") else fail",10
+            DB "end",10
+STG8NST1: ;@NUC-GLOBAL Stage8NestedServiceSourceEnd PERMANENT STG8NST1
+
+STG8SRVA: ;@NUC-GLOBAL Stage8ServiceArgumentSource PERMANENT STG8SRVA
+            DB "sub take(value as u8)",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "take("
+STG8SRVB: ;@NUC-GLOBAL Stage8ServiceArgumentPoint PERMANENT STG8SRVB
+            DB "readInputByte())",10
+            DB "end",10
+STG8SRVD: ;@NUC-GLOBAL Stage8ServiceArgumentSourceEnd PERMANENT STG8SRVD
+
+STG8TRPB: ;@NUC-GLOBAL Stage8TrapBypassesHandlerSource PERMANENT STG8TRPB
+            DB "sub dive(value as u16) as u8 fails",10
+            DB "var result as u8",10
+            DB "if value = 0",10
+            DB "return 0",10
+            DB "end",10
+            DB "result = "
+STG8TRPR: ;@NUC-GLOBAL Stage8TrapRecursiveCallPoint PERMANENT STG8TRPR
+            DB "dive(value - 1) else fail",10
+            DB "return result",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "var result as u8",10
+            DB "result = "
+.L00000:
+            DB "dive(2) handle code",10
+            DB "writeOutputByte('H') else fail",10
+            DB "end",10
+            DB "end",10
+STG8TRP0: ;@NUC-GLOBAL Stage8TrapBypassesHandlerSourceEnd PERMANENT STG8TRP0
+
+STG8RSLT: ;@NUC-GLOBAL Stage8ResultFreeReturnSource PERMANENT STG8RSLT
+            DB "sub emitMarker() fails",10
+            DB "writeOutputByte('R') else fail",10
+            DB "return",10
+            DB "end",10
+            DB "sub relay() fails",10
+            DB "emitMarker() else fail",10
+            DB "return",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "relay() else fail",10
+            DB "return",10
+            DB "end",10
+STG8RSL0: ;@NUC-GLOBAL Stage8ResultFreeReturnSourceEnd PERMANENT STG8RSL0
+
+STG8FRW0: ;@NUC-GLOBAL Stage8ForwardMainSource PERMANENT STG8FRW0
+            DB "var depth as u8",10
+            DB "forward sub main() fails",10
+            DB "sub relay() fails",10
+            DB "main() else fail",10
+            DB "return",10
+            DB "end",10
+            DB "sub main",10
+            DB "if depth = 0",10
+            DB "depth = 1",10
+            DB "relay() else fail",10
+            DB "writeOutputByte('M') else fail",10
+            DB "end",10
+            DB "return",10
+            DB "end",10
+STG8FRW1: ;@NUC-GLOBAL Stage8ForwardMainSourceEnd PERMANENT STG8FRW1
+
+STG8RCRS: ;@NUC-GLOBAL Stage8RecursiveMainSource PERMANENT STG8RCRS
+            DB "var depth as u8",10
+            DB "sub main() fails",10
+            DB "if depth = 0",10
+            DB "depth = 1",10
+            DB "main() else fail",10
+            DB "writeOutputByte('D') else fail",10
+            DB "end",10
+            DB "return",10
+            DB "end",10
+STG8RCR0: ;@NUC-GLOBAL Stage8RecursiveMainSourceEnd PERMANENT STG8RCR0
+
+STG8INCM: ;@NUC-GLOBAL Stage8IncompleteForwardMainSource PERMANENT STG8INCM
+            DB "forward sub main() fails",10
+STG8INC0: ;@NUC-GLOBAL Stage8IncompleteForwardMainSourceEnd PERMANENT STG8INC0
+
+STG8BNDS: ;@NUC-GLOBAL Stage8BoundsTrapSource PERMANENT STG8BNDS
+            DB "var bytes as u8[2]",10
+            DB "sub main() fails",10
+            DB "var index as u8 = readInputByte() else fail",10
+            DB "bytes"
+STG8BND0: ;@NUC-GLOBAL Stage8BoundsTrapPoint PERMANENT STG8BND0
+            DB "[index] = 1",10
+            DB "end",10
+STG8BND1: ;@NUC-GLOBAL Stage8BoundsTrapSourceEnd PERMANENT STG8BND1
+
+STG8NRRW: ;@NUC-GLOBAL Stage8NarrowTrapSource PERMANENT STG8NRRW
+            DB "var wide as u16 = 300",10
+            DB "sub main() fails",10
+            DB "var out as u8",10
+            DB "out = "
+STG8NRR0: ;@NUC-GLOBAL Stage8NarrowTrapPoint PERMANENT STG8NRR0
+            DB "u8(wide)",10
+            DB "end",10
+STG8NRR1: ;@NUC-GLOBAL Stage8NarrowTrapSourceEnd PERMANENT STG8NRR1
+
+STG8DVDT: ;@NUC-GLOBAL Stage8DivideTrapSource PERMANENT STG8DVDT
+            DB "sub main() fails",10
+            DB "var divisor as u16 = readInputByte() else fail",10
+            DB "var result as u16",10
+            DB "result = 8 "
+STG8DVD0: ;@NUC-GLOBAL Stage8DivideTrapPoint PERMANENT STG8DVD0
+            DB "/ divisor",10
+            DB "end",10
+STG8DVD1: ;@NUC-GLOBAL Stage8DivideTrapSourceEnd PERMANENT STG8DVD1
+
+STG8LPRN: ;@NUC-GLOBAL Stage8LoopRangeTrapSource PERMANENT STG8LPRN
+            DB "sub main()",10
+            DB "var index as u8",10
+            DB "for "
+STG8LPR0: ;@NUC-GLOBAL Stage8LoopRangeTrapPoint PERMANENT STG8LPR0
+            DB "index = 250 to 300 step 10",10
+            DB "end",10
+            DB "end",10
+STG8LPR1: ;@NUC-GLOBAL Stage8LoopRangeTrapSourceEnd PERMANENT STG8LPR1
+
+STG8CMPS: ;@NUC-GLOBAL Stage8ComposedFailableSource PERMANENT STG8CMPS
+            DB "sub read() as u8 fails",10
+            DB "return 1",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var out as u8",10
+            DB "out = read() "
+STG8CMP0: ;@NUC-GLOBAL Stage8ComposedFailablePoint PERMANENT STG8CMP0
+            DB "+ 1 else fail",10
+            DB "end",10
+STG8CMP1: ;@NUC-GLOBAL Stage8ComposedFailableSourceEnd PERMANENT STG8CMP1
+
+STG8AGGR: ;@NUC-GLOBAL Stage8AggregateSuffixFailableSource PERMANENT STG8AGGR
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var stored as Box = (1)",10
+            DB "sub get() as Box fails",10
+            DB "return stored",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var out as u8",10
+            DB "out = get()"
+STG8AGG0: ;@NUC-GLOBAL Stage8AggregateSuffixFailablePoint PERMANENT STG8AGG0
+            DB ".value else fail",10
+            DB "end",10
+STG8AGG1: ;@NUC-GLOBAL Stage8AggregateSuffixFailableSourceEnd PERMANENT STG8AGG1
+
+STG8INDX: ;@NUC-GLOBAL Stage8IndexFailableSource PERMANENT STG8INDX
+            DB "var items as u8[2]",10
+            DB "sub main() fails",10
+            DB "var out as u8",10
+            DB "out = items[readInputByte()"
+STG8IND0: ;@NUC-GLOBAL Stage8IndexFailablePoint PERMANENT STG8IND0
+            DB "] else fail",10
+            DB "end",10
+STG8IND1: ;@NUC-GLOBAL Stage8IndexFailableSourceEnd PERMANENT STG8IND1
+
+STG8AGG2: ;@NUC-GLOBAL Stage8AggregateArgumentFailableSource PERMANENT STG8AGG2
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var stored as Box",10
+            DB "sub get() as Box fails",10
+            DB "return stored",10
+            DB "end",10
+            DB "sub take(value as Box)",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "take(get("
+STG8AGG3: ;@NUC-GLOBAL Stage8AggregateArgumentFailablePoint PERMANENT STG8AGG3
+            DB "))",10
+            DB "end",10
+STG8AGG4: ;@NUC-GLOBAL Stage8AggregateArgumentFailableSourceEnd PERMANENT STG8AGG4
+
+STG8NST2: ;@NUC-GLOBAL Stage8NestedFrameSource PERMANENT STG8NST2
+            DB "sub inner() as u8",10
+            DB "return 'N'",10
+            DB "end",10
+            DB "sub outer(value as u8) as u8 fails",10
+            DB "return value",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var out as u8 = outer(inner()) else fail",10
+            DB "writeOutputByte(out) else fail",10
+            DB "end",10
+STG8NST3: ;@NUC-GLOBAL Stage8NestedFrameSourceEnd PERMANENT STG8NST3
+
+STG8PRDB: ;@NUC-GLOBAL Stage8PredefinedStepSource PERMANENT STG8PRDB
+            DB "sub main() fails",10
+            DB "var index as u8",10
+            DB "for index = 0 until 4 step outputFailure",10
+            DB "writeOutputByte('S') else fail",10
+            DB "end",10
+            DB "end",10
+STG8PRDC: ;@NUC-GLOBAL Stage8PredefinedStepSourceEnd PERMANENT STG8PRDC
+
+STG8INDR: ;@NUC-GLOBAL Stage8IndirectHandlerSource PERMANENT STG8INDR
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var target as Box = (9)",10
+            DB "sub stop() as u8 fails",10
+            DB "fail 7",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "target.value = stop() handle code",10
+            DB "writeOutputByte(code) else fail",10
+            DB "writeOutputByte(target.value) else fail",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8IND2: ;@NUC-GLOBAL Stage8IndirectHandlerSourceEnd PERMANENT STG8IND2
+
+STG8AGG5: ;@NUC-GLOBAL Stage8AggregateCopyHandlerSource PERMANENT STG8AGG5
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var source as Box = (5)",10
+            DB "var target as Box = (9)",10
+            DB "sub choose(shouldFail as boolean) as Box fails",10
+            DB "if shouldFail",10
+            DB "fail 7",10
+            DB "end",10
+            DB "return source",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "target = choose(false) else fail",10
+            DB "writeOutputByte(target.value) else fail",10
+            DB "target = choose(true) handle code",10
+            DB "writeOutputByte(code) else fail",10
+            DB "writeOutputByte(target.value) else fail",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8AGG6: ;@NUC-GLOBAL Stage8AggregateCopyHandlerSourceEnd PERMANENT STG8AGG6
+
+STG8RTN0: ;@NUC-GLOBAL Stage8RetainedResetSource PERMANENT STG8RTN0
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var source as Box = (1)",10
+            DB "var target as Box = (2)",10
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "target = source",10
+            DB "rewindStorageInput() handle code",10
+            DB "writeOutputByte(code) else fail",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8RTN1: ;@NUC-GLOBAL Stage8RetainedResetSourceEnd PERMANENT STG8RTN1
+
+STG8IND3: ;@NUC-GLOBAL Stage8IndirectServiceHandlerSource PERMANENT STG8IND3
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var target as Box = (9)",10
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "target.value = readInputByte() handle code",10
+            DB "writeOutputByte(code) else fail",10
+            DB "writeOutputByte(target.value) else fail",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8IND4: ;@NUC-GLOBAL Stage8IndirectServiceHandlerSourceEnd PERMANENT STG8IND4
+
+; Keep the indirect destination count distinct from the following handler's
+; symbol metadata. This source leaves the original failable call as the last
+; consumer in the transcript so its backpatched fields remain inspectable.
+STG8RTN2: ;@NUC-GLOBAL Stage8RetainedFieldSource PERMANENT STG8RTN2
+            DB "record Box",10
+            DB "value as u8",10
+            DB "end",10
+            DB "var target as Box = (9)",10
+            DB "sub stop() as u8 fails",10
+            DB "fail 7",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "target.value = stop() handle code",10
+            DB "return",10
+            DB "end",10
+            DB "fail 99",10
+            DB "end",10
+STG8RTN3: ;@NUC-GLOBAL Stage8RetainedFieldSourceEnd PERMANENT STG8RTN3
+
+; The redesigned surface keeps handling attached to the call's logical line.
+; This one program discriminates success-handler skipping, same-destination
+; error storage, handler fallthrough, conditional `else` on the next line,
+; and the release of `on` and `error` as ordinary identifiers.
+STG8IMMD: ;@NUC-GLOBAL Stage8ImmediateConsumerSource PERMANENT STG8IMMD
+            DB "var on as u8 = 1",10
+            DB "var error as u8 = 2",10
+            DB "var value as u8",10
+            DB "sub pass(input as u8) as u8 fails",10
+            DB "return input",10
+            DB "end",10
+            DB "sub stop(input as u8) as u8 fails",10
+            DB "fail input",10
+            DB "end",10
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "value = pass(5) handle code",10
+            DB "fail 90",10
+            DB "end",10
+            DB "if on + error = 3",10
+            DB "value = pass(6) else fail",10
+            DB "else",10
+            DB "fail 91",10
+            DB "end",10
+            DB "value = stop(7) handle value",10
+            DB "if value = 7",10
+            DB "writeOutputByte('H') else fail",10
+            DB "end",10
+            DB "end",10
+            DB "writeOutputByte(value) else fail",10
+            DB "end",10
+STG8IMM0: ;@NUC-GLOBAL Stage8ImmediateConsumerSourceEnd PERMANENT STG8IMM0
+
+STG8HNDL: ;@NUC-GLOBAL Stage8HandlerPropagatesSource PERMANENT STG8HNDL
+            DB "sub main() fails",10
+            DB "var code as u8",10
+            DB "writeOutputByte('X') handle code",10
+STG8HND0: ;@NUC-GLOBAL Stage8HandlerExplicitFailPoint PERMANENT STG8HND0
+            DB "fail code",10
+            DB "end",10
+            DB "end",10
+STG8HND1: ;@NUC-GLOBAL Stage8HandlerPropagatesSourceEnd PERMANENT STG8HND1
+
+STG8BRLC: ;@NUC-GLOBAL Stage8BareLocalSource PERMANENT STG8BRLC
+            DB "sub main() fails",10
+            DB "var value as u8 = readInputByte()"
+STG8BRL0: DB 10,"end",10 ;@NUC-GLOBAL Stage8BareLocalPoint PERMANENT STG8BRL0
+STG8BRL1: ;@NUC-GLOBAL Stage8BareLocalSourceEnd PERMANENT STG8BRL1
+STG8BRAS: ;@NUC-GLOBAL Stage8BareAssignmentSource PERMANENT STG8BRAS
+            DB "sub main() fails",10,"var value as u8",10
+            DB "value = readInputByte()"
+STG8BRA0: DB 10,"end",10 ;@NUC-GLOBAL Stage8BareAssignmentPoint PERMANENT STG8BRA0
+STG8BRA1: ;@NUC-GLOBAL Stage8BareAssignmentSourceEnd PERMANENT STG8BRA1
+STG8LGCY: ;@NUC-GLOBAL Stage8LegacyOrFailSource PERMANENT STG8LGCY
+            DB "sub main() fails",10,"var value as u8",10
+            DB "value = readInputByte() "
+STG8LGC0: DB "or fail",10,"end",10 ;@NUC-GLOBAL Stage8LegacyOrFailPoint PERMANENT STG8LGC0
+STG8LGC1: ;@NUC-GLOBAL Stage8LegacyOrFailSourceEnd PERMANENT STG8LGC1
+STG8LGC2: ;@NUC-GLOBAL Stage8LegacyOnErrorSource PERMANENT STG8LGC2
+            DB "sub main() fails",10,"var code as u8",10
+            DB "writeOutputByte(1)"
+STG8LGC3: DB 10,"on error code",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8LegacyOnErrorPoint PERMANENT STG8LGC3
+STG8LGC4: ;@NUC-GLOBAL Stage8LegacyOnErrorSourceEnd PERMANENT STG8LGC4
+STG8INFL: ;@NUC-GLOBAL Stage8InfalliblePropagationSource PERMANENT STG8INFL
+            DB "sub main()",10,"var value as u8",10
+            DB "value = readInputByte() "
+STG8INF0: DB "else fail",10,"end",10 ;@NUC-GLOBAL Stage8InfalliblePropagationPoint PERMANENT STG8INF0
+STG8INF1: ;@NUC-GLOBAL Stage8InfalliblePropagationSourceEnd PERMANENT STG8INF1
+STG8INF2: ;@NUC-GLOBAL Stage8InfallibleHandleSource PERMANENT STG8INF2
+            DB "sub helper()",10,"end",10,"sub main()",10
+            DB "var code as u8",10,"helper() "
+STG8INF3: DB "handle code",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8InfallibleHandlePoint PERMANENT STG8INF3
+STG8INF4: ;@NUC-GLOBAL Stage8InfallibleHandleSourceEnd PERMANENT STG8INF4
+STG8DBLC: ;@NUC-GLOBAL Stage8DoubleConsumerSource PERMANENT STG8DBLC
+            DB "sub main() fails",10,"var code as u8",10
+            DB "writeOutputByte(1) else fail "
+STG8DBL0: DB "handle code",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8DoubleConsumerPoint PERMANENT STG8DBL0
+STG8DBL1: ;@NUC-GLOBAL Stage8DoubleConsumerSourceEnd PERMANENT STG8DBL1
+STG8LCLH: ;@NUC-GLOBAL Stage8LocalHandleSource PERMANENT STG8LCLH
+            DB "sub main() fails",10
+            DB "var value as u8 = 1 "
+STG8LCL0: DB "handle value",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8LocalHandlePoint PERMANENT STG8LCL0
+STG8LCL1: ;@NUC-GLOBAL Stage8LocalHandleSourceEnd PERMANENT STG8LCL1
+STG8RSL1: ;@NUC-GLOBAL Stage8ResultReturnPropagationSource PERMANENT STG8RSL1
+            DB "sub result() as u8 fails",10,"return readInputByte() "
+STG8RSL2: DB "else fail",10,"end",10 ;@NUC-GLOBAL Stage8ResultReturnPropagationPoint PERMANENT STG8RSL2
+            DB "sub main()",10,"end",10
+STG8RSL3: ;@NUC-GLOBAL Stage8ResultReturnPropagationSourceEnd PERMANENT STG8RSL3
+STG8FRRT: ;@NUC-GLOBAL Stage8FreeReturnPropagationSource PERMANENT STG8FRRT
+            DB "sub helper() fails",10,"end",10,"sub main() fails",10,"return "
+STG8FRR0: DB "helper() else fail",10,"end",10 ;@NUC-GLOBAL Stage8FreeReturnPropagationPoint PERMANENT STG8FRR0
+STG8FRR1: ;@NUC-GLOBAL Stage8FreeReturnPropagationSourceEnd PERMANENT STG8FRR1
+
+STG8MSSN: ;@NUC-GLOBAL Stage8MissingHandleNameSource PERMANENT STG8MSSN
+            DB "sub main() fails",10,"writeOutputByte(1) handle"
+STG8MSS0: DB 10,"end",10,"end",10 ;@NUC-GLOBAL Stage8MissingHandleNamePoint PERMANENT STG8MSS0
+STG8MSS1: ;@NUC-GLOBAL Stage8MissingHandleNameSourceEnd PERMANENT STG8MSS1
+STG8UNK2: ;@NUC-GLOBAL Stage8UnknownHandleNameSource PERMANENT STG8UNK2
+            DB "sub main() fails",10,"writeOutputByte(1) handle "
+STG8UNK3: DB "missing",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8UnknownHandleNamePoint PERMANENT STG8UNK3
+STG8UNK4: ;@NUC-GLOBAL Stage8UnknownHandleNameSourceEnd PERMANENT STG8UNK4
+STG8WDHN: ;@NUC-GLOBAL Stage8WideHandleNameSource PERMANENT STG8WDHN
+            DB "sub main() fails",10,"var code as u16",10
+            DB "writeOutputByte(1) handle "
+STG8WDH0: DB "code",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8WideHandleNamePoint PERMANENT STG8WDH0
+STG8WDH1: ;@NUC-GLOBAL Stage8WideHandleNameSourceEnd PERMANENT STG8WDH1
+STG8CNST: ;@NUC-GLOBAL Stage8ConstantHandleNameSource PERMANENT STG8CNST
+            DB "const code = 1",10,"sub main() fails",10
+            DB "writeOutputByte(1) handle "
+STG8CNS1: DB "code",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8ConstantHandleNamePoint PERMANENT STG8CNS1
+STG8CNS2: ;@NUC-GLOBAL Stage8ConstantHandleNameSourceEnd PERMANENT STG8CNS2
+STG8AGG7: ;@NUC-GLOBAL Stage8AggregateHandleNameSource PERMANENT STG8AGG7
+            DB "record Box",10,"value as u8",10,"end",10
+            DB "var box as Box",10,"sub main() fails",10
+            DB "writeOutputByte(1) handle "
+STG8AGG8: DB "box",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8AggregateHandleNamePoint PERMANENT STG8AGG8
+STG8AGG9: ;@NUC-GLOBAL Stage8AggregateHandleNameSourceEnd PERMANENT STG8AGG9
+STG8CNTR: ;@NUC-GLOBAL Stage8CounterHandleNameSource PERMANENT STG8CNTR
+            DB "sub main() fails",10,"var index as u8",10
+            DB "for index = 0 until 1",10
+            DB "writeOutputByte(1) handle "
+STG8CNT0: DB "index",10,"end",10,"end",10,"end",10 ;@NUC-GLOBAL Stage8CounterHandleNamePoint PERMANENT STG8CNT0
+STG8CNT1: ;@NUC-GLOBAL Stage8CounterHandleNameSourceEnd PERMANENT STG8CNT1

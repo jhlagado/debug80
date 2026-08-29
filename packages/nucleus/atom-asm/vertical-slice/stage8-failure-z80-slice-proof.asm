@@ -1,0 +1,40 @@
+; Permanent Atom layout for the Stage 8 failure proof.
+            %DEFINE SegmentedOutput 1
+            %DEFINE TargetStreamingOutput 0
+            %DEFINE LegacyCompilerSlices 0
+            %DEFINE AggregateCallSlices 1
+            %DEFINE Stage7LL1 1
+            %DEFINE LegacyEncoders 0
+            %DEFINE HybridLL1Full 1
+            %DEFINE RuntimeProofServices 1
+            %INCLUDE "memory-map.asmi"
+            %INCLUDE "proof-segmented-state.asmi"
+            %INCLUDE "loop-compiler-state.asmi"
+            %INCLUDE "aggregate-call-state.asmi"
+            %INCLUDE "loop-z80-state.asmi"
+            %INCLUDE "stage8-failure-code-begin.asmi"
+            %INCLUDE "source-adapter.asm"
+            %INCLUDE "stage8-failure-after-source-adapter.asmi"
+            %INCLUDE "loop-tokenizer.asm"
+            %INCLUDE "stage8-failure-after-tokenizer.asmi"
+            %INCLUDE "loop-semantic-sink.asm"
+            %INCLUDE "stage8-failure-after-semantic-sink.asmi"
+            %INCLUDE "loop-symbols.asm"
+            %INCLUDE "stage8-failure-after-symbols.asmi"
+            %INCLUDE "loop-parser.asm"
+            %INCLUDE "stage8-failure-after-parser.asmi"
+            %INCLUDE "loop-z80-sink.asm"
+            %INCLUDE "stage8-failure-after-loop-z80-sink.asmi"
+            %INCLUDE "typed-expression-z80.asm"
+            %INCLUDE "stage8-failure-after-typed-expression-z80.asmi"
+            %INCLUDE "aggregate-z80.asm"
+            %INCLUDE "stage8-failure-after-aggregate-z80.asmi"
+            %INCLUDE "loop-keywords.asmi"
+            %INCLUDE "stage8-failure-after-keywords.asmi"
+            %INCLUDE "stage8-failure-source.asmi"
+            %INCLUDE "stage8-failure-spare-source.asmi"
+            %INCLUDE "stage8-failure-backup-source.asmi"
+            %INCLUDE "stage8-failure-runtime-begin.asmi"
+            %INCLUDE "proof-z80-runtime.asm"
+            %INCLUDE "stage8-failure-runtime-after.asmi"
+            %INCLUDE "stage8-failure-proof-body.asmi"

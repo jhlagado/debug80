@@ -1,0 +1,53 @@
+            ORG RLSDGNRT
+CHPTR21T: ;@NUC-GLOBAL Chapter21TargetPart1 PERMANENT CHPTR21T
+            DB "record Cell",10
+            DB "    value as u8",10
+            DB "end",10
+            DB 10
+            DB "var template as Cell = (1)",10
+            DB "var cells as Cell[4] = [(0), (0), (0), (0)]",10
+            DB 10
+CHPTR210: ;@NUC-GLOBAL Chapter21TargetPart1End PERMANENT CHPTR210
+CHPTR211: ;@NUC-GLOBAL Chapter21TargetPart2 PERMANENT CHPTR211
+            DB "sub cellAt(index as u8) as Cell",10
+            DB "    return cells[index]",10
+            DB "end",10
+            DB 10
+            DB "sub setCell(cell as Cell, value as u8)",10
+            DB "    cell.value = value",10
+            DB "end",10
+            DB 10
+            DB "sub main()",10
+            DB "    var index as u8",10
+            DB "    var code as u8",10
+            DB 10
+            DB "    for index = 0 until 4",10
+            DB "        cells[index] = template",10
+            DB "        setCell(template, index + 1)",10
+            DB "    end",10
+            DB 10
+            DB "    cells[0].value = cellAt(0).value",10
+            DB "    if cells[0].value = 1",10
+            DB "        writeOutputByte('Y') handle code",10
+            DB "            return",10
+            DB "        end",10
+            DB "    elseif cells[0].value = 0",10
+            DB "        writeOutputByte('N') handle code",10
+            DB "            return",10
+            DB "        end",10
+            DB "    end",10
+            DB "end",10
+CHPTR212: ;@NUC-GLOBAL Chapter21TargetPart2End PERMANENT CHPTR212
+CHPTR213: ;@NUC-GLOBAL Chapter21TargetParts PERMANENT CHPTR213
+            DB 1
+            DW CHPTR21T,CHPTR210
+            DB 2
+            DW CHPTR211,CHPTR212
+CHPTR214: DB 0,0 ;@NUC-GLOBAL Chapter21TargetPartBanks PERMANENT CHPTR214
+CHPTR215: ;@NUC-GLOBAL Chapter21TargetDescriptor PERMANENT CHPTR215
+            DW NCLSRNTM
+            DW $8000,$1000
+            DW $4000,$1000
+            DB 1
+            DB 1,0
+            DW CHPTR214

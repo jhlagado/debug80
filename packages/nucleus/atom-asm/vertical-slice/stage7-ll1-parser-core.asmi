@@ -1,0 +1,200 @@
+; Packed LL(1) interpreter for the complete Stage 7 grammar.
+; Token ordinals occupy $00..$3F, nonterminals $40..$7F, and explicit
+; semantic or retained-expression actions $80..$FE. Productions store their
+; right sides in reverse order so one bounded copy pushes a complete rule.
+
+HYBRDL37 EQU 64 ;@NUC-GLOBAL HybridLL1StackCapacity PERMANENT HYBRDL37
+%IF AggregateCallSlices
+%IF TargetStreamingOutput
+HYBRDL38    EQU TRGTCMPL ;@NUC-GLOBAL HybridLL1StackDepth PERMANENT HYBRDL38
+%ELSE
+HYBRDL38    EQU SRCMLTPR ;@NUC-GLOBAL HybridLL1StackDepth PERMANENT HYBRDL38
+%ENDIF
+%ELSE
+HYBRDL38    EQU STG7CMPL ;@NUC-GLOBAL HybridLL1StackDepth PERMANENT HYBRDL38
+%ENDIF
+HYBRDL39     EQU HYBRDL38+1 ;@NUC-GLOBAL HybridLL1StackBase PERMANENT HYBRDL39
+%IF AggregateCallSlices
+%IF TargetStreamingOutput
+HYBRDL3A  EQU TRGTWRKS ;@NUC-GLOBAL HybridLL1WorkspaceEnd PERMANENT HYBRDL3A
+%ELSE
+HYBRDL3A  EQU HYBRDL39+HYBRDL37 ;@NUC-GLOBAL HybridLL1WorkspaceEnd PERMANENT HYBRDL3A
+%ENDIF
+%ELSE
+HYBRDL3A  EQU HYBRDL39+HYBRDL37 ;@NUC-GLOBAL HybridLL1WorkspaceEnd PERMANENT HYBRDL3A
+%ENDIF
+DGNSTCP2 EQU 87 ;@NUC-GLOBAL DiagnosticParserCapacity PERMANENT DGNSTCP2
+
+; Push the start symbol and run until the grammar stack is empty. Explicit
+; actions return through HybridLL1ActionReturn with carry reporting failure.
+;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
+HYBRDL3B: ;@NUC-GLOBAL HybridLL1Parse PERMANENT HYBRDL3B
+            XOR  A
+            LD   (HYBRDL38),A
+            LD   A,HYBRDL3M
+            CALL HYBRDL3D
+            RET  C
+.L00000:
+            LD   A,(HYBRDL38)
+            OR   A
+            RET  Z
+            CALL HYBRDL3E
+            CP   $40
+            JR   C,.L00002
+            CP   $80
+            JR   C,.L00003
+
+            ; Action ordinal -> absolute routine address. A retains the
+            ; zero-based ordinal for parameterised physical handlers.
+            SUB  $80
+            LD   L,A
+            LD   H,0
+            ADD  HL,HL
+            LD   DE,HYBRDL80
+            ADD  HL,DE
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            EX   DE,HL
+            LD   DE,.L00001
+            PUSH DE
+            JP   (HL)
+.L00001:
+            RET  C
+            JR   .L00000
+
+.L00002:
+            LD   E,A
+            CALL PRSREXPC
+            RET  C
+            JR   .L00000
+
+.L00003:
+            SUB  $40
+            LD   L,A
+            LD   H,0
+            ADD  HL,HL
+            LD   DE,HYBRDL3U
+            ADD  HL,DE
+            LD   E,(HL)
+            INC  HL
+            LD   A,(HL)
+            PUSH AF
+            LD   D,0
+            LD   HL,HYBRDL3V
+            ADD  HL,DE
+            PUSH HL
+            CALL PRSRPK
+            POP  HL
+            JR   C,.L00007
+            LD   C,A
+.L00004:
+            LD   B,(HL)
+            INC  HL
+.L00005:
+            LD   A,(HL)
+            LD   E,A
+            AND  $7F
+            CP   C
+            JR   Z,.L00008
+            INC  HL
+            BIT  7,E
+            JR   Z,.L00005
+            BIT  7,B
+            JR   NZ,.L00006
+            JR   .L00004
+.L00006:
+            POP  AF
+            JP   CMPLRSTD
+.L00007:
+            POP  BC
+            RET
+.L00008:
+            POP  AF
+            LD   A,B
+            AND  $7F
+            CALL HYBRDL3C
+            RET  C
+            JR   .L00000
+
+; A is a production ordinal. Adjacent directory offsets delimit its body.
+;@ROUTINE IN A OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+HYBRDL3C: ;@NUC-GLOBAL HybridLL1PushProduction PERMANENT HYBRDL3C
+            CP   HYBRDL3K
+            LD   DE,HYBRDL53
+            LD   HL,HYBRDL51
+            JR   C,.L00000
+            SUB  HYBRDL3K
+            LD   DE,HYBRDL62
+            LD   HL,HYBRDL52
+.L00000:
+            LD   C,A
+            LD   B,0
+            ADD  HL,BC
+            LD   C,(HL)
+            INC  HL
+            LD   A,(HL)
+            SUB  C
+            LD   B,A
+            LD   A,C
+            LD   L,A
+            LD   H,0
+            ADD  HL,DE
+            LD   A,B
+            OR   A
+            RET  Z
+            LD   A,(HYBRDL38)
+            LD   C,A
+            ADD  A,B
+            JR   C,HYBRDL3F
+            CP   HYBRDL37+1
+            JR   NC,HYBRDL3F
+            LD   (HYBRDL38),A
+            PUSH HL
+            LD   A,C
+            LD   E,A
+            LD   D,0
+            LD   HL,HYBRDL39
+            ADD  HL,DE
+            EX   DE,HL
+            POP  HL
+            LD   C,B
+            LD   B,0
+            LDIR
+            XOR  A
+            RET
+
+;@ROUTINE IN A OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,C,DE,HL
+HYBRDL3D: ;@NUC-GLOBAL HybridLL1PushSymbol PERMANENT HYBRDL3D
+            LD   C,A
+            LD   A,(HYBRDL38)
+            CP   HYBRDL37
+            JR   NC,HYBRDL3F
+            LD   L,A
+            LD   H,0
+            LD   DE,HYBRDL39
+            ADD  HL,DE
+            LD   (HL),C
+            LD   HL,HYBRDL38
+            INC  (HL)
+            XOR  A
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,DE,HL
+HYBRDL3E: ;@NUC-GLOBAL HybridLL1PopSymbol PERMANENT HYBRDL3E
+            LD   A,(HYBRDL38)
+            DEC  A
+            LD   (HYBRDL38),A
+            LD   L,A
+            LD   H,0
+            LD   DE,HYBRDL39
+            ADD  HL,DE
+            LD   A,(HL)
+            OR   A
+            RET
+
+HYBRDL3F: ;@NUC-GLOBAL HybridLL1CapacityFailure PERMANENT HYBRDL3F
+            LD   A,DGNSTCP2
+            JP   CMPLRSTD
+
+HYBRDL3G: ;@NUC-GLOBAL HybridLL1EngineEnd PERMANENT HYBRDL3G

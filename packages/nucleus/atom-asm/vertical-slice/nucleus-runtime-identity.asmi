@@ -1,0 +1,30 @@
+; Canonical operating-layer runtime source, private ABI, link-rule, vector and
+; helper-layout identity. The same identity may link to different resolved
+; bytes when the validated target addresses differ.
+NCLSRNTM       EQU $0004 ;@NUC-GLOBAL NucleusRuntimeIdentity PERMANENT NCLSRNTM
+NCLSRNT0 EQU 364 ;@NUC-GLOBAL NucleusRuntimeExpectedLength PERMANENT NCLSRNT0
+
+NCLSRNT1  EQU 11 ;@NUC-GLOBAL NucleusRuntimeVectorCount PERMANENT NCLSRNT1
+NCLSRNT2 EQU NCLSRNT1*3 ;@NUC-GLOBAL NucleusRuntimeVectorLength PERMANENT NCLSRNT2
+NCLSRNT3  EQU 37 ;@NUC-GLOBAL NucleusRuntimeStateLength PERMANENT NCLSRNT3
+NCLSRNT4        EQU 0 ;@NUC-GLOBAL NucleusRuntimeRunStateOffset PERMANENT NCLSRNT4
+NCLSRNT5 EQU 7 ;@NUC-GLOBAL NucleusRuntimeActivationLimitOffset PERMANENT NCLSRNT5
+; Banked targets use ScalarSlot as the selected-bank byte. The activation and
+; far-return arenas retain caller-bank and return-address slots at depth-1.
+; General source calls do not use the legacy scalar carrier in this mode.
+NCLSRNT6     EQU 8 ;@NUC-GLOBAL NucleusRuntimeCurrentBankOffset PERMANENT NCLSRNT6
+
+NCLSRNT7      EQU 0 ;@NUC-GLOBAL NucleusRuntimeActivationPushOffset PERMANENT NCLSRNT7
+NCLSRNT8       EQU 23 ;@NUC-GLOBAL NucleusRuntimeActivationPopOffset PERMANENT NCLSRNT8
+NCLSRNT9     EQU 43 ;@NUC-GLOBAL NucleusRuntimeActivationClaimOffset PERMANENT NCLSRNT9
+NCLSRNTA   EQU 68 ;@NUC-GLOBAL NucleusRuntimeActivationReleaseOffset PERMANENT NCLSRNTA
+NCLSRNTB      EQU 77 ;@NUC-GLOBAL NucleusRuntimeCheckArrayIndexOffset PERMANENT NCLSRNTB
+NCLSRNTC    EQU 85 ;@NUC-GLOBAL NucleusRuntimeCheckStringLengthOffset PERMANENT NCLSRNTC
+NCLSRNTD     EQU 95 ;@NUC-GLOBAL NucleusRuntimeCheckStringIndexOffset PERMANENT NCLSRNTD
+NCLSRNTE EQU 115 ;@NUC-GLOBAL NucleusRuntimeCheckAggregateRegionOffset PERMANENT NCLSRNTE
+NCLSRNTF        EQU 160 ;@NUC-GLOBAL NucleusRuntimeInitializeBssOffset PERMANENT NCLSRNTF
+NCLSRNTG           EQU 174 ;@NUC-GLOBAL NucleusRuntimeMultiplyU8Offset PERMANENT NCLSRNTG
+NCLSRNTH          EQU 182 ;@NUC-GLOBAL NucleusRuntimeMultiplyU16Offset PERMANENT NCLSRNTH
+NCLSRNTI            EQU 228 ;@NUC-GLOBAL NucleusRuntimeDivideU16Offset PERMANENT NCLSRNTI
+NCLSRNTJ            EQU 236 ;@NUC-GLOBAL NucleusRuntimeModuloU16Offset PERMANENT NCLSRNTJ
+NCLSRNTK           EQU 289 ;@NUC-GLOBAL NucleusRuntimeCompareU16Offset PERMANENT NCLSRNTK

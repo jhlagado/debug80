@@ -1,0 +1,150 @@
+CMPLRCDE: ;@NUC-GLOBAL CompilerCodeEnd PERMANENT CMPLRCDE
+
+CMPLRIMM: ;@NUC-GLOBAL CompilerImmutableStart PERMANENT CMPLRIMM
+KYWRDSB: ;@NUC-GLOBAL KeywordSub PERMANENT KYWRDSB
+            DB  "sub"
+KYWRDFLS: ;@NUC-GLOBAL KeywordFails PERMANENT KYWRDFLS
+            DB  "fails"
+KYWRDELS: ;@NUC-GLOBAL KeywordElse PERMANENT KYWRDELS
+            DB  "else"
+KYWRDFL: ;@NUC-GLOBAL KeywordFail PERMANENT KYWRDFL
+            DB  "fail"
+KYWRDEND: ;@NUC-GLOBAL KeywordEnd PERMANENT KYWRDEND
+            DB  "end"
+NameMain:
+            DB  "main"
+NMWRTOTP: ;@NUC-GLOBAL NameWriteOutputByte PERMANENT NMWRTOTP
+            DB  "writeOutputByte"
+CMPLRIM0: ;@NUC-GLOBAL CompilerImmutableEnd PERMANENT CMPLRIM0
+CMPLRCRE: ;@NUC-GLOBAL CompilerCoreEnd PERMANENT CMPLRCRE
+
+            ORG SRCBS
+ACCPTDSR: ;@NUC-GLOBAL AcceptedSource PERMANENT ACCPTDSR
+            DB  "sub main() fails",10
+            DB  "    writeOutputByte('A') else fail",10
+            DB  "end",10
+ACCPTDS0: ;@NUC-GLOBAL AcceptedSourceEnd PERMANENT ACCPTDS0
+
+MLFRMDSR: ;@NUC-GLOBAL MalformedSource PERMANENT MLFRMDSR
+            DB  "sub main() fails",10
+            DB  "    writeOutputByte('A') else fail",10
+MLFRMDS0: ;@NUC-GLOBAL MalformedSourceEnd PERMANENT MLFRMDS0
+
+            ORG PRFBS
+;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL
+PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
+            LD   SP,StackTop
+            XOR  A
+            LD   (PRFCS),A
+            LD   (PRFSTTS),A
+
+            LD   A,7
+            LD   HL,ACCPTDSR
+            LD   DE,ACCPTDS0
+            CALL CMPLVRTC
+            JP   C,PRFFLACC
+            LD   A,(DGNSTCCD)
+            OR   A
+            JP   NZ,PRFFLAC1
+            LD   HL,SMNTCBFF
+            LD   DE,EXPCTDOP
+            LD   B,6
+            CALL PRFCMPRB
+            JP   C,PRFFLAC2
+
+            LD   A,9
+            LD   HL,MLFRMDSR
+            LD   DE,MLFRMDS0
+            CALL CMPLVRTC
+            JP   NC,PRFFLML0
+            LD   A,(DGNSTCCD)
+            CP   DGNSTCE9
+            JP   NZ,PRFFLML1
+            LD   A,(DGNSTCP0)
+            CP   9
+            JP   NZ,PRFFLML2
+            LD   HL,(DGNSTCOF)
+            LD   DE,MLFRMDSZ
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLML3
+            LD   HL,(DGNSTCLN)
+            LD   DE,3
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLML4
+            LD   HL,(DGNSTCCL)
+            LD   DE,1
+            OR   A
+            SBC  HL,DE
+            JP   NZ,PRFFLML5
+            LD   A,(SMNTCBFF)
+            OR   A
+            JP   NZ,PRFFLML6
+
+            LD   A,$A5
+            LD   (PRFSTTS),A
+            HALT
+
+;@ROUTINE IN B,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+PRFCMPRB: ;@NUC-GLOBAL ProofCompareBytes PERMANENT PRFCMPRB
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,PRFCMPR0
+            INC  DE
+            INC  HL
+            DJNZ PRFCMPRB
+            OR   A
+            RET
+PRFCMPR0: ;@NUC-GLOBAL ProofCompareBytesNo PERMANENT PRFCMPR0
+            SCF
+            RET
+
+PRFFLACC: ;@NUC-GLOBAL ProofFailAcceptedCompile PERMANENT PRFFLACC
+            LD   A,1
+            JR   PRFFLD
+PRFFLAC1: ;@NUC-GLOBAL ProofFailAcceptedDiagnostic PERMANENT PRFFLAC1
+            LD   A,2
+            JR   PRFFLD
+PRFFLAC2: ;@NUC-GLOBAL ProofFailAcceptedOperations PERMANENT PRFFLAC2
+            LD   A,3
+            JR   PRFFLD
+PRFFLML0: ;@NUC-GLOBAL ProofFailMalformedAccepted PERMANENT PRFFLML0
+            LD   A,4
+            JR   PRFFLD
+PRFFLML1: ;@NUC-GLOBAL ProofFailMalformedCode PERMANENT PRFFLML1
+            LD   A,5
+            JR   PRFFLD
+PRFFLML2: ;@NUC-GLOBAL ProofFailMalformedPart PERMANENT PRFFLML2
+            LD   A,6
+            JR   PRFFLD
+PRFFLML3: ;@NUC-GLOBAL ProofFailMalformedOffset PERMANENT PRFFLML3
+            LD   A,7
+            JR   PRFFLD
+PRFFLML4: ;@NUC-GLOBAL ProofFailMalformedLine PERMANENT PRFFLML4
+            LD   A,8
+            JR   PRFFLD
+PRFFLML5: ;@NUC-GLOBAL ProofFailMalformedColumn PERMANENT PRFFLML5
+            LD   A,9
+            JR   PRFFLD
+PRFFLML6: ;@NUC-GLOBAL ProofFailMalformedOutput PERMANENT PRFFLML6
+            LD   A,10
+PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
+            LD   (PRFCS),A
+            LD   A,$E0
+            LD   (PRFSTTS),A
+            HALT
+
+MLFRMDSZ EQU MLFRMDS0-MLFRMDSR ; malformed source byte length
+
+EXPCTDOP: ;@NUC-GLOBAL ExpectedOperations PERMANENT EXPCTDOP
+            DB  4,SMNTCLDU,"A",SMNTCWRT
+            DB  SMNTCPRP,SMNTCRT2
+
+PRFSTTS: ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
+            DB  0
+PRFCS: ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
+            DB  0
+ProofEnd:
+
+            ;@AZM-END

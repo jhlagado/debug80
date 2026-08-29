@@ -1,0 +1,6 @@
+
+%DEFINE TargetStreamingOutput 0
+%DEFINE LegacyCompilerSlices 0
+%DEFINE AggregateCallSlices 0
+%DEFINE HybridLL1Full 0
+%DEFINE LegacyEncoders 0
