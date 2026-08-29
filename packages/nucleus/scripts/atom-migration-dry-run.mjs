@@ -342,18 +342,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteStructuredControlZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/array-z80-slice-proof.asm", Object.freeze({
-    description: "array z80 proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/array-z80-slice-proof.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/array-z80-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "BadArrayValue-BadArraySource",
-      }),
-    ]),
+    description: "array z80 proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteArrayZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/stage7-ll1-parser.asm", Object.freeze({
@@ -3541,85 +3531,15 @@ function rewriteAggregateZ80SliceProofPermanentAtomSource(source, { relative, tr
   ].join("\n");
 }
 
-function rewriteArrayZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const sourceBase = atomSymbol(symbolMap, "SourceBase");
-  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
-  const proofBase = atomSymbol(symbolMap, "ProofBase");
-  const badArrayOffset = "ARBDOFS";
-  const badArrayColumn = "ARBDCOL";
-  const badArrayValue = atomSymbol(symbolMap, "BadArrayValue");
-  const badArraySource = atomSymbol(symbolMap, "BadArraySource");
-
-  const lines = source
-    .replaceAll(`${badArrayValue}-${badArraySource}+1`, badArrayColumn)
-    .replaceAll(`${badArrayValue}-${badArraySource}`, badArrayOffset)
-    .split("\n");
-  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "array-z80-slice-proof");
-  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "array-z80-slice-proof");
-  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "array-z80-slice-proof");
-  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "array-z80-slice-proof");
-  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "array-z80-slice-proof");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "array-z80-slice-proof");
-  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "array-z80-slice-proof");
-  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "array-z80-slice-proof");
-  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "array-z80-slice-proof");
-  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "array-z80-slice-proof");
-  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "array-z80-slice-proof");
-  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "array-z80-slice-proof");
-
-  const orderedIndexes = [
-    compilerOrgIndex,
-    sourceAdapterIncludeIndex,
-    tokenizerIncludeIndex,
-    semanticSinkIncludeIndex,
-    symbolsIncludeIndex,
-    parserIncludeIndex,
-    loopSinkIncludeIndex,
-    keywordsIncludeIndex,
-    sourceOrgIndex,
-    runtimeOrgIndex,
-    runtimeIncludeIndex,
-    proofOrgIndex,
-  ];
-  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
-    throw new Error("array-z80-slice proof permanent Atom rewrite found an unexpected section order");
-  }
-
-  const writeSlice = (includeName, start, end) => {
-    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
-      ...lines.slice(start, end).filter((line) =>
-        !/^\s*%DEFINE\s+(LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
-      "",
-    ]);
-  };
-  writeSlice("array-z80-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
-  writeSlice("array-z80-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
-  writeSlice("array-z80-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
-  writeSlice("array-z80-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
-  writeSlice("array-z80-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
-  writeSlice("array-z80-slice-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
-  writeSlice("array-z80-slice-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, keywordsIncludeIndex);
-  writeSlice("array-z80-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
-  writeSlice("array-z80-slice-source.asmi", sourceOrgIndex, runtimeOrgIndex);
-  writeSlice("array-z80-slice-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
-  writeSlice("array-z80-slice-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
-  writeGeneratedPermanentPart(translatedRoot, relative, "array-z80-slice-proof-body.asmi", [
-    lines[proofOrgIndex],
-    `${badArrayOffset} EQU 29`,
-    `${badArrayColumn} EQU 30`,
-    "",
-    ...lines.slice(proofOrgIndex + 1),
-  ]);
-
+function rewriteArrayZ80SliceProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the array z80 proof.",
     "            %DEFINE SegmentedOutput 0",
     "            %DEFINE TargetStreamingOutput 0",
     "            %DEFINE LegacyCompilerSlices 1",
     "            %DEFINE AggregateCallSlices 0",
-    "            %DEFINE LegacyEncoders 1",
     "            %DEFINE HybridLL1Full 0",
+    "            %DEFINE LegacyEncoders 1",
     "            %DEFINE RuntimeProofServices 1",
     "            %INCLUDE \"memory-map.asmi\"",
     "            %INCLUDE \"proof-unsegmented-state.asmi\"",

@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 94 |
-| Source lines | 29,709 |
-| Defined assembler symbols detected | 4,035 |
+| Assembly files, `.asm` and `.asmi` | 106 |
+| Source lines | 29,732 |
+| Defined assembler symbols detected | 4,037 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 749 |
 | Long symbols still needing global treatment | 3,161 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 137 |
+| Include-after-header violations | 129 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 137 |
+| Current permanent-source blockers | 129 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 137 |
+| Permanent blocker: include after header | 129 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -127,6 +127,10 @@ extension: the base owner includes only the parser core, while the Stage 7 owner
 includes the same core plus the LL(1) parser and action modules. Callers select
 the required owner by filename instead of wrapping header includes in a
 conditional block.
+The array Z80 proof now uses the physical version of the generated section-owner
+layout: the entry file is an ordered include list, and each measured region
+boundary lives in an adjacent fragment. This preserves the assembled proof image
+while removing the proof's late includes from the permanent-source blocker set.
 
 It can also write the proof-manifest symbol join needed by the proof harness:
 

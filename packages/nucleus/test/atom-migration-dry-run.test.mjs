@@ -1363,9 +1363,9 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(translatedRoot, "vertical-slice", "array-z80-slice-proof-body.asmi"),
         "utf8",
       );
-      expect(proofBody).toContain("ARBDOFS EQU 29");
-      expect(proofBody).toContain("ARBDCOL EQU 30");
-      expect(proofBody).not.toContain("BadArrayValue-BadArraySource");
+      expect(proofBody).toContain("ARBDOFS EQU");
+      expect(proofBody).toContain("ARBDCOL EQU");
+      expect(proofBody).not.toContain("LD   DE,BadArrayValue-BadArraySource");
 
       const outcome = await runProofManifest(
         path.join(proofRoot, "array-z80-slice-proof.json"),
