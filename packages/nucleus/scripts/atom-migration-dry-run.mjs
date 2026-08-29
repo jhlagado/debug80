@@ -271,6 +271,94 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteLoopZ80SinkPermanentAtomSource,
   })],
+  ["vertical-slice/typed-expression-parser.asm", Object.freeze({
+    description: "typed expression parser constant-expression aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SymbolRecordTypeFlag+SymbolAggregateFlag",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "$100+SemanticOr16",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "$100+SemanticXor16",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "$100+SemanticAnd16",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "$100+SemanticDivide16",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "$100+SemanticModulo16",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ScalarMetaConstant+ScalarTypeExact",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ScalarMetaConstant+ScalarTypeBoolean",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ScalarMetaConstant+ScalarTypeU8",
+      }),
+    ]),
+    rewrite: rewriteTypedExpressionParserPermanentAtomSource,
+  })],
+  ["vertical-slice/typed-expression-z80.asm", Object.freeze({
+    description: "typed expression z80 target-state aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-z80.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ActivationDepth-StateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-z80.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "RootSP-StateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/typed-expression-z80.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "RootIX-StateBase",
+      }),
+    ]),
+    rewrite: rewriteTypedExpressionZ80PermanentAtomSource,
+  })],
+  ["vertical-slice/loop-keywords.asmi", Object.freeze({
+    description: "loop keyword service signature aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/loop-keywords.asmi",
+        code: "atom-symbol-expression",
+        messageIncludes: "Stage8CallableServiceFlag+Stage8ServiceResultU8",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-keywords.asmi",
+        code: "atom-symbol-expression",
+        messageIncludes: "Stage8CallableServiceFlag+Stage8ServiceRewindStorage",
+      }),
+    ]),
+    rewrite: rewriteLoopKeywordsPermanentAtomSource,
+  })],
 ]);
 
 function parseArgs(argv) {
@@ -1944,6 +2032,50 @@ function rewriteLoopZ80SinkPermanentAtomSource(source, { symbolMap }) {
     ["LZTOFF", ["TrapOffset", "-", "StateBase"]],
     ["LZRUNS", ["RunState", "-", "StateBase"]],
     ["LZTERR", ["TrapError", "-", "StateBase"]],
+  ];
+  return [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    replaceAtomExpressionAliases(source, symbolMap, aliases),
+  ].join("\n");
+}
+
+function rewriteTypedExpressionParserPermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["TEPRFLG", ["SymbolRecordTypeFlag", "+", "SymbolAggregateFlag"]],
+    ["TEPOR16", ["SemanticOr8", "*$100+", "SemanticOr16"]],
+    ["TEPXR16", ["SemanticXor8", "*$100+", "SemanticXor16"]],
+    ["TEPAN16", ["SemanticAnd8", "*$100+", "SemanticAnd16"]],
+    ["TEPDV16", ["SemanticDivide8", "*$100+", "SemanticDivide16"]],
+    ["TEPMD16", ["SemanticModulo8", "*$100+", "SemanticModulo16"]],
+    ["TEPMEX", ["ScalarMetaConstant", "+", "ScalarTypeExact"]],
+    ["TEPMBL", ["ScalarMetaConstant", "+", "ScalarTypeBoolean"]],
+    ["TEPMU8", ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
+  ];
+  return [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    replaceAtomExpressionAliases(source, symbolMap, aliases),
+  ].join("\n");
+}
+
+function rewriteTypedExpressionZ80PermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["TEZACTD", ["ActivationDepth", "-", "StateBase"]],
+    ["TEZRTSP", ["RootSP", "-", "StateBase"]],
+    ["TEZRTIX", ["RootIX", "-", "StateBase"]],
+  ];
+  return [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    replaceAtomExpressionAliases(source, symbolMap, aliases),
+  ].join("\n");
+}
+
+function rewriteLoopKeywordsPermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["LKSRU8", ["Stage8CallableServiceFlag", "+", "Stage8ServiceResultU8"]],
+    ["LKSRSW", ["Stage8CallableServiceFlag", "+", "Stage8ServiceRewindStorage"]],
   ];
   return [
     ...atomExpressionAliasLines(symbolMap, aliases),

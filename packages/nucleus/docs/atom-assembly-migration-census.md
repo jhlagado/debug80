@@ -343,6 +343,13 @@ operands, and trap/run-state displacements. This removes that shared sink from
 dependent proof blockers without changing the proof-entry wrappers that still
 own their own late includes and source-position arithmetic.
 
+The typed-expression shared modules now have the same expression-only treatment.
+`typed-expression-parser.asm` names its packed symbol-class, semantic-operation,
+and scalar-meta constants; `typed-expression-z80.asm` names its target-state
+frame displacements; and `loop-keywords.asmi` names the packed Stage 8 service
+signature flag combinations. Their remaining blockers are late include layout
+boundaries, not emitted expression operands.
+
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a
 later resolved size equate:

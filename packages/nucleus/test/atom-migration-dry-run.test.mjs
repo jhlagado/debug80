@@ -1085,6 +1085,41 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(loopZ80Sink).not.toContain("GeneratedRoDataBase-GeneratedBase");
       expect(loopZ80Sink).not.toContain("IX+SegmentEntryBase");
       expect(loopZ80Sink).not.toContain("TrapNumber-StateBase");
+
+      const expressionBlockers = dependent?.blockers.filter(({ code, file }) =>
+        code === "atom-symbol-expression" &&
+        (
+          file.includes("typed-expression-parser.asm") ||
+          file.includes("typed-expression-z80.asm") ||
+          file.includes("loop-keywords.asmi")
+        ),
+      );
+      expect(expressionBlockers).toEqual([]);
+
+      const typedExpressionParser = await readFile(
+        path.join(translatedRoot, "vertical-slice", "typed-expression-parser.asm"),
+        "utf8",
+      );
+      expect(typedExpressionParser).toContain("TEPRFLG EQU");
+      expect(typedExpressionParser).toContain("TEPOR16 EQU");
+      expect(typedExpressionParser).not.toContain("SymbolRecordTypeFlag+SymbolAggregateFlag");
+      expect(typedExpressionParser).not.toContain("SemanticOr8*$100+SemanticOr16");
+      expect(typedExpressionParser).not.toContain("ScalarMetaConstant+ScalarTypeU8");
+
+      const typedExpressionZ80 = await readFile(
+        path.join(translatedRoot, "vertical-slice", "typed-expression-z80.asm"),
+        "utf8",
+      );
+      expect(typedExpressionZ80).toContain("TEZACTD EQU");
+      expect(typedExpressionZ80).not.toContain("ActivationDepth-StateBase");
+      expect(typedExpressionZ80).not.toContain("RootSP-StateBase");
+
+      const loopKeywords = await readFile(
+        path.join(translatedRoot, "vertical-slice", "loop-keywords.asmi"),
+        "utf8",
+      );
+      expect(loopKeywords).toContain("LKSRU8 EQU");
+      expect(loopKeywords).not.toContain("Stage8CallableServiceFlag+Stage8ServiceResultU8");
     });
   });
 
