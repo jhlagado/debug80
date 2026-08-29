@@ -806,6 +806,31 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteProofZ80RuntimePermanentAtomSource,
   })],
+  ["vertical-slice/target-z80-runtime.asm", Object.freeze({
+    description: "target runtime wrapper header include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/target-z80-runtime.asm",
+        code: "include-after-header",
+      }),
+    ]),
+    rewrite: rewriteTargetZ80RuntimePermanentAtomSource,
+  })],
+  ["vertical-slice/nucleus-target-runtime-link.asm", Object.freeze({
+    description: "target runtime link header include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/nucleus-target-runtime-link.asm",
+        code: "include-after-header",
+      }),
+    ]),
+    rewrite: rewriteNucleusTargetRuntimeLinkPermanentAtomSource,
+  })],
+  ["vertical-slice/nucleus-runtime-link-context.asmi", Object.freeze({
+    description: "target runtime link context entry-owned feature flags",
+    handledIssues: Object.freeze([]),
+    rewrite: rewriteNucleusRuntimeLinkContextPermanentAtomSource,
+  })],
   ["vertical-slice/loop-z80-runtime.asm", Object.freeze({
     description: "loop z80 runtime state-span aliases",
     handledIssues: Object.freeze([
@@ -4606,6 +4631,52 @@ function rewriteProofZ80RuntimePermanentAtomSource() {
   ].join("\n");
 }
 
+function rewriteTargetZ80RuntimePermanentAtomSource() {
+  return [
+    "; Permanent Atom layout for the target runtime wrapper.",
+    "            %INCLUDE \"loop-z80-runtime.asm\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteNucleusTargetRuntimeLinkPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const runtimeLinkBase = atomSymbol(symbolMap, "RuntimeLinkBase");
+  const lines = source.split("\n");
+  const orgIndex = findPermanentOrgLine(lines, runtimeLinkBase, "target runtime link");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "target-z80-runtime.asm", "target runtime link");
+
+  if (!(orgIndex < runtimeIncludeIndex)) {
+    throw new Error("target runtime link permanent Atom rewrite found an unexpected section order");
+  }
+  writeGeneratedPermanentPart(translatedRoot, relative, "nucleus-target-runtime-link-begin.asmi", [
+    ...lines.slice(orgIndex, runtimeIncludeIndex),
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "nucleus-target-runtime-link-end.asmi", [
+    ...lines.slice(runtimeIncludeIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the target runtime link entry.",
+    "            %DEFINE RuntimeProofServices 0",
+    "            %DEFINE AggregateCallSlices 1",
+    "            %INCLUDE \"nucleus-runtime-link-context.asmi\"",
+    "            %INCLUDE \"nucleus-target-runtime-link-begin.asmi\"",
+    "            %INCLUDE \"target-z80-runtime.asm\"",
+    "            %INCLUDE \"nucleus-target-runtime-link-end.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteNucleusRuntimeLinkContextPermanentAtomSource(source) {
+  return source
+    .split("\n")
+    .map((line) => /^\s*%DEFINE\s+AggregateCallSlices\b/i.test(line)
+      ? "; AggregateCallSlices is defined by the target runtime link entry."
+      : line)
+    .join("\n");
+}
+
 function rewriteLoopZ80RuntimePermanentAtomSource(source, { symbolMap }) {
   const aliases = [
     ["LRTSTSZ", ["StateEnd", "-", "TrapNumber"]],
@@ -4617,7 +4688,9 @@ function rewriteLoopZ80RuntimePermanentAtomSource(source, { symbolMap }) {
   return [
     "            %INCLUDE \"nucleus-runtime-identity.asmi\"",
     "",
+    "%IF RuntimeProofServices",
     ...atomExpressionAliasLines(symbolMap, aliases),
+    "%ENDIF",
     "",
     ...lines.slice(0, identityIncludeIndex),
     ...lines.slice(identityIncludeIndex + 1),

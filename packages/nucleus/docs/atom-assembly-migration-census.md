@@ -169,6 +169,12 @@ known `$10000` proof-boundary constants are restored from the proof-limit map.
 The current AZM proof route remains unchanged; this is the join point for
 Atom-built proof images.
 
+The target runtime link entry now also has a permanent Atom layout. Its entry
+source owns the target-runtime feature definitions, includes the link context in
+the header, then brackets the target runtime wrapper with generated section
+parts. The translated `nucleus-target-runtime-link.asm` assembles
+byte-identically with the current runtime link image.
+
 It can also run a proof with Atom as the selected assembler when the caller
 supplies an already translated Atom source tree:
 
@@ -258,7 +264,7 @@ grouping:
 | --- | ---: | ---: | --- | --- |
 | Proof composition files | 17 | 131 | Medium | Source-layout blockers are cleared for the three large overlapping-memory proof rows; those rows now wait only on the proof memory map. Continue applying the same section-owned include layout to any remaining proof-composition source as it moves from preview to permanent Atom source. |
 | Module composition files | 5 | 9 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `aggregate-call-parser`, `typed-expression-z80`, `stage7-ll1-parser`, `typed-expression-parser`). Treat these as real module-boundary work, not mechanical line moves. |
-| Runtime wrapper files | 3 | 3 | Low to medium | Third batch. These are small wrappers around runtime/link modules. They should be straightforward once the composition convention is settled. |
+| Runtime wrapper files | 3 | 3 | Low to medium | The target runtime link entry now has a permanent Atom layout and byte-equivalence proof. The raw source still records the original wrapper includes until the permanent source tree replaces the current source tree. |
 
 The first permanent-source batch should be the proof composition files, because
 they account for most of the count and are structurally repetitive:
@@ -540,12 +546,13 @@ The largest current target groups show why this is not a safe blind move:
 
 The first cleanup pass moved the state-layout includes into strict headers by
 adding small proof-mode config includes for `SegmentedOutput`. That removed the
-34 layout-only late includes without changing emitted bytes. The remaining
-late includes all emit code or data, including nested wrapper includes such as
-`proof-z80-runtime.asm`, so they are not safe blind moves. Executable-code and
-data-table includes need a separate section-ownership decision: either each
-module owns its own `ORG`/section placement, or the compatibility lowering stage
-remains responsible for preserving the current textual insertion point.
+34 layout-only late includes without changing emitted bytes. The later
+permanent-layout passes proved the large proof-composition entries and the
+target runtime link entry by giving each inserted code or data section an
+explicit generated owner. Remaining late includes that emit code or data need
+the same section-ownership decision: either the module owns its own
+`ORG`/section placement, or the compatibility lowering stage remains
+responsible for preserving the current textual insertion point.
 
 The long-term migration still needs one of these implementation paths before
 the source tree itself can become Atom-native:

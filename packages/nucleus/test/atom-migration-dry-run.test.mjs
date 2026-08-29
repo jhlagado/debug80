@@ -1697,6 +1697,32 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   }, 90_000);
 
+  it("assembles the target runtime link entry from permanent Atom layout source byte-identically", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ translatedRoot }) => {
+      const current = await compile(
+        path.join(asmRoot, "vertical-slice", "nucleus-target-runtime-link.asm"),
+        { outputType: "bin" },
+      );
+      const diagnostics = current.diagnostics.filter(({ severity }) => severity === "error");
+      expect(diagnostics).toEqual([]);
+      const currentBin = current.artifacts.find(({ kind }) => kind === "bin")?.bytes;
+      expect(currentBin).toBeDefined();
+
+      const atom = await assembleAtomProject({
+        root: translatedRoot,
+        entry: "vertical-slice/nucleus-target-runtime-link.asm",
+        target: { start: 0, capacity: 0xffff },
+        maxInstructions: 120_000_000,
+        maxCycles: 1_200_000_000,
+      });
+      const atomBin = materializeAtomGeneration(atom.generation, {
+        base: contentBase(atom.generation),
+      }).bytes;
+
+      expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
+    });
+  }, 30_000);
+
   it("runs a late-include proof through the proof harness using Atom-preview lowering", async () => {
     const report = scanAssembly({ asmRoot, proofRoot });
     const outcome = await runProofManifest(
