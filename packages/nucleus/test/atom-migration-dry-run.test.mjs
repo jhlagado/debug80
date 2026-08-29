@@ -1101,7 +1101,8 @@ describe("Nucleus Atom migration dry-run", () => {
 
       const runAtomProof = (name, entry) => runProofManifest(path.join(proofRoot, name), {
         assembler: {
-          kind: "atom-permanent",
+          flavour: "atom",
+          source: "permanent",
           root: translatedRoot,
           entry,
           maxInstructions: 700_000_000,
@@ -1203,6 +1204,23 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(memoryMap.symbols.AddressSpaceLimit).toBe(0x10000);
       expect(memoryMap.regions.reduce((total, region) => total + region.bytes, 0)).toBe(65_536);
 
+      const legacyMemoryMap = await runProofManifest(
+        path.join(proofRoot, "memory-map-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/memory-map-proof.asm",
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+      expect(legacyMemoryMap.instructions).toBe(4);
+      expect(legacyMemoryMap.cycles).toBe(34);
+
       const nobjRunner = await runSmallAtomProof(
         "nobj-runner-proof.json",
         "vertical-slice/nobj-runner-proof.asm",
@@ -1251,7 +1269,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "compiler-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/compiler-slice-proof.asm",
           },
@@ -1305,7 +1324,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "z80-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/z80-slice-proof.asm",
           },
@@ -1367,7 +1387,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "loop-compiler-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/loop-compiler-slice-proof.asm",
             maxInstructions: 700_000_000,
@@ -1413,7 +1434,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "loop-z80-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/loop-z80-slice-proof.asm",
             maxInstructions: 700_000_000,
@@ -1457,7 +1479,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "call-z80-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/call-z80-slice-proof.asm",
             maxInstructions: 700_000_000,
@@ -1515,7 +1538,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "stage7-ll1-parser-coverage-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/stage7-ll1-parser-coverage-proof.asm",
             maxInstructions: 700_000_000,
@@ -1559,7 +1583,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "array-z80-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/array-z80-slice-proof.asm",
             maxInstructions: 700_000_000,
@@ -1604,7 +1629,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "expression-z80-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/expression-z80-slice-proof.asm",
             maxInstructions: 700_000_000,
@@ -1650,7 +1676,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "flat-target-z80-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/flat-target-z80-slice-proof.asm",
             maxInstructions: 700_000_000,
@@ -1697,7 +1724,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "aggregate-z80-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/aggregate-z80-slice-proof.asm",
             maxInstructions: 700_000_000,
@@ -1781,7 +1809,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "typed-expression-z80-slice-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/typed-expression-z80-slice-proof.asm",
             maxInstructions: 700_000_000,
@@ -1839,7 +1868,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "stage7-ll1-engine-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/stage7-ll1-engine-proof.asm",
           },
@@ -2194,13 +2224,14 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   }, 30_000);
 
-  it("runs a late-include proof through the proof harness using Atom-preview lowering", async () => {
+  it("runs a late-include proof through the proof harness using normalized Atom-preview lowering", async () => {
     const report = scanAssembly({ asmRoot, proofRoot });
     const outcome = await runProofManifest(
       path.join(proofRoot, "compiler-slice-proof.json"),
       {
         assembler: {
-          kind: "atom-preview",
+          flavour: "atom",
+          source: "preview",
           asmRoot,
           proofRoot,
           entry: "vertical-slice/compiler-slice-proof.asm",
