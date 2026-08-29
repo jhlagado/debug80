@@ -771,11 +771,13 @@ source provenance. The older direct npm scripts remain as compatibility
 shortcuts while the command surface converges.
 
 The shared `@jhlagado/z80-tool-services` package now exposes the assembler
-flavour vocabulary and concrete selection helper for `.asm` source. `.asm` is
-not an assembler selector. Command-owned frontends may provide a concrete
-default, such as the `atom` executable defaulting to Atom, but neutral
-Debug80-style project loaders should require `assembler: "atom"` or
-`assembler: "azm"` before dispatching to either assembler.
+flavour vocabulary, concrete selection helper, and dependency-free dispatcher
+for `.asm` source. `.asm` is not an assembler selector. Command-owned frontends
+may provide a concrete default, such as the `atom` executable defaulting to
+Atom, but neutral Debug80-style project loaders should require
+`assembler: "atom"` or `assembler: "azm"` before dispatching to either
+assembler. The dispatcher owns only this policy decision; the Atom and AZM
+handler implementations stay in their assembler packages.
 
 The package now follows the AZM/Glimmer build model for installed commands:
 TypeScript source is emitted to `dist/src`, and the npm `bin` entry exposes
