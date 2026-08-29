@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 88 |
-| Source lines | 29,685 |
+| Assembly files, `.asm` and `.asmi` | 89 |
+| Source lines | 29,687 |
 | Defined assembler symbols detected | 4,035 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 749 |
 | Long symbols still needing global treatment | 3,161 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 141 |
+| Include-after-header violations | 140 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 141 |
+| Current permanent-source blockers | 140 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 141 |
+| Permanent blocker: include after header | 140 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -112,6 +112,9 @@ permanent-source blocker.
 The proof and target runtime wrappers now use the same config-header pattern for
 `RuntimeProofServices`, removing their wrapper late includes while preserving
 the existing permanent Atom runtime transforms.
+The Stage 7 LL(1) parser coverage entry wrapper now carries its feature settings
+in a config header as well, leaving only emitted-content section includes in the
+remaining blocker set.
 
 It can also write the proof-manifest symbol join needed by the proof harness:
 
