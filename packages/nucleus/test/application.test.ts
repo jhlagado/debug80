@@ -520,6 +520,16 @@ describe("Nucleus application boundary", () => {
     }
   }, 15_000);
 
+  it("normalizes direct publication API assembler aliases", async () => {
+    const publication = await publishNucleusProofTarget({
+      manifest: proof("flat-target-z80-slice-proof"),
+      assembler: "ASM80",
+    });
+
+    expect(publication.assembler).toBe("azm");
+    expect(publication.nobj.parsed.commit.recordCount).toBe(130);
+  }, 15_000);
+
   it("publishes prepared entry source through the resident compiler proof image", async () => {
     await withSourceTree(
       {

@@ -4,6 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  selectConcreteZ80AssemblerFlavour,
+  type ConcreteZ80AssemblerFlavour,
+} from "@jhlagado/z80-tool-services";
+
+import {
   prepareNucleusCompilation,
   type NucleusResidentSourcePreparationOptions,
 } from "./application.js";
@@ -43,7 +48,7 @@ const defaultPermanentAtomRoot = path.join(packageRoot, "atom-asm");
 const NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE = 0x5000;
 const NUCLEUS_DEFAULT_RESIDENT_SOURCE_CAPACITY = 0x0800;
 
-export type NucleusCompilerAssemblerFlavour = "azm" | "atom";
+export type NucleusCompilerAssemblerFlavour = ConcreteZ80AssemblerFlavour;
 
 export const NUCLEUS_FLAT_TARGET_COMPILER_ENTRY = Object.freeze({
   executionEntry: "ProofStart",
@@ -195,9 +200,6 @@ const proofAssemblerOptions = async (
   assembler: NucleusCompilerAssemblerFlavour,
 ): Promise<Parameters<typeof runProofManifest>[1]> => {
   if (assembler === "azm") return {};
-  if (assembler !== "atom") {
-    throw new Error("assembler must be azm or atom");
-  }
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
     readonly source?: unknown;
   };
@@ -225,10 +227,19 @@ const proofAssemblerOptions = async (
   });
 };
 
+const selectNucleusCompilerAssembler = (
+  assembler: string | undefined,
+): NucleusCompilerAssemblerFlavour =>
+  selectConcreteZ80AssemblerFlavour({
+    requested: assembler,
+    defaultFlavour: "azm",
+    sourcePath: "Nucleus compiler proof image",
+  });
+
 export interface NucleusProofTargetPublicationOptions {
   readonly manifest: string;
   readonly output?: string;
-  readonly assembler?: NucleusCompilerAssemblerFlavour;
+  readonly assembler?: string;
 }
 
 export interface NucleusProofTargetPublication {
@@ -248,7 +259,7 @@ export interface NucleusPreparedSourceTargetPublicationOptions {
   readonly targetFile?: string;
   readonly source?: NucleusResidentSourcePreparationOptions;
   readonly output?: string;
-  readonly assembler?: NucleusCompilerAssemblerFlavour;
+  readonly assembler?: string;
 }
 
 export interface NucleusPreparedSourceTargetPublication {
@@ -268,12 +279,13 @@ export interface NucleusPreparedSourceTargetPublication {
 export async function publishNucleusProofTarget({
   manifest,
   output,
-  assembler = "azm",
+  assembler,
 }: NucleusProofTargetPublicationOptions): Promise<NucleusProofTargetPublication> {
+  const selectedAssembler = selectNucleusCompilerAssembler(assembler);
   const manifestPath = path.resolve(manifest);
   const outcome = await runProofManifest(
     manifestPath,
-    await proofAssemblerOptions(manifestPath, assembler),
+    await proofAssemblerOptions(manifestPath, selectedAssembler),
   );
   if (outcome.nobj === undefined) {
     throw new Error("proof manifest did not publish NOBJ");
@@ -286,7 +298,7 @@ export async function publishNucleusProofTarget({
   return Object.freeze({
     manifest: manifestPath,
     output: output === undefined ? undefined : path.resolve(output),
-    assembler,
+    assembler: selectedAssembler,
     nobj: outcome.nobj,
     ...(outcome.sourceProvenance === undefined
       ? {}
@@ -312,7 +324,7 @@ export async function publishNucleusPreparedSourceTarget(
     sourceBase: NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE,
   };
   const output = options.output;
-  const assembler = options.assembler ?? "azm";
+  const assembler = selectNucleusCompilerAssembler(options.assembler);
   const rootPath = path.resolve(root);
   const compilerManifestPath = path.resolve(compilerManifest);
   const sourceBase =
