@@ -863,6 +863,43 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("hoists permanent Atom feature definitions into the entry definition header", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "; entry",
+        ".include \"layout.asmi\"",
+        "ORG $1000",
+        "FeatureA .equ 1",
+        ".if FeatureA",
+        "START:",
+        "RET",
+        ".endif",
+        "",
+      ].join("\n"),
+      "asm/layout.asmi": "LAYOUT EQU 1\n",
+      "proofs/main.json": JSON.stringify({ source: "../asm/main.asm" }),
+    }, async (root) => {
+      const translatedRoot = path.join(root, "atom-permanent");
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+      writeTranslatedTree(report, translatedRoot, { symbols: "permanent" });
+
+      await expect(readFile(path.join(translatedRoot, "main.asm"), "utf8")).resolves.toBe([
+        "; entry",
+        "%DEFINE FeatureA 1",
+        "%INCLUDE \"layout.asmi\"",
+        "ORG $1000",
+        "%IF FeatureA",
+        "START:",
+        "RET",
+        "%ENDIF",
+        "",
+      ].join("\n"));
+    });
+  });
+
   it("assembles the memory-map proof from permanent Atom source byte-identically", async (context) => {
     await withPermanentAtomTranslation(context, async ({ translatedRoot }) => {
       const current = await compile(path.join(asmRoot, "vertical-slice", "memory-map-proof.asm"), {

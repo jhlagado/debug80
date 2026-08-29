@@ -2138,9 +2138,46 @@ function writeTranslatedTree(report, translatedRoot, { symbols = "preview" } = {
         symbolMap,
       });
     }
+    if (symbols === "permanent") {
+      translated = hoistTopLevelAtomDefines(translated);
+    }
     mkdirSync(path.dirname(output), { recursive: true });
     writeFileSync(output, translated);
   }
+}
+
+function hoistTopLevelAtomDefines(source) {
+  const lines = source.split("\n");
+  const defines = [];
+  const body = [];
+  let conditionalDepth = 0;
+
+  for (const line of lines) {
+    const code = stripComment(line);
+    const directive = /^\s*%(IF|ELSE|ENDIF|DEFINE)\b/i.exec(code);
+    const name = directive?.[1]?.toUpperCase();
+    if (name === "DEFINE" && conditionalDepth === 0) {
+      defines.push(line);
+      continue;
+    }
+    body.push(line);
+    if (name === "IF") {
+      conditionalDepth += 1;
+    } else if (name === "ENDIF" && conditionalDepth > 0) {
+      conditionalDepth -= 1;
+    }
+  }
+
+  if (defines.length === 0) return source;
+
+  let insertion = 0;
+  while (insertion < body.length) {
+    const code = stripComment(body[insertion]).trim();
+    if (code !== "") break;
+    insertion += 1;
+  }
+  body.splice(insertion, 0, ...defines);
+  return body.join("\n");
 }
 
 function translatedSourceRelative(asmRoot, packageRoot, file) {

@@ -99,6 +99,11 @@ Do not use permanent symbols for flattened preview output. Flattening can split
 inside private-label scopes, so it deliberately remains on generated preview
 symbols.
 
+Generated permanent Atom source hoists top-level feature definitions into the
+entry definition header before `%INCLUDE`, `%IF`, `ORG`, labels, code, data, and
+contract comments. The raw Nucleus source still reports those placements as
+permanent-source blockers until the source files themselves are reorganized.
+
 It can also write the proof-manifest symbol join needed by the proof harness:
 
 ```bash
@@ -222,7 +227,7 @@ The dry-run intentionally reports two readiness states:
 - permanent Atom source is still blocked while emitted-content includes remain
   after the header, while emitted statements still use symbol arithmetic that
   Atom cannot assemble directly, and while feature definitions would translate
-  to `%DEFINE` outside Atom's entry definition header; and
+  to `%DEFINE` outside Atom's entry definition header in the source tree; and
 - compatibility-lowered Atom source is ready when those late includes are the
   only hard issues, because preview lowering can resolve existing symbol
   arithmetic from the comparison symbol table and consume feature definitions
