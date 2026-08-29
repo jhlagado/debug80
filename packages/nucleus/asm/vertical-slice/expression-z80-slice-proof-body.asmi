@@ -239,6 +239,9 @@ ExpectedExpressionOperations:
             .db SemanticLoadProgramU8,0
             .db SemanticWriteValueU8
             .dw EXOUTOF
+            .db 1
+            .dw 1
+            .dw 1
             .db SemanticEndMain
 ProofStatus:                 .db 0
 ProofCase:                   .db 0

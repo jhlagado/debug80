@@ -1,19 +1,19 @@
             ORG PRFBS
-FTADIMG EQU $98CB ; captured descriptor image-base field
-FTCTX00 EQU $98D8 ; captured context runtime-base field
-FTCTX06 EQU $98DE ; captured context state-base field
-FTCTX0E EQU $98E6 ; captured context used-length field
-FTMAP01 EQU $9905 ; captured target map bank count
-FTMAP03 EQU $9907 ; captured target map used length
-FTMAP05 EQU $9909 ; captured target map origin
-FTMAP09 EQU $990D ; captured target map source length
-FTMPWRI EQU $9911 ; captured writable-base map field
-FTMPVEC EQU $9917 ; captured vector-length map field
-FTMPINI EQU $991B ; captured initialized-length map field
-FTMPBSS EQU $991D ; captured BSS-base map field
-FTMPSTK EQU $9921 ; captured stack-requirement map field
-FTMPDLA EQU $9924 ; captured data-load-address map field
-FTMPAGG EQU $9928 ; captured aggregate-base map field
+FTADIMG EQU $990F ; captured descriptor image-base field
+FTCTX00 EQU $991C ; captured context runtime-base field
+FTCTX06 EQU $9922 ; captured context state-base field
+FTCTX0E EQU $992A ; captured context read-only-data-base field
+FTMAP01 EQU $9949 ; captured target map entry-address field
+FTMAP03 EQU $994B ; captured target map used length
+FTMAP05 EQU $994D ; captured target map read-only-base field
+FTMAP09 EQU $9951 ; captured target map code-base field
+FTMPWRI EQU $9955 ; captured writable-base map field
+FTMPVEC EQU $995B ; captured vector-length map field
+FTMPINI EQU $995F ; captured initialized-length map field
+FTMPBSS EQU $9961 ; captured BSS-base map field
+FTMPSTK EQU $9965 ; captured stack-requirement map field
+FTMPDLA EQU $9968 ; captured data-load-address map field
+FTMPAGG EQU $996C ; captured aggregate-base map field
 FTIXBKC EQU TRGTDSC5 ; target descriptor bank-count field offset
 
 ;@ROUTINE OUT CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,A,BC,DE,HL,IX,IY
@@ -382,8 +382,8 @@ PRFSTRT: ;@NUC-GLOBAL ProofStart PERMANENT PRFSTRT
             LD   (SRCPRVN1),HL
             LD   B,H
             LD   C,L
-            LD   HL,SRCPRVN6
-            LD   DE,SRCPRVN7
+            LD   HL,SRCPRVNA
+            LD   DE,SRCPRVNC
             LDIR
 
             XOR  A
@@ -704,7 +704,7 @@ ADPTRRSR: ;@NUC-GLOBAL AdapterReserve PERMANENT ADPTRRSR
 
 ;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,HL
 TRGTSNKS: ;@NUC-GLOBAL TargetSinkSourceProvenanceReset PERMANENT TRGTSNKS
-            LD   HL,SRCPRVN6
+            LD   HL,SRCPRVNA
             LD   (SRCPRVNN),HL
             XOR  A
             LD   (SRCPRVN0),A
@@ -715,30 +715,67 @@ TRGTSNKS: ;@NUC-GLOBAL TargetSinkSourceProvenanceReset PERMANENT TRGTSNKS
 ; generated code range. This first resident emission is intentionally coarse:
 ; line and column are fixed at 1 and confidence is low until the semantic
 ; transcript carries per-operation source positions.
-;@ROUTINE IN A,C,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL,IY
+;@ROUTINE IN A,C,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,DE,HL,IX,IY
 TRGTSNK0: ;@NUC-GLOBAL TargetSinkSourceProvenanceSinglePartCode PERMANENT TRGTSNK0
             LD   (SRCPRVN2),A
             LD   A,C
             LD   (SRCPRVN3),A
             LD   (SRCPRVN4),DE
             LD   (SRCPRVN5),HL
+            LD   HL,1
+            LD   (SRCPRVN6),HL
+            LD   (SRCPRVN7),HL
+            XOR  A
+            LD   (SRCPRVN8),A
+            JR   TRGTSNK2
+
+; A is the one-based source part, C is the output bank, DE..HL is the generated
+; code range, and SourceProvenanceLine/Column already hold the source position.
+;@ROUTINE IN A,C,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
+TRGTSNK1: ;@NUC-GLOBAL TargetSinkSourceProvenanceCurrentCode PERMANENT TRGTSNK1
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            PUSH IX
+            PUSH IY
+            LD   (SRCPRVN2),A
+            LD   A,C
+            LD   (SRCPRVN3),A
+            LD   (SRCPRVN4),DE
+            LD   (SRCPRVN5),HL
+            LD   A,2
+            LD   (SRCPRVN8),A
+            CALL TRGTSNK2
+            LD   (SRCPRVN9),A
+            POP  IY
+            POP  IX
+            POP  HL
+            POP  DE
+            POP  BC
+            LD   A,(SRCPRVN9)
+            RET
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,DE,HL,IY
+TRGTSNK2: ;@NUC-GLOBAL TargetSinkSourceProvenanceCodeReady PERMANENT TRGTSNK2
+            PUSH IY
             LD   IY,(SRCPRVNN)
             PUSH IY
             POP  HL
             LD   DE,12
             ADD  HL,DE
-            LD   DE,SRCPRVN8
+            LD   DE,SRCPRVNB
             OR   A
             SBC  HL,DE
             JR   C,.L00000
             JR   Z,.L00000
             LD   A,DGNSTCT4
+            POP  IY
             SCF
             RET
 .L00000:
             ADD  HL,DE
             LD   (SRCPRVNN),HL
-            LD   DE,SRCPRVN6
+            LD   DE,SRCPRVNA
             OR   A
             SBC  HL,DE
             LD   (SRCPRVN0),HL
@@ -746,10 +783,12 @@ TRGTSNK0: ;@NUC-GLOBAL TargetSinkSourceProvenanceSinglePartCode PERMANENT TRGTSN
             LD   (IY+0),A
             LD   A,(SRCPRVN3)
             LD   (IY+1),A
-            LD   (IY+2),1
-            LD   (IY+3),0
-            LD   (IY+4),1
-            LD   (IY+5),0
+            LD   HL,(SRCPRVN6)
+            LD   (IY+2),L
+            LD   (IY+3),H
+            LD   HL,(SRCPRVN7)
+            LD   (IY+4),L
+            LD   (IY+5),H
             LD   HL,(SRCPRVN4)
             LD   (IY+6),L
             LD   (IY+7),H
@@ -757,7 +796,9 @@ TRGTSNK0: ;@NUC-GLOBAL TargetSinkSourceProvenanceSinglePartCode PERMANENT TRGTSN
             LD   (IY+8),L
             LD   (IY+9),H
             LD   (IY+10),1
-            LD   (IY+11),0
+            LD   A,(SRCPRVN8)
+            LD   (IY+11),A
+            POP  IY
             OR   A
             RET
 
@@ -817,14 +858,14 @@ TRGTSNKR: ;@NUC-GLOBAL TargetSinkRuntimeImage PERMANENT TRGTSNKR
             LD   A,3
             LD   (ADPTRRN0),A
             POP  AF
-            JR   TRGTSNK2
+            JR   TRGTSNK4
 ;@ROUTINE IN A,BC,DE,HL,IX OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
-TRGTSNK1: ;@NUC-GLOBAL TargetSinkRuntimeInitialImage PERMANENT TRGTSNK1
+TRGTSNK3: ;@NUC-GLOBAL TargetSinkRuntimeInitialImage PERMANENT TRGTSNK3
             PUSH AF
             LD   A,4
             LD   (ADPTRRN0),A
             POP  AF
-TRGTSNK2: ;@NUC-GLOBAL TargetSinkRuntimeSelected PERMANENT TRGTSNK2
+TRGTSNK4: ;@NUC-GLOBAL TargetSinkRuntimeSelected PERMANENT TRGTSNK4
             LD   (ADPTRRNT),A
             LD   (ADPTRRN1),BC
             LD   (ADPTRRN2),DE
@@ -906,7 +947,7 @@ TRGTSNKP: ;@NUC-GLOBAL TargetSinkPatchByte PERMANENT TRGTSNKP
             RET
 
 ;@ROUTINE IN C,DE,HL OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY
-TRGTSNK3: ;@NUC-GLOBAL TargetSinkPatchWord PERMANENT TRGTSNK3
+TRGTSNK5: ;@NUC-GLOBAL TargetSinkPatchWord PERMANENT TRGTSNK5
             PUSH IY
             PUSH BC
             PUSH DE
@@ -953,7 +994,7 @@ TRGTSNKM: ;@NUC-GLOBAL TargetSinkMapFlat PERMANENT TRGTSNKM
             RET
 
 ;@ROUTINE IN HL,IX,IY OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,BC,DE,HL,IX,IY
-TRGTSNK4: ;@NUC-GLOBAL TargetSinkMapBanked PERMANENT TRGTSNK4
+TRGTSNK6: ;@NUC-GLOBAL TargetSinkMapBanked PERMANENT TRGTSNK6
             LD   (ADPTRMPR),HL
             LD   A,(IX+FTIXBKC)
             LD   B,A
@@ -1073,13 +1114,17 @@ SRCPRVN2:   DB 0 ;@NUC-GLOBAL SourceProvenancePart PERMANENT SRCPRVN2
 SRCPRVN3:   DB 0 ;@NUC-GLOBAL SourceProvenanceBank PERMANENT SRCPRVN3
 SRCPRVN4:  DW 0 ;@NUC-GLOBAL SourceProvenanceStart PERMANENT SRCPRVN4
 SRCPRVN5:    DW 0 ;@NUC-GLOBAL SourceProvenanceEnd PERMANENT SRCPRVN5
+SRCPRVN6:   DW 0 ;@NUC-GLOBAL SourceProvenanceLine PERMANENT SRCPRVN6
+SRCPRVN7: DW 0 ;@NUC-GLOBAL SourceProvenanceColumn PERMANENT SRCPRVN7
+SRCPRVN8: DB 0 ;@NUC-GLOBAL SourceProvenanceConfidence PERMANENT SRCPRVN8
+SRCPRVN9: DB 0 ;@NUC-GLOBAL SourceProvenanceResult PERMANENT SRCPRVN9
 ProofEnd:
 
-SRCPRVN6 EQU $99C0 ;@NUC-GLOBAL SourceProvenanceLogBase PERMANENT SRCPRVN6
-SRCPRVN7 EQU $99D0 ;@NUC-GLOBAL SourceProvenanceSuccessLogBase PERMANENT SRCPRVN7
-SRCPRVN8 EQU $99F0 ;@NUC-GLOBAL SourceProvenanceLogLimit PERMANENT SRCPRVN8
-ADPTRLD0    EQU $9A00 ;@NUC-GLOBAL AdapterLoadedLogBase PERMANENT ADPTRLD0
-ADPTRSC0   EQU $9D00 ;@NUC-GLOBAL AdapterSuccessLogBase PERMANENT ADPTRSC0
+SRCPRVNA EQU $C600 ;@NUC-GLOBAL SourceProvenanceLogBase PERMANENT SRCPRVNA
+SRCPRVNB EQU $C630 ;@NUC-GLOBAL SourceProvenanceLogLimit PERMANENT SRCPRVNB
+SRCPRVNC EQU $C640 ;@NUC-GLOBAL SourceProvenanceSuccessLogBase PERMANENT SRCPRVNC
+ADPTRLD0    EQU $9A20 ;@NUC-GLOBAL AdapterLoadedLogBase PERMANENT ADPTRLD0
+ADPTRSC0   EQU $9D20 ;@NUC-GLOBAL AdapterSuccessLogBase PERMANENT ADPTRSC0
 ADPTRTR3      EQU $A100 ;@NUC-GLOBAL AdapterTrapLogBase PERMANENT ADPTRTR3
 ADPTRUN3 EQU $A600 ;@NUC-GLOBAL AdapterUnhandledLogBase PERMANENT ADPTRUN3
 ADPTRBN1 EQU $AD00 ;@NUC-GLOBAL AdapterBankedTrapLogBase PERMANENT ADPTRBN1

@@ -627,8 +627,9 @@ ParserScalarAssignmentFailure:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserParseScalarWrite:
-            LD   HL,(TokenStartOffset)
-            PUSH HL
+            LD   HL,TokenStartOffset
+            LD   DE,DeclarationNamePosition
+            CALL CompilerCopyPosition
             CALL ParserExpectLeft
             JR   C,ParserScalarWriteFailure
             CALL ParserParseScalarExpression
@@ -638,7 +639,28 @@ ParserParseScalarWrite:
             LD   A,SemanticWriteValueU8
             CALL SemanticSinkOperation
             JR   C,ParserScalarWriteFailure
+            LD   HL,(DeclarationNamePosition)
+            LD   A,L
+            PUSH HL
+            CALL SemanticSinkPut
             POP  HL
+            RET  C
+            LD   A,H
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(SourcePartId)
+            CALL SemanticSinkPut
+            RET  C
+            LD   HL,(DeclarationNamePosition+2)
+            LD   A,L
+            PUSH HL
+            CALL SemanticSinkPut
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SemanticSinkPut
+            RET  C
+            LD   HL,(DeclarationNamePosition+4)
             LD   A,L
             PUSH HL
             CALL SemanticSinkPut
@@ -649,7 +671,6 @@ ParserParseScalarWrite:
             RET  C
             JP   ParserExpectElseFailLine
 ParserScalarWriteFailure:
-            POP  HL
             RET
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL

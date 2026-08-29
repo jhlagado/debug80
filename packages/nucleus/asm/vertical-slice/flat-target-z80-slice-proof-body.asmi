@@ -1,19 +1,19 @@
             .org ProofBase
-FTADIMG .equ $98CB ; captured descriptor image-base field
-FTCTX00 .equ $98D8 ; captured context runtime-base field
-FTCTX06 .equ $98DE ; captured context state-base field
-FTCTX0E .equ $98E6 ; captured context used-length field
-FTMAP01 .equ $9905 ; captured target map bank count
-FTMAP03 .equ $9907 ; captured target map used length
-FTMAP05 .equ $9909 ; captured target map origin
-FTMAP09 .equ $990D ; captured target map source length
-FTMPWRI .equ $9911 ; captured writable-base map field
-FTMPVEC .equ $9917 ; captured vector-length map field
-FTMPINI .equ $991B ; captured initialized-length map field
-FTMPBSS .equ $991D ; captured BSS-base map field
-FTMPSTK .equ $9921 ; captured stack-requirement map field
-FTMPDLA .equ $9924 ; captured data-load-address map field
-FTMPAGG .equ $9928 ; captured aggregate-base map field
+FTADIMG .equ $990F ; captured descriptor image-base field
+FTCTX00 .equ $991C ; captured context runtime-base field
+FTCTX06 .equ $9922 ; captured context state-base field
+FTCTX0E .equ $992A ; captured context read-only-data-base field
+FTMAP01 .equ $9949 ; captured target map entry-address field
+FTMAP03 .equ $994B ; captured target map used length
+FTMAP05 .equ $994D ; captured target map read-only-base field
+FTMAP09 .equ $9951 ; captured target map code-base field
+FTMPWRI .equ $9955 ; captured writable-base map field
+FTMPVEC .equ $995B ; captured vector-length map field
+FTMPINI .equ $995F ; captured initialized-length map field
+FTMPBSS .equ $9961 ; captured BSS-base map field
+FTMPSTK .equ $9965 ; captured stack-requirement map field
+FTMPDLA .equ $9968 ; captured data-load-address map field
+FTMPAGG .equ $996C ; captured aggregate-base map field
 FTIXBKC .equ TargetDescriptorBankCount ; target descriptor bank-count field offset
 
 .routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
@@ -715,13 +715,49 @@ TargetSinkSourceProvenanceReset:
 ; generated code range. This first resident emission is intentionally coarse:
 ; line and column are fixed at 1 and confidence is low until the semantic
 ; transcript carries per-operation source positions.
-.routine in A,C,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL,IY
+.routine in A,C,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 TargetSinkSourceProvenanceSinglePartCode:
             LD   (SourceProvenancePart),A
             LD   A,C
             LD   (SourceProvenanceBank),A
             LD   (SourceProvenanceStart),DE
             LD   (SourceProvenanceEnd),HL
+            LD   HL,1
+            LD   (SourceProvenanceLine),HL
+            LD   (SourceProvenanceColumn),HL
+            XOR  A
+            LD   (SourceProvenanceConfidence),A
+            JR   TargetSinkSourceProvenanceCodeReady
+
+; A is the one-based source part, C is the output bank, DE..HL is the generated
+; code range, and SourceProvenanceLine/Column already hold the source position.
+.routine in A,C,DE,HL out A,carry,zero clobbers sign,parity,halfCarry
+TargetSinkSourceProvenanceCurrentCode:
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            PUSH IX
+            PUSH IY
+            LD   (SourceProvenancePart),A
+            LD   A,C
+            LD   (SourceProvenanceBank),A
+            LD   (SourceProvenanceStart),DE
+            LD   (SourceProvenanceEnd),HL
+            LD   A,2
+            LD   (SourceProvenanceConfidence),A
+            CALL TargetSinkSourceProvenanceCodeReady
+            LD   (SourceProvenanceResult),A
+            POP  IY
+            POP  IX
+            POP  HL
+            POP  DE
+            POP  BC
+            LD   A,(SourceProvenanceResult)
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,DE,HL,IY
+TargetSinkSourceProvenanceCodeReady:
+            PUSH IY
             LD   IY,(SourceProvenanceCursor)
             PUSH IY
             POP  HL
@@ -733,6 +769,7 @@ TargetSinkSourceProvenanceSinglePartCode:
             JR   C,SourceProvenanceReserveReady
             JR   Z,SourceProvenanceReserveReady
             LD   A,DiagnosticTargetOutput
+            POP  IY
             SCF
             RET
 SourceProvenanceReserveReady:
@@ -746,10 +783,12 @@ SourceProvenanceReserveReady:
             LD   (IY+0),A
             LD   A,(SourceProvenanceBank)
             LD   (IY+1),A
-            LD   (IY+2),1
-            LD   (IY+3),0
-            LD   (IY+4),1
-            LD   (IY+5),0
+            LD   HL,(SourceProvenanceLine)
+            LD   (IY+2),L
+            LD   (IY+3),H
+            LD   HL,(SourceProvenanceColumn)
+            LD   (IY+4),L
+            LD   (IY+5),H
             LD   HL,(SourceProvenanceStart)
             LD   (IY+6),L
             LD   (IY+7),H
@@ -757,7 +796,9 @@ SourceProvenanceReserveReady:
             LD   (IY+8),L
             LD   (IY+9),H
             LD   (IY+10),1
-            LD   (IY+11),0
+            LD   A,(SourceProvenanceConfidence)
+            LD   (IY+11),A
+            POP  IY
             OR   A
             RET
 
@@ -1073,13 +1114,17 @@ SourceProvenancePart:   .db 0
 SourceProvenanceBank:   .db 0
 SourceProvenanceStart:  .dw 0
 SourceProvenanceEnd:    .dw 0
+SourceProvenanceLine:   .dw 0
+SourceProvenanceColumn: .dw 0
+SourceProvenanceConfidence: .db 0
+SourceProvenanceResult: .db 0
 ProofEnd:
 
-SourceProvenanceLogBase .equ $99C0
-SourceProvenanceSuccessLogBase .equ $99D0
-SourceProvenanceLogLimit .equ $99F0
-AdapterLoadedLogBase    .equ $9A00
-AdapterSuccessLogBase   .equ $9D00
+SourceProvenanceLogBase .equ $C600
+SourceProvenanceLogLimit .equ $C630
+SourceProvenanceSuccessLogBase .equ $C640
+AdapterLoadedLogBase    .equ $9A20
+AdapterSuccessLogBase   .equ $9D20
 AdapterTrapLogBase      .equ $A100
 AdapterUnhandledLogBase .equ $A600
 AdapterBankedTrapLogBase .equ $AD00

@@ -127,6 +127,35 @@ TYPDEMT0: ;@NUC-GLOBAL TypedEmitOperationBC PERMANENT TYPDEMT0
             POP  HL
             RET  C
             JR   TYPDEMTW
+
+;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,DE,HL
+TYPDEMTS: ;@NUC-GLOBAL TypedEmitSourcePosition PERMANENT TYPDEMTS
+            LD   A,(SRCPRTID)
+            CALL SMNTCSN2
+            RET  C
+            LD   HL,(DCLRTNN1+2)
+            LD   A,L
+            PUSH HL
+            CALL SMNTCSN2
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SMNTCSN2
+            RET  C
+            LD   HL,(DCLRTNN1+4)
+            LD   A,L
+            PUSH HL
+            CALL SMNTCSN2
+            POP  HL
+            RET  C
+            LD   A,H
+            JP   SMNTCSN2
+
+;@ROUTINE IN A,BC OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
+TYPDEMT1: ;@NUC-GLOBAL TypedEmitOperationBCWithPosition PERMANENT TYPDEMT1
+            CALL TYPDEMT0
+            RET  C
+            JP   TYPDEMTS
 %ENDIF
 
 ; Push one pending binary-expression context into the bounded compiler stack.
@@ -379,7 +408,7 @@ TYPDMSKR: ;@NUC-GLOBAL TypedMaskResultWidth PERMANENT TYPDMSKR
 
 ; Emit a width-selected binary operation. D=u8 ordinal, E=u16 ordinal.
 ;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
-TYPDEMT1: ;@NUC-GLOBAL TypedEmitWidthOperation PERMANENT TYPDEMT1
+TYPDEMT2: ;@NUC-GLOBAL TypedEmitWidthOperation PERMANENT TYPDEMT2
             LD   A,C
             CP   SCLRTYPU
             LD   A,D
@@ -392,7 +421,7 @@ TYPDEMT1: ;@NUC-GLOBAL TypedEmitWidthOperation PERMANENT TYPDEMT1
 ; compile-time constant. Carry reports emission failure; zero reports dynamic.
 ;@ROUTINE IN C,D,E OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
 TYPDPRP0: ;@NUC-GLOBAL TypedPrepareConstantBinary PERMANENT TYPDPRP0
-            CALL TYPDEMT1
+            CALL TYPDEMT2
             RET  C
             CALL TYPDBTHC
             RET  Z
@@ -508,7 +537,7 @@ TYPDRDCI: ;@NUC-GLOBAL TypedReduceIntegerBinary PERMANENT TYPDRDCI
 .L00009:
             LD   DE,TEPMD16
 .L0000A:
-            CALL TYPDEMT1
+            CALL TYPDEMT2
             RET  C
             LD   HL,(EXPRSSN7)
             CALL TYPDEMTW
@@ -1992,7 +2021,7 @@ TYPDPRSL: ;@NUC-GLOBAL TypedParseLocalDeclaration PERMANENT TYPDPRSL
             LD   D,A
             LD   A,(DCLRTNPY)
             LD   C,A
-            CALL TYPDEMTS
+            CALL TYPDEMT3
             RET  C
             CALL SYMBLCMM
             RET  C
@@ -2035,7 +2064,7 @@ TYPDEMTL: ;@NUC-GLOBAL TypedEmitLocalDeclare PERMANENT TYPDEMTL
 
 ; D is symbol info and C its byte offset.
 ;@ROUTINE OUT A,BC,DE,HL,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,IX,IY
-TYPDEMTS: ;@NUC-GLOBAL TypedEmitStoreByInfo PERMANENT TYPDEMTS
+TYPDEMT3: ;@NUC-GLOBAL TypedEmitStoreByInfo PERMANENT TYPDEMT3
             LD   A,D
             AND  SYMBLCL3
             CP   SYMBLCL0
@@ -2068,6 +2097,9 @@ TYPDEMTS: ;@NUC-GLOBAL TypedEmitStoreByInfo PERMANENT TYPDEMTS
             LD   A,SMNTCST6
 .L00002:
 %IF AggregateCallSlices
+%IF TargetStreamingOutput
+            JP   TYPDEMT1
+%ENDIF
             JP   TYPDEMT0
 %ENDIF
 .L00003:
@@ -2197,6 +2229,9 @@ TYPDSTTM: ;@NUC-GLOBAL TypedStatementTransfer PERMANENT TYPDSTTM
 TYPDPRSW: ;@NUC-GLOBAL TypedParseWrite PERMANENT TYPDPRSW
             LD   HL,(TKNSTRTO)
             LD   (EXPRSSNC),HL
+            LD   HL,TKNSTRTO
+            LD   DE,DCLRTNN1
+            CALL CMPLRCPY
             CALL PRSREXP1
             RET  C
             LD   A,SCLRTYPU
@@ -2219,6 +2254,27 @@ TYPDPRSW: ;@NUC-GLOBAL TypedParseWrite PERMANENT TYPDPRSW
             LD   A,H
             CALL SMNTCSN2
             RET  C
+            LD   A,(SRCPRTID)
+            CALL SMNTCSN2
+            RET  C
+            LD   HL,(DCLRTNN1+2)
+            LD   A,L
+            PUSH HL
+            CALL SMNTCSN2
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SMNTCSN2
+            RET  C
+            LD   HL,(DCLRTNN1+4)
+            LD   A,L
+            PUSH HL
+            CALL SMNTCSN2
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SMNTCSN2
+            RET  C
             CALL PRSREXPN
             RET  C
             JP   TYPDPRS9
@@ -2229,6 +2285,14 @@ TYPDPRSB: ;@NUC-GLOBAL TypedParseAssignment PERMANENT TYPDPRSB
             RET  C
             LD   (DCLRTNIN),A
             LD   (DCLRTNPY),BC
+%IF AggregateCallSlices
+%IF TargetStreamingOutput
+            LD   HL,TKNSTRTO
+            LD   DE,DCLRTNN1
+            CALL CMPLRCPY
+%ENDIF
+%ENDIF
+            LD   A,(DCLRTNIN)
             LD   D,A
 %IF AggregateCallSlices
             AND  SYMBLAGG
@@ -2263,7 +2327,7 @@ TYPDPRSB: ;@NUC-GLOBAL TypedParseAssignment PERMANENT TYPDPRSB
             LD   BC,(DCLRTNPY)
             LD   A,(DCLRTNIN)
             LD   D,A
-            CALL TYPDEMTS
+            CALL TYPDEMT3
             RET  C
             JP   PRSREXP0
 

@@ -121,6 +121,35 @@ TypedEmitOperationBC:
             POP  HL
             RET  C
             JR   TypedEmitWord
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedEmitSourcePosition:
+            LD   A,(SourcePartId)
+            CALL SemanticSinkPut
+            RET  C
+            LD   HL,(DeclarationNamePosition+2)
+            LD   A,L
+            PUSH HL
+            CALL SemanticSinkPut
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SemanticSinkPut
+            RET  C
+            LD   HL,(DeclarationNamePosition+4)
+            LD   A,L
+            PUSH HL
+            CALL SemanticSinkPut
+            POP  HL
+            RET  C
+            LD   A,H
+            JP   SemanticSinkPut
+
+.routine in A,BC out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+TypedEmitOperationBCWithPosition:
+            CALL TypedEmitOperationBC
+            RET  C
+            JP   TypedEmitSourcePosition
 .endif
 
 ; Push one pending binary-expression context into the bounded compiler stack.
@@ -2062,6 +2091,9 @@ TypedStoreProgram:
             LD   A,SemanticStoreProgram16
 TypedStoreProgramSelected:
 .if AggregateCallSlices
+.if TargetStreamingOutput
+            JP   TypedEmitOperationBCWithPosition
+.endif
             JP   TypedEmitOperationBC
 .endif
 TypedStoreSelected:
@@ -2191,6 +2223,9 @@ TypedStatementTransfer:
 TypedParseWrite:
             LD   HL,(TokenStartOffset)
             LD   (ExpressionCallOffset),HL
+            LD   HL,TokenStartOffset
+            LD   DE,DeclarationNamePosition
+            CALL CompilerCopyPosition
             CALL ParserExpectLeft
             RET  C
             LD   A,ScalarTypeU8
@@ -2213,6 +2248,27 @@ TypedParseWrite:
             LD   A,H
             CALL SemanticSinkPut
             RET  C
+            LD   A,(SourcePartId)
+            CALL SemanticSinkPut
+            RET  C
+            LD   HL,(DeclarationNamePosition+2)
+            LD   A,L
+            PUSH HL
+            CALL SemanticSinkPut
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SemanticSinkPut
+            RET  C
+            LD   HL,(DeclarationNamePosition+4)
+            LD   A,L
+            PUSH HL
+            CALL SemanticSinkPut
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SemanticSinkPut
+            RET  C
             CALL ParserExpectElseFailLine
             RET  C
             JP   TypedParseStatementsContinue
@@ -2223,6 +2279,14 @@ TypedParseAssignment:
             RET  C
             LD   (DeclarationInfo),A
             LD   (DeclarationPayload),BC
+.if AggregateCallSlices
+.if TargetStreamingOutput
+            LD   HL,TokenStartOffset
+            LD   DE,DeclarationNamePosition
+            CALL CompilerCopyPosition
+.endif
+.endif
+            LD   A,(DeclarationInfo)
             LD   D,A
 .if AggregateCallSlices
             AND  SymbolAggregateFlag

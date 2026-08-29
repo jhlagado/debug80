@@ -1255,7 +1255,7 @@ HYBRDL23: ;@NUC-GLOBAL HybridLL1CommitLocal PERMANENT HYBRDL23
             LD   D,A
             LD   A,(DCLRTNPY)
             LD   C,A
-            CALL TYPDEMTS
+            CALL TYPDEMT3
             RET  C
             CALL SYMBLCMM
             RET  C
@@ -1323,7 +1323,7 @@ HYBRDL24: ;@NUC-GLOBAL HybridLL1NameStatement PERMANENT HYBRDL24
             LD   BC,(DCLRTNPY)
             LD   A,(DCLRTNIN)
             LD   D,A
-            JP   TYPDEMTS
+            JP   TYPDEMT3
 HYBRDL25: ;@NUC-GLOBAL HybridLL1BeginReturnValue PERMANENT HYBRDL25
             LD   A,(STG7CRR2)
             OR   A

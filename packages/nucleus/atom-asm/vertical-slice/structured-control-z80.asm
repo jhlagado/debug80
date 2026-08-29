@@ -452,7 +452,7 @@ STRCTR1R: ;@NUC-GLOBAL StructuredForNext PERMANENT STRCTR1R
             RET  C
             LD   HL,(EMTCNTRA)
             LD   A,4
-            CALL TYPDEMT7
+            CALL TYPDEMTA
             RET  C
             LD   DE,(EMTUPDTE)
             LD   HL,(EMTCRSR)

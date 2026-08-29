@@ -1103,6 +1103,9 @@ ExpressionWrite:
             LD   H,A
             LD   L,C
             LD   (EmitLoopHead),HL
+            CALL NextSemanticByte
+            CALL ReadSemanticWord
+            CALL ReadSemanticWord
             LD   A,$F1
             CALL EmitByte
             RET  C

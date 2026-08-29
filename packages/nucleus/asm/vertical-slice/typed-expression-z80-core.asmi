@@ -398,6 +398,23 @@ TypedReadTrapPosition:
             LD   (EmitTypedTrapPosition),DE
             RET
 
+.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
+TypedReadSourcePosition:
+            CALL NextSemanticByte
+.if TargetStreamingOutput
+            LD   (SourceProvenancePart),A
+.endif
+            CALL ReadSemanticWord
+.if TargetStreamingOutput
+            LD   (SourceProvenanceLine),DE
+.endif
+            CALL ReadSemanticWord
+.if TargetStreamingOutput
+            LD   (SourceProvenanceColumn),DE
+.endif
+            OR   A
+            RET
+
 .routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedEmitTrapHead:
             LD   (EmitExitFixup),DE
@@ -530,22 +547,55 @@ TypedNarrow8:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 TypedStoreProgram8:
             CALL ExpressionProgramAddress
+.if TargetStreamingOutput
+            PUSH HL
+            CALL TypedReadSourcePosition
+            POP  HL
+            LD   DE,(EmitCursor)
+            LD   (SourceProvenanceStart),DE
+.endif
             PUSH HL
             LD   HL,TypedPopHLtoA
             CALL   EmitPair
             POP  HL
             RET  C
             LD   A,$32
-            JP   EmitOpcodeWord
+            CALL EmitOpcodeWord
+            RET  C
+.if TargetStreamingOutput
+            JP   TypedEmitProgramStoreProvenance
+.else
+            RET
+.endif
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 TypedStoreProgram16:
             CALL ExpressionProgramAddress
+.if TargetStreamingOutput
+            PUSH HL
+            CALL TypedReadSourcePosition
+            POP  HL
+            LD   DE,(EmitCursor)
+            LD   (SourceProvenanceStart),DE
+.endif
             PUSH HL
             CALL TypedEmitPopHL
             POP  HL
             RET  C
             LD   A,$22
-            JP   EmitOpcodeWord
+            CALL EmitOpcodeWord
+            RET  C
+.if TargetStreamingOutput
+TypedEmitProgramStoreProvenance:
+            LD   DE,(SourceProvenanceStart)
+            LD   HL,(EmitCursor)
+            LD   A,(SourceProvenancePart)
+            PUSH AF
+            LD   A,(TargetOutputBank)
+            LD   C,A
+            POP  AF
+            CALL TargetSinkSourceProvenanceCurrentCode
+.endif
+            RET
 
 .routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 TypedStoreLocal8:
@@ -565,6 +615,15 @@ TypedStoreLocal16:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedWrite8:
             CALL TypedReadTrapPosition
+.if TargetStreamingOutput
+            CALL TypedReadSourcePosition
+            LD   HL,(EmitCursor)
+            LD   (SourceProvenanceStart),HL
+.else
+.if LegacyCompilerSlices
+            CALL TypedReadSourcePosition
+.endif
+.endif
             LD   HL,TypedPopHLtoA
             CALL   EmitPair
             RET  C
@@ -582,7 +641,20 @@ TypedWrite8:
             RET  C
             CALL EmitUnhandledTrapPrefix
             RET  C
-            JR   TypedEmitTrapTail
+            CALL TypedEmitTrapTail
+            RET  C
+            OR   A
+.if TargetStreamingOutput
+            LD   DE,(SourceProvenanceStart)
+            LD   HL,(EmitCursor)
+            LD   A,(SourceProvenancePart)
+            PUSH AF
+            LD   A,(TargetOutputBank)
+            LD   C,A
+            POP  AF
+            CALL TargetSinkSourceProvenanceCurrentCode
+.endif
+            RET
 
 ; Every terminal typed-expression trap must dismantle the routine frame before
 ; emitting the common trap record and RET. Without this epilogue the generated

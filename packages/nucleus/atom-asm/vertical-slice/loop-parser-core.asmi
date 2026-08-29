@@ -627,8 +627,9 @@ PRSRPRSL: ;@NUC-GLOBAL ParserParseLoopProgramAfterSub PERMANENT PRSRPRSL
 
 ;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
 .L00007:
-            LD   HL,(TKNSTRTO)
-            PUSH HL
+            LD   HL,TKNSTRTO
+            LD   DE,DCLRTNN1
+            CALL CMPLRCPY
             CALL PRSREXP1
             JR   C,.L00008
             CALL PRSRPRS1
@@ -638,7 +639,28 @@ PRSRPRSL: ;@NUC-GLOBAL ParserParseLoopProgramAfterSub PERMANENT PRSRPRSL
             LD   A,SMNTCWR2
             CALL SMNTCSN5
             JR   C,.L00008
+            LD   HL,(DCLRTNN1)
+            LD   A,L
+            PUSH HL
+            CALL SMNTCSN2
             POP  HL
+            RET  C
+            LD   A,H
+            CALL SMNTCSN2
+            RET  C
+            LD   A,(SRCPRTID)
+            CALL SMNTCSN2
+            RET  C
+            LD   HL,(DCLRTNN1+2)
+            LD   A,L
+            PUSH HL
+            CALL SMNTCSN2
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SMNTCSN2
+            RET  C
+            LD   HL,(DCLRTNN1+4)
             LD   A,L
             PUSH HL
             CALL SMNTCSN2
@@ -649,7 +671,6 @@ PRSRPRSL: ;@NUC-GLOBAL ParserParseLoopProgramAfterSub PERMANENT PRSRPRSL
             RET  C
             JP   PRSREXPN
 .L00008:
-            POP  HL
             RET
 
 ;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL

@@ -102,7 +102,7 @@ STG7BNDS: ;@NUC-GLOBAL Stage7BoundsGuard PERMANENT STG7BNDS
             LD   (EMTFLRFX),DE
             LD   HL,(STG7CLLO)
             LD   A,1
-            CALL TYPDEMT7
+            CALL TYPDEMTA
             RET  C
             LD   DE,(EMTFLRFX)
             JP   PTCHHR
@@ -163,7 +163,7 @@ STG7CLL: ;@NUC-GLOBAL Stage7Call PERMANENT STG7CLL
             JP   NZ,STG8INVK
 %IF TargetStreamingOutput
             LD   DE,ACZCLMO
-            CALL TYPDEMT5
+            CALL TYPDEMT7
 %ELSE
             LD   HL,ACTVTNCL
             CALL TYPDEMTF
@@ -172,7 +172,7 @@ STG7CLL: ;@NUC-GLOBAL Stage7Call PERMANENT STG7CLL
             LD   (EMTEXTFX),DE
             LD   HL,(STG7CLLO)
             LD   A,5
-            CALL TYPDEMT7
+            CALL TYPDEMTA
             RET  C
             LD   DE,(EMTEXTFX)
             CALL PTCHHR
@@ -312,11 +312,11 @@ STG8FLMN: ;@NUC-GLOBAL Stage8FailMain PERMANENT STG8FLMN
             RET  C
             CALL EMTUNHND
             RET  C
-            JP   TYPDEMT6
+            JP   TYPDEMT9
 
 ;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL,IX,IY
 STG8RTRN: ;@NUC-GLOBAL Stage8ReturnSuccess PERMANENT STG8RTRN
-            CALL TYPDEMT3           ; result carrier
+            CALL TYPDEMT5           ; result carrier
             RET  C
             JR   STG8SCCS
 
@@ -405,7 +405,7 @@ STG8INVK: ;@NUC-GLOBAL Stage8InvokeService PERMANENT STG8INVK
             RET  C
             JR   .L00001
 .L00000:
-            CALL TYPDEMT3           ; offset
+            CALL TYPDEMT5           ; offset
             RET  C
 .L00001:
             LD   A,(STG7CLLL)
@@ -483,7 +483,7 @@ STG8BGNC: ;@NUC-GLOBAL Stage8BeginCallableMain PERMANENT STG8BGNC
             RET  C
             CALL EMTUNHND
             RET  C
-            CALL TYPDEMT6
+            CALL TYPDEMT9
             RET  C
             LD   DE,(EMTEXTFX)
             CALL PTCHHR
@@ -525,7 +525,7 @@ STG7LDRD: ;@NUC-GLOBAL Stage7LoadReadOnlyAlias PERMANENT STG7LDRD
 %ENDIF
 STG7LDAL: ;@NUC-GLOBAL Stage7LoadAliasReady PERMANENT STG7LDAL
             LD   A,$21                    ; LD HL,nn
-            JP   TYPDEMT2
+            JP   TYPDEMT4
 
 STG7LDP0 EQU TYPDLDL1 ;@NUC-GLOBAL Stage7LoadParameterAlias PERMANENT STG7LDP0
 
@@ -628,7 +628,7 @@ STG7RDEX: ;@NUC-GLOBAL Stage7ReadExtentAndOffset PERMANENT STG7RDEX
 
 ;@ROUTINE OUT A,CARRY,ZERO CLOBBERS SIGN,PARITY,HALFCARRY,B,C,D,DE,HL
 STG7PRS4: ;@NUC-GLOBAL Stage7PreserveCarrierRegion PERMANENT STG7PRS4
-            CALL TYPDEMT3           ; source
+            CALL TYPDEMT5           ; source
             RET  C
             LD   A,$E5                    ; retain source
             CALL EmitByte
@@ -683,7 +683,7 @@ STG7STRN: ;@NUC-GLOBAL Stage7StringLength PERMANENT STG7STRN
             CALL STG7RDST
             CALL STG7PRS4
             RET  C
-            CALL TYPDEMT3           ; carrier
+            CALL TYPDEMT5           ; carrier
             RET  C
 %IF TargetStreamingOutput
             LD   DE,ACZSLEN

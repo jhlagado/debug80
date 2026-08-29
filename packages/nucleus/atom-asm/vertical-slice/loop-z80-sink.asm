@@ -674,7 +674,7 @@ PTCHWRD: ;@NUC-GLOBAL PatchWord PERMANENT PTCHWRD
             PUSH BC
             LD   A,(TRGTOTPT)
             LD   C,A
-            CALL TRGTSNK3
+            CALL TRGTSNK5
             POP  BC
             JP   C,TRGTOTP1
             OR   A
@@ -1116,6 +1116,9 @@ EXPRSSNZ: ;@NUC-GLOBAL ExpressionWrite PERMANENT EXPRSSNZ
             LD   H,A
             LD   L,C
             LD   (EMTLPHD),HL
+            CALL NXTSMNTC
+            CALL RDSMNTCW
+            CALL RDSMNTCW
             LD   A,$F1
             CALL EmitByte
             RET  C

@@ -553,6 +553,16 @@ describe("Nucleus application boundary", () => {
           expect(publication.sourceProvenance).toEqual([
             {
               partOrdinal: 1,
+              line: 3,
+              column: 5,
+              bank: 0,
+              start: 0x8223,
+              end: 0x8227,
+              kind: "code",
+              confidence: "high",
+            },
+            {
+              partOrdinal: 1,
               line: 1,
               column: 1,
               bank: 0,
@@ -926,14 +936,24 @@ describe("Nucleus application boundary", () => {
             fileList: ["src/main.nu"],
             files: {
               "src/main.nu": {
-                segments: [{
-                  start: 0x81f2,
-                  end: 0x822c,
-                  line: 1,
-                  column: 1,
-                  kind: "code",
-                  confidence: "low",
-                }],
+                segments: [
+                  {
+                    start: 0x8223,
+                    end: 0x8227,
+                    line: 3,
+                    column: 5,
+                    kind: "code",
+                    confidence: "high",
+                  },
+                  {
+                    start: 0x81f2,
+                    end: 0x822c,
+                    line: 1,
+                    column: 1,
+                    kind: "code",
+                    confidence: "low",
+                  },
+                ],
               },
             },
             segments: [{ start: 0x8000, end: 0x822c }],

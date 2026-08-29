@@ -239,6 +239,9 @@ PRFFLD: ;@NUC-GLOBAL ProofFailed PERMANENT PRFFLD
             DB SMNTCLD2,0
             DB SMNTCWR2
             DW EXOUTOF
+            DB 1
+            DW 1
+            DW 1
             DB SMNTCEN5
 PRFSTTS:                 DB 0 ;@NUC-GLOBAL ProofStatus PERMANENT PRFSTTS
 PRFCS:                   DB 0 ;@NUC-GLOBAL ProofCase PERMANENT PRFCS
