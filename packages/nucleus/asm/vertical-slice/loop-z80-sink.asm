@@ -1,5 +1,24 @@
 ; Streaming direct-Z80 encoder for the counted-loop semantic stream.
 
+.if AggregateCallSlices
+.if TargetStreamingOutput
+.else
+LZBKRO .equ BackupBase+(GeneratedRoDataBase-GeneratedBase) ; backup address for generated read-only data
+LZSCEL .equ SegmentCodeEntry+SegmentEntryLimit             ; code segment limit field
+LZSREB .equ SegmentRoDataEntry+SegmentEntryBase            ; read-only data segment base field
+LZSDEL .equ SegmentDataEntry+SegmentEntryLimit             ; initialized data segment limit field
+LZSBEB .equ SegmentBssEntry+SegmentEntryBase               ; BSS segment base field
+.endif
+.endif
+
+.if TargetStreamingOutput
+LZTNUM .equ TrapNumber-StateBase ; runtime state offset for TrapNumber
+LZTROU .equ TrapRoutine-StateBase ; runtime state offset for TrapRoutine
+LZTOFF .equ TrapOffset-StateBase ; runtime state offset for TrapOffset
+LZRUNS .equ RunState-StateBase ; runtime state offset for RunState
+LZTERR .equ TrapError-StateBase ; runtime state offset for TrapError
+.endif
+
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 EmitByte:
 .if TargetStreamingOutput
@@ -204,14 +223,14 @@ BeginSegmentedProgram:
             CALL SegmentCopyIfAny
             LD   BC,(GeneratedRoDataSize)
             LD   HL,GeneratedRoDataBase
-            LD   DE,BackupBase+(GeneratedRoDataBase-GeneratedBase)
+            LD   DE,LZBKRO
             CALL SegmentCopyIfAny
             LD   HL,SegmentInitialTable
             LD   DE,SegmentTableBase
             LD   BC,SegmentEntrySize*SegmentCapacity
             LDIR
             POP  HL
-            LD   (SegmentCodeEntry+SegmentEntryLimit),HL
+            LD   (LZSCEL),HL
 
             CALL ValidateSegmentTable
             RET  C
@@ -278,12 +297,12 @@ ValidateSegmentEntryLoop:
             LD   DE,SegmentEntrySize
             ADD  IX,DE
             DJNZ ValidateSegmentEntryLoop
-            LD   HL,(SegmentCodeEntry+SegmentEntryLimit)
-            LD   DE,(SegmentRoDataEntry+SegmentEntryBase)
+            LD   HL,(LZSCEL)
+            LD   DE,(LZSREB)
             CALL SegmentRequireOrder
             RET  C
-            LD   HL,(SegmentDataEntry+SegmentEntryLimit)
-            LD   DE,(SegmentBssEntry+SegmentEntryBase)
+            LD   HL,(LZSDEL)
+            LD   DE,(LZSBEB)
 .routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 SegmentRequireOrder:
             OR   A
@@ -305,7 +324,7 @@ AbortSegmentedProgram:
             LD   DE,GeneratedCodeBase
             CALL SegmentCopyIfAny
             LD   BC,(PublishedRoDataSize)
-            LD   HL,BackupBase+(GeneratedRoDataBase-GeneratedBase)
+            LD   HL,LZBKRO
             LD   DE,GeneratedRoDataBase
             CALL SegmentCopyIfAny
             LD   HL,PublishedSize
@@ -534,7 +553,7 @@ EmitSuccessReturn:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitTrapEnding:
 .if TargetStreamingOutput
-            LD   DE,TrapNumber-StateBase
+            LD   DE,LZTNUM
             CALL EmitStoreTargetStateA
 .else
             LD   HL,TrapNumber
@@ -545,7 +564,7 @@ EmitTrapEnding:
             CALL EmitByte
             RET  C
 .if TargetStreamingOutput
-            LD   DE,TrapRoutine-StateBase
+            LD   DE,LZTROU
             CALL EmitStoreTargetStateA
 .else
             LD   HL,TrapRoutine
@@ -553,7 +572,7 @@ EmitTrapEnding:
 .endif
             RET  C
 .if TargetStreamingOutput
-            LD   DE,TrapOffset-StateBase
+            LD   DE,LZTOFF
             CALL TargetStateAddress
 .else
             LD   HL,TrapOffset
@@ -567,7 +586,7 @@ EmitRunEnding:
             CALL EmitLoadAImmediate
             RET  C
 .if TargetStreamingOutput
-            LD   DE,RunState-StateBase
+            LD   DE,LZRUNS
             CALL EmitStoreTargetStateA
 .else
             LD   HL,RunState
@@ -601,7 +620,7 @@ EmitRunEndingLocal:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitUnhandledTrapPrefix:
 .if TargetStreamingOutput
-            LD   DE,TrapError-StateBase
+            LD   DE,LZTERR
             CALL EmitStoreTargetStateA
 .else
             LD   HL,TrapError

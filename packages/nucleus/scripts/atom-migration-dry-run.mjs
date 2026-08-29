@@ -4342,7 +4342,11 @@ function rewriteLoopZ80SinkPermanentAtomSource(source, { symbolMap }) {
     ["LZTERR", ["TrapError", "-", "StateBase"]],
   ];
   const aliases = [...segmentedAliases, ...targetStateAliases];
-  let rewritten = replaceAtomExpressionAliases(source, symbolMap, aliases);
+  const sourceWithoutAliases = removeAtomAliasDefinitions(
+    source,
+    [...segmentedAliases, ...segmentedIndexAliases, ...targetStateAliases].map(([alias]) => alias),
+  );
+  let rewritten = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases);
   for (const [alias, , expression] of segmentedIndexAliases) {
     rewritten = rewritten.replaceAll(
       expression.map((name) => atomSymbol(symbolMap, name)).join(""),
