@@ -1706,6 +1706,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
     const lines = readFileSync(file, "utf8").split(/\n/);
     sourceLines += lines.length;
     let includeHeaderClosed = false;
+    const availableSymbols = new Set();
     for (let index = 0; index < lines.length; index += 1) {
       const lineNumber = index + 1;
       const raw = lines[index].replace(/\r$/, "");
@@ -1790,12 +1791,16 @@ function scanAssembly({ asmRoot, proofRoot }) {
       const label = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*):/.exec(code);
       if (label !== null) {
         recordSymbol(symbols, label[1], file, lineNumber, proofSymbols, "label");
+        availableSymbols.add(symbolKey(label[1]));
       }
 
-      const equ = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?::\s*|\s+)\.equ\b/i.exec(code);
+      const equ = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?::\s*|\s+)\.equ\b\s*(.*)$/i.exec(code);
       if (equ !== null) {
         addCount(directives, "equ");
         recordSymbol(symbols, equ[1], file, lineNumber, proofSymbols, "equ");
+        if (equExpressionIsImmediatelyResolvable(equ[2], availableSymbols)) {
+          availableSymbols.add(symbolKey(equ[1]));
+        }
       }
 
       for (const match of unquotedCode.matchAll(/(^|[^A-Za-z0-9_])(\$[0-9A-Fa-f]+|%[01]+|[0-9][0-9A-Fa-f]*[Hh]|[01]+[Bb]|[0-9]+)/g)) {
@@ -1813,9 +1818,12 @@ function scanAssembly({ asmRoot, proofRoot }) {
       const isConditionalDirective = /^\s*\.if\b/i.test(code);
       if (!isEquDefinition && !isConditionalDirective) {
         for (const match of unquotedCode.matchAll(/(^|[^A-Za-z0-9_.$?])([A-Za-z_.$?][A-Za-z0-9_.$?]*)\s*([+-])\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)\b/g)) {
+          if (availableSymbols.has(symbolKey(match[2])) && availableSymbols.has(symbolKey(match[4]))) {
+            continue;
+          }
           issues.push({
             code: "atom-symbol-expression",
-            message: `symbol expression ${match[2]}${match[3]}${match[4]} requires preview lowering; permanent Atom source does not support symbol arithmetic in emitted statements yet`,
+            message: `symbol expression ${match[2]}${match[3]}${match[4]} requires preview lowering; permanent Atom source needs both symbols defined before the emitted statement`,
             ...location(file, lineNumber),
           });
         }
@@ -2027,6 +2035,15 @@ function scanAssembly({ asmRoot, proofRoot }) {
     ledger,
     issues,
   };
+}
+
+function symbolKey(symbol) {
+  return symbol.toUpperCase();
+}
+
+function equExpressionIsImmediatelyResolvable(expression, availableSymbols) {
+  return collectSourceIdentifiers(maskQuoted(expression))
+    .every((symbol) => availableSymbols.has(symbolKey(symbol)));
 }
 
 function replaceSymbolsInSource(source, symbolMap) {

@@ -358,6 +358,35 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("permits emitted symbol arithmetic only after both symbols are defined", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "Start:",
+        "            DB 1",
+        "End:",
+        "            DW End-Start",
+        "            DW Later-Start",
+        "Later:",
+        "",
+      ].join("\n"),
+      "proofs/main.json": JSON.stringify({ source: "../asm/main.asm" }),
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.status).toBe("blocked");
+      expect(report.issues).toEqual([
+        expect.objectContaining({
+          code: "atom-symbol-expression",
+          message: "symbol expression Later-Start requires preview lowering; permanent Atom source needs both symbols defined before the emitted statement",
+          line: 5,
+        }),
+      ]);
+    });
+  });
+
   it("fails on includes after the source header has closed", async () => {
     await withTree({
       "asm/main.asm": "ORG $1000\n.include \"late.asmi\"\n",

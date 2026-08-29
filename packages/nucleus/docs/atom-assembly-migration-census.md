@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `e9c03032`
+Current reusable-transform baseline HEAD: `6d3b9be4`
 
 ## Purpose
 
@@ -33,12 +33,12 @@ Measured files:
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Emitted-statement symbol arithmetic sites | 254 |
-| Current permanent-source blockers | 457 |
+| Forward-dependent emitted-statement symbol arithmetic sites | 147 |
+| Current permanent-source blockers | 350 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
-| Permanent blocker: emitted-statement symbol arithmetic | 254 |
+| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 147 |
 | Permanent blocker: include after header | 143 |
 | Permanent blocker: feature definition after Atom entry header | 60 |
 | Proof-manifest symbol mappings | 146 |
@@ -233,13 +233,15 @@ npm run atom:migration:proof-run -w nucleus
 The dry-run intentionally reports two readiness states:
 
 - permanent Atom source is still blocked while emitted-content includes remain
-  after the header, while emitted statements still use symbol arithmetic that
-  Atom cannot assemble directly, and while feature definitions would translate
+  after the header, while emitted statements still use two-symbol arithmetic
+  before both symbols are defined, and while feature definitions would translate
   to `%DEFINE` outside Atom's entry definition header in the source tree; and
 - compatibility-lowered Atom source is ready when those late includes are the
   only hard issues, because preview lowering can resolve existing symbol
   arithmetic from the comparison symbol table and consume feature definitions
-  before Atom receives the generated preview source.
+  before Atom receives the generated preview source. Emitted two-symbol
+  arithmetic is not itself a blocker when both symbols are already defined at
+  the statement that uses them; Atom can assemble those expressions in one pass.
 
 Compatibility lowering is now the formal bridge for existing Nucleus proof
 assembly. It preserves the current textual insertion points while producing
@@ -861,7 +863,7 @@ manifest that has a permanent Atom layout. The remaining permanent-source work
 is to remove the preview-only bridge from the source tree itself: section-owned
 replacement for emitted-content include-after-header source, entry-header
 placement for feature definitions, explicit aliases or source rewrites for
-emitted-statement symbol arithmetic, and final curation of human-facing
-permanent symbol names.
+forward-dependent emitted-statement symbol arithmetic, and final curation of
+human-facing permanent symbol names.
 
 The migration should therefore start with tooling, not manual source edits.
