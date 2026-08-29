@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `6d3b9be4`
+Current reusable-transform baseline HEAD: `7aa3759c`
 
 ## Purpose
 
@@ -247,6 +247,18 @@ Compatibility lowering is now the formal bridge for existing Nucleus proof
 assembly. It preserves the current textual insertion points while producing
 Atom-preview source for byte comparison. It is not the preferred shape for new
 Nucleus assembly source.
+
+### Atom expression policy
+
+This census keeps Atom's expression model single-pass. Atom can assemble
+emitted expressions such as `End-Start` when both labels have already been
+defined at the statement that uses them. It cannot patch a forward-dependent
+two-symbol expression such as `Later-Start`, because the pending patch record
+does not retain two unresolved symbol identities and an operation. The migration
+tool therefore reports only forward-dependent emitted two-symbol expressions as
+permanent-source blockers. Existing proof-preview lowering may still resolve
+those expressions from the comparison symbol table, but permanent source needs
+an explicit alias, a source rewrite, or an ordering change.
 
 The proof harness also has an explicit `atom-preview` assembler mode. That mode
 uses the compatibility-lowered source produced by the migration tools, assembles
