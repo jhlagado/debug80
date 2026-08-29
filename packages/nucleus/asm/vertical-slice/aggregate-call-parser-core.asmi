@@ -158,11 +158,8 @@ TargetValidateCompileFailure:
 ; Return the bank mapped to the current manifest source-part ordinal.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,D,DE,HL,IX
 TargetCurrentSourceBank:
-            LD   A,(SourcePartsRemaining)
-            AND  SourcePartOrdinalMask
-            RRCA
-            RRCA
-            RRCA
+            LD   A,(SourcePartId)
+            DEC  A
             LD   E,A
             LD   D,0
             LD   IX,(TargetDescriptorPointer)

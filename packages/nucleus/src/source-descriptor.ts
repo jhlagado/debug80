@@ -1,7 +1,7 @@
 import type { SourcePart } from "./source-manifest.js";
 
 export const NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE = 5;
-export const NUCLEUS_RESIDENT_SOURCE_PART_CAPACITY = 8;
+export const NUCLEUS_RESIDENT_SOURCE_PART_CAPACITY = 255;
 
 export interface NucleusResidentSourceDescriptorOptions {
   readonly sourceParts: readonly SourcePart[];

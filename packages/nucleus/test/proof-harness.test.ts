@@ -399,17 +399,17 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(1_655_434);
-    expect(outcome.cycles).toBe(15_587_450);
+    expect(outcome.instructions).toBe(1_655_534);
+    expect(outcome.cycles).toBe(15_588_395);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 13_744 },
+      { name: "compiler-code", bytes: 13_754 },
       { name: "compiler-immutable", bytes: 393 },
-      { name: "compiler-core", bytes: 14_137 },
-      { name: "compiler-workspace", bytes: 3_602 },
+      { name: "compiler-core", bytes: 14_147 },
+      { name: "compiler-workspace", bytes: 3_603 },
       { name: "generated-z80-bound", bytes: 4_096 },
       { name: "z80-runtime", bytes: 596 },
       { name: "corpus-source-and-descriptors", bytes: 7_678 },
-      { name: "proof-code-and-data", bytes: 1_935 },
+      { name: "proof-code-and-data", bytes: 1_934 },
     ]);
 
     const symbol = (name: string): number => {
@@ -520,13 +520,13 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(2_035_627);
-    expect(outcome.cycles).toBe(18_949_904);
+    expect(outcome.instructions).toBe(2_035_734);
+    expect(outcome.cycles).toBe(18_951_147);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 13_744 },
+      { name: "compiler-code", bytes: 13_754 },
       { name: "compiler-immutable", bytes: 393 },
-      { name: "compiler-core", bytes: 14_137 },
-      { name: "compiler-workspace", bytes: 3_602 },
+      { name: "compiler-core", bytes: 14_147 },
+      { name: "compiler-workspace", bytes: 3_603 },
       { name: "generated-z80-bound", bytes: 4_096 },
       { name: "z80-runtime", bytes: 596 },
       { name: "proof-code-and-data", bytes: 3_692 },

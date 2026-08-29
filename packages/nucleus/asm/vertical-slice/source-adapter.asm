@@ -26,6 +26,8 @@ SourceInitializeParts:
             CP   SourcePartCapacity
             JR   NC,SourcePartCapacityFailure
             LD   (SourcePartsRemaining),A
+            XOR  A
+            LD   (SourcePartPendingNewline),A
             JR   SourceLoadPart
 SourcePartCapacityFailure:
             XOR  A

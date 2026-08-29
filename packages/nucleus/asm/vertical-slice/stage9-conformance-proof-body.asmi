@@ -401,7 +401,7 @@ ProofStart:
 
             LD   A,33
             LD   (ProofCase),A
-            LD   A,9
+            XOR  A
             LD   B,DiagnosticSourcePartCapacity
             LD   C,0
             LD   IX,0

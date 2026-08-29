@@ -711,11 +711,12 @@ bytes.
 The Section 21.1 program is assembled from the literal flat manifest
 `model.nu`, a blank line, and `main.nu`. The host adapter preserves written
 order, gives duplicate names distinct stable identities, and maps a diagnostic
-from identity 2 back to `main.nu`. The Z80 adapter accepts one through eight
-five-byte source descriptors. Its proof covers counts 1, 8, and 9, a missing
-physical newline, an open delimiter at a part boundary, a positioned failure
-in the second part, and successful compilation after earlier multipart and
-capacity failures.
+from identity 2 back to `main.nu`. The Z80 adapter accepts up to 255 five-byte
+source descriptors. Its proof covers a missing physical newline, an open
+delimiter at a part boundary, a positioned failure in the second part, and
+successful compilation after earlier multipart and capacity failures. The host
+descriptor builder separately accepts 255 parts and rejects the 256th before
+execution.
 
 The correctness-cleared build measured 13,501 code bytes plus 368 immutable
 bytes, for a 13,869-byte compiler core with 1,402 bytes of workspace. The size
@@ -1616,7 +1617,7 @@ requirement are both known.
 
 | Resource                                |      Limit | Representation                                                                        | Excess diagnostic or trap                                                        | Evidence                                                                          |
 | --------------------------------------- | ---------: | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| source part count                       |          8 | external five-byte descriptors plus three compiler-workspace bytes                    | capacity diagnostic                                                              | accepted 1- and 8-part units; rejected ninth part                                 |
+| source part count                       |        255 | external five-byte descriptors plus four compiler-workspace bytes                     | capacity diagnostic                                                              | host descriptor builder accepts 255 parts and rejects 256 before execution        |
 | diagnostic-name bytes                   |   external | retained by the host manifest adapter, not by the compiler core                       | packaging diagnostic                                                             | exact `model.nu` and `main.nu` mapping                                            |
 | identifier bytes                        |        255 | source-backed name plus one-byte length                                               | lexical diagnostic                                                               | scanner wrap guard                                                                |
 | ordinary scalar symbols                 |         16 | six-byte source-backed entries                                                        | capacity diagnostic                                                              | duplicate, unknown, and seventeenth-name proof                                    |

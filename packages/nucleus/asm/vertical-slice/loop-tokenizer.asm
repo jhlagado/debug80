@@ -484,12 +484,10 @@ TokenizerAtEof:
             OR   A
             JR   NZ,TokenizerLexicalFailure
 .if AggregateCallSlices
-            LD   A,(SourcePartsRemaining)
-            BIT  7,A
+            LD   A,(SourcePartPendingNewline)
+            OR   A
             JR   NZ,TokenizerAdvancePart
-.if TargetStreamingOutput
-            AND  SourcePartsRemainingMask
-.endif
+            LD   A,(SourcePartsRemaining)
             OR   A
             JR   Z,TokenizerAtCompilationEof
             LD   A,(SourceLineHasToken)
@@ -497,22 +495,16 @@ TokenizerAtEof:
             JR   Z,TokenizerAdvancePart
             XOR  A
             LD   (SourceLineHasToken),A
-            LD   HL,SourcePartsRemaining
-            SET  7,(HL)
+            INC  A
+            LD   (SourcePartPendingNewline),A
             LD   A,TokenNewline
             OR   A
             RET
 TokenizerAdvancePart:
+            XOR  A
+            LD   (SourcePartPendingNewline),A
             LD   HL,SourcePartsRemaining
-.if TargetStreamingOutput
-            LD   A,(HL)
-            AND  $7F
-            ADD  A,SourcePartOrdinalStep-1
-            LD   (HL),A
-.else
-            RES  7,(HL)
             DEC  (HL)
-.endif
             LD   HL,(SourcePartDescriptorCursor)
             CALL SourceLoadPart
             JP   TokenizerNextLoop

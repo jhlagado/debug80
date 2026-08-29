@@ -5,7 +5,7 @@ Date: 2026-08-30
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `2d46ecaf`
+Current reusable-transform baseline HEAD: `4aaa0996`
 
 ## Purpose
 
@@ -25,11 +25,11 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 291 |
-| Source lines | 30,205 |
-| Defined assembler symbols detected | 4,158 |
-| Defined assembler symbols longer than eight characters | 3,910 |
+| Source lines | 30,192 |
+| Defined assembler symbols detected | 4,154 |
+| Defined assembler symbols longer than eight characters | 3,906 |
 | Long labels classed as dot-local candidates | 792 |
-| Long symbols still needing global treatment | 3,118 |
+| Long symbols still needing global treatment | 3,114 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 0 |

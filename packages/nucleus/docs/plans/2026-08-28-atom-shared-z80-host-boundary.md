@@ -37,9 +37,8 @@ Use these names consistently:
 - **Node host** means the desktop command-line and package layer that can use
   JSON, rich diagnostics, files, and generated artifacts.
 - **Resident tool** means the Z80 compiler or assembler image.
-- **Host service** means a function outside the resident tool that provides
-  source bytes, object output, console I/O, named binary inputs, runtime images,
-  or publication.
+- **Host service** names host-side code for source bytes, object output,
+  console I/O, named binary inputs, runtime images, or publication.
 
 Avoid using "native" for the Node/Debug80 path. Atom and Nucleus may run native
 Z80 code under Debug80, but the environment is still hosted and emulated.
@@ -179,8 +178,8 @@ interface PreparedSourcePart {
 }
 ```
 
-Nucleus should eventually consume this directly. `SourcePart` should remain only
-as a compatibility adapter while the compiler and proofs still expect
+Nucleus should eventually consume this directly. Keep `SourcePart` only as a
+compatibility adapter while existing compiler and proof code still require
 one-based ordinals and the old `stableIdentity` field.
 
 ### Source provider
@@ -660,9 +659,9 @@ vectors. Atom's Mac memory sink also passes those vectors through an adapter
 that translates its byte-status API into the shared conformance surface. The
 shared package also owns the one-byte status normalization and thrown-operation
 capture used by Atom's direct-host gateway and Debug80 service trampoline. The
-Atom direct-host gateway now passes shared one-byte gateway conformance vectors
-for source reads, output calls, malformed byte results, unavailable operations,
-and thrown host operations.
+shared one-byte gateway conformance vectors now cover Atom direct-host source
+reads, output calls, malformed byte results, unavailable operations, and thrown
+host operations.
 
 The source-byte boundary is now explicit in the shared package too.
 `MemorySourceByteProvider` stores explicit part ordinals and serves one byte at
@@ -808,11 +807,11 @@ and returns:
   installation; and
 - validation against the current resident multipart adapter limit.
 
-The current resident adapter still has `SourcePartCapacity = 8` and a packed
-`SourcePartsRemaining` byte whose low three bits count remaining parts. The
-host builder therefore defaults to eight parts and fails before execution if a
-larger prepared project is supplied. Raising that limit is a resident Z80
-change, not a host-only command-line change.
+The resident adapter now uses the same byte-domain part count as Atom and the
+shared source-preparation resolver. `SourcePartCapacity = 255`; the remaining
+part count and pending boundary-newline flag are separate workspace bytes; and
+target-source bank lookup uses the active descriptor's one-based
+`SourcePartId`. The host builder rejects the 256th part before execution.
 
 The proof harness can now install that host-prepared source image before
 entering the resident compiler. `runProofManifest` accepts a source override

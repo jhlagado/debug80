@@ -288,7 +288,36 @@ describe("Nucleus application boundary", () => {
     ).toThrow("source image base does not match compiler entry");
   });
 
-  it("rejects resident source descriptor layouts that the current Z80 adapter cannot address", () => {
+  it("accepts the resident adapter byte-domain source part count", () => {
+    const sourceParts = Array.from({ length: 255 }, (_, index) => ({
+      ordinal: index + 1,
+      stableIdentity: `${index + 1}:part${index + 1}.nu`,
+      diagnosticName: `part${index + 1}.nu`,
+      bytes: Uint8Array.of(10),
+    }));
+
+    const image = buildNucleusResidentSourceImage({
+      sourceBase: 0x5000,
+      sourceParts,
+    });
+
+    expect(image.descriptors).toHaveLength(255);
+    expect(image.descriptors[0]).toMatchObject({
+      ordinal: 1,
+      start: 0x5000,
+      end: 0x5001,
+    });
+    expect(image.descriptors[254]).toMatchObject({
+      ordinal: 255,
+      start: 0x50fe,
+      end: 0x50ff,
+    });
+    expect(image.descriptorBytes).toHaveLength(
+      255 * NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
+    );
+  });
+
+  it("rejects resident source descriptor layouts outside the byte-domain adapter contract", () => {
     const part = (ordinal: number) => ({
       ordinal,
       stableIdentity: `${ordinal}:part${ordinal}.nu`,
@@ -299,7 +328,7 @@ describe("Nucleus application boundary", () => {
     expect(() =>
       buildNucleusResidentSourceImage({
         sourceBase: 0x5000,
-        sourceParts: Array.from({ length: 9 }, (_, index) => part(index + 1)),
+        sourceParts: Array.from({ length: 256 }, (_, index) => part(index + 1)),
       }),
     ).toThrow("source part count exceeds resident capacity");
     expect(() =>

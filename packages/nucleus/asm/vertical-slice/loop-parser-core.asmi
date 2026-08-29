@@ -1082,6 +1082,7 @@ CompileSliceInitialize:
             PUSH AF
             XOR  A
             LD   (SourcePartsRemaining),A
+            LD   (SourcePartPendingNewline),A
             POP  AF
 .endif
             CALL SourceInitialize
