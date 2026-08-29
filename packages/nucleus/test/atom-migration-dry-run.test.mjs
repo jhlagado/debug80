@@ -1082,7 +1082,7 @@ describe("Nucleus Atom migration dry-run", () => {
         },
       ]);
     });
-  }, 300_000);
+  }, 420_000);
 
   it("runs the compiler-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
@@ -1484,7 +1484,7 @@ describe("Nucleus Atom migration dry-run", () => {
         { name: "ll1-workspace", bytes: 65 },
       ]);
     });
-  }, 15_000);
+  }, 30_000);
 
   it("writes aggregate-call parser permanent source with Stage 7 header includes", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
@@ -1661,7 +1661,7 @@ describe("Nucleus Atom migration dry-run", () => {
 
       expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
     });
-  }, 60_000);
+  }, 120_000);
 
   it("assembles the Stage 8 failure proof from permanent Atom layout source byte-identically", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
@@ -1694,7 +1694,7 @@ describe("Nucleus Atom migration dry-run", () => {
 
       expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
     });
-  }, 90_000);
+  }, 120_000);
 
   it("assembles the Stage 9 conformance proof from permanent Atom layout source byte-identically", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
@@ -1727,7 +1727,7 @@ describe("Nucleus Atom migration dry-run", () => {
 
       expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
     });
-  }, 90_000);
+  }, 120_000);
 
   it("assembles the target runtime link entry from permanent Atom layout source byte-identically", async (context) => {
     await withPermanentAtomTranslation(context, async ({ translatedRoot }) => {

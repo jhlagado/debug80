@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 89 |
-| Source lines | 29,687 |
+| Assembly files, `.asm` and `.asmi` | 91 |
+| Source lines | 29,695 |
 | Defined assembler symbols detected | 4,035 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 749 |
 | Long symbols still needing global treatment | 3,161 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 140 |
+| Include-after-header violations | 139 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 140 |
+| Current permanent-source blockers | 139 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 140 |
+| Permanent blocker: include after header | 139 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -115,6 +115,10 @@ the existing permanent Atom runtime transforms.
 The Stage 7 LL(1) parser coverage entry wrapper now carries its feature settings
 in a config header as well, leaving only emitted-content section includes in the
 remaining blocker set.
+The Stage 7 LL(1) parser now owns its generated-table boundary explicitly:
+`stage7-ll1-parser.asm` includes a core part, the generated grammar table, and a
+table-end marker from its header. That removes the parser module's own late
+include while keeping the existing core/table extent labels.
 
 It can also write the proof-manifest symbol join needed by the proof harness:
 

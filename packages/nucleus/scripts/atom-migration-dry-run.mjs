@@ -358,12 +358,7 @@ const permanentLayoutTransforms = new Map([
   })],
   ["vertical-slice/stage7-ll1-parser.asm", Object.freeze({
     description: "stage7 LL(1) parser generated-table tail layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/stage7-ll1-parser.asm",
-        code: "include-after-header",
-      }),
-    ]),
+    handledIssues: Object.freeze([]),
     rewrite: rewriteStage7Ll1ParserPermanentAtomSource,
   })],
   ["vertical-slice/proof-unsegmented-state.asmi", Object.freeze({
@@ -3645,21 +3640,7 @@ function rewriteArrayZ80SliceProofPermanentAtomSource(source, { relative, transl
   ].join("\n");
 }
 
-function rewriteStage7Ll1ParserPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const hybridLL1TablesEnd = atomSymbol(symbolMap, "HybridLL1TablesEnd");
-  const lines = source.split("\n");
-  const tableIncludeIndex = findPermanentIncludeLine(lines, "../../grammar/stage7-tables.asmi", "stage7-ll1-parser");
-  const tableEndIndex = findPermanentLabelLine(lines, hybridLL1TablesEnd, "stage7-ll1-parser");
-  if (!(tableIncludeIndex < tableEndIndex)) {
-    throw new Error("stage7-ll1-parser permanent Atom rewrite found an unexpected table section order");
-  }
-  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-parser-core.asmi", [
-    ...lines.slice(0, tableIncludeIndex),
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-parser-table-end.asmi", [
-    ...lines.slice(tableEndIndex),
-  ]);
+function rewriteStage7Ll1ParserPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the Stage 7 LL(1) parser.",
     "            %INCLUDE \"stage7-ll1-parser-core.asmi\"",
