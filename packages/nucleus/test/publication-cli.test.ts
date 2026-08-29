@@ -53,6 +53,21 @@ describe("Nucleus publication CLI contract", () => {
     ]);
   });
 
+  it("normalizes proof-image assembler aliases through the shared Z80 selector", () => {
+    expect(parseNucleusPublicationOptions(
+      ["--assembler", "ATOM-Z80", "src/main.nu"],
+      { positionalName: "entry source" },
+    ).assembler).toBe("atom");
+    expect(parseNucleusPublicationOptions(
+      ["--assembler", "ASM80", "src/main.nu"],
+      { positionalName: "entry source" },
+    ).assembler).toBe("azm");
+    expect(() => parseNucleusPublicationOptions(
+      ["--assembler", "auto", "src/main.nu"],
+      { positionalName: "entry source" },
+    )).toThrow("--assembler must select Atom or AZM");
+  });
+
   it("selects output formats by suffix and rejects duplicate formats", () => {
     expect(validateNucleusPublicationOutputs([
       "build/program.nobj",

@@ -16,7 +16,7 @@ import {
 const usage = `Usage: nucleus publish [options] <entry.nu> [output...]
 
 Options:
-  --assembler azm|atom   Assembler for the resident compiler proof image; default azm.
+  --assembler atom|azm   Assembler for the resident compiler proof image; default azm. Shared aliases are accepted.
   --root DIR              Project root; default current directory.
   --target FILE           Target publication descriptor.
   --compiler-proof FILE   Resident compiler proof image for this bridge.

@@ -1260,7 +1260,7 @@ describe("Nucleus application boundary", () => {
         ).catch((error: unknown) => error);
         expect(invalidAssembler).toMatchObject({
           code: 1,
-          stderr: expect.stringContaining("--assembler must be azm or atom"),
+          stderr: expect.stringContaining("--assembler must select Atom or AZM"),
         });
       },
     );

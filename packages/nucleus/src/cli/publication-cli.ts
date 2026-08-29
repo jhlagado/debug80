@@ -3,6 +3,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import {
+  selectConcreteZ80AssemblerFlavour,
+} from "@jhlagado/z80-tool-services";
+
 import { materializeNobj } from "../nobj.js";
 import {
   publishNucleusPreparedSourceTarget,
@@ -93,9 +97,14 @@ const parseNumber = (value: string, name: string): number => {
 };
 
 const parseAssembler = (value: string): "azm" | "atom" => {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "azm" || normalized === "atom") return normalized;
-  throw new Error("--assembler must be azm or atom");
+  try {
+    return selectConcreteZ80AssemblerFlavour({
+      requested: value,
+      sourcePath: "Nucleus compiler proof image",
+    });
+  } catch {
+    throw new Error("--assembler must select Atom or AZM");
+  }
 };
 
 export function parseNucleusPublicationOptions(

@@ -19,7 +19,7 @@ import {
 const usage = `Usage: nucleus proof:publish [options] <proof.json | entry.nu> [output...]
 
 Options:
-  --assembler azm|atom   Assembler for proof images; default azm.
+  --assembler atom|azm   Assembler for proof images; default azm. Shared aliases are accepted.
   --root DIR              Project root for entry.nu publication.
   --target FILE           Target publication descriptor for entry.nu publication.
   --compiler-proof FILE   Resident compiler proof image for entry.nu publication.
