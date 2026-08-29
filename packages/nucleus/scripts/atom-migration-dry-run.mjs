@@ -307,6 +307,23 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteExpressionZ80SliceProofPermanentAtomSource,
   })],
+  ["vertical-slice/structured-control-z80-slice-proof.asm", Object.freeze({
+    description: "structured-control z80 proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/structured-control-z80-slice-proof.asm",
+        code: "include-after-header",
+      }),
+      ..."StructuredAcceptedRecursiveCall-StructuredAcceptedSource|StructuredRangeCounter-StructuredRangeSource|StructuredActiveCounterName-StructuredActiveCounterSource|StructuredExitOutsidePoint-StructuredExitOutsideSource|StructuredZeroStepPoint-StructuredZeroStepSource|StructuredStrayElsePoint-StructuredStrayElseSource|StructuredStrayElseIfPoint-StructuredStrayElseIfSource|StructuredSecondForwardPoint-StructuredSecondForwardSource|StructuredProgramForwardPoint-StructuredProgramForwardSource|StructuredLocalForwardPoint-StructuredLocalForwardSource|StructuredMainForwardPoint-StructuredMainForwardSource|StructuredParameterForwardPoint-StructuredParameterForwardSource|StructuredProgramMainPoint-StructuredProgramMainSource|StructuredLocalMainPoint-StructuredLocalMainSource|StructuredParameterMainPoint-StructuredParameterMainSource|StructuredLabelCapacityPoint-StructuredLabelCapacitySource"
+        .split("|")
+        .map((messageIncludes) => Object.freeze({
+          file: "asm/vertical-slice/structured-control-z80-slice-proof.asm",
+          code: "atom-symbol-expression",
+          messageIncludes,
+        })),
+    ]),
+    rewrite: rewriteStructuredControlZ80SliceProofPermanentAtomSource,
+  })],
   ["vertical-slice/array-z80-slice-proof.asm", Object.freeze({
     description: "array z80 proof sectioned header-include layout",
     handledIssues: Object.freeze([
@@ -3021,6 +3038,149 @@ function rewriteExpressionZ80SliceProofPermanentAtomSource(source, { relative, t
     "            %INCLUDE \"proof-z80-runtime.asm\"",
     "            %INCLUDE \"expression-z80-slice-runtime-after.asmi\"",
     "            %INCLUDE \"expression-z80-slice-proof-body.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteStructuredControlZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const spareBase = atomSymbol(symbolMap, "SpareBase");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const proofBase = atomSymbol(symbolMap, "ProofBase");
+  const aliases = [
+    ["SCAREC", ["StructuredAcceptedRecursiveCall", "-", "StructuredAcceptedSource"]],
+    ["SCRGCOF", ["StructuredRangeCounter", "-", "StructuredRangeSource"]],
+    ["SCACTOF", ["StructuredActiveCounterName", "-", "StructuredActiveCounterSource"]],
+    ["SCEXTOT", ["StructuredExitOutsidePoint", "-", "StructuredExitOutsideSource"]],
+    ["SCZEROF", ["StructuredZeroStepPoint", "-", "StructuredZeroStepSource"]],
+    ["SCSTELF", ["StructuredStrayElsePoint", "-", "StructuredStrayElseSource"]],
+    ["SCSTEIF", ["StructuredStrayElseIfPoint", "-", "StructuredStrayElseIfSource"]],
+    ["SCSECOF", ["StructuredSecondForwardPoint", "-", "StructuredSecondForwardSource"]],
+    ["SCPRFOF", ["StructuredProgramForwardPoint", "-", "StructuredProgramForwardSource"]],
+    ["SCLOFOF", ["StructuredLocalForwardPoint", "-", "StructuredLocalForwardSource"]],
+    ["SCMAFOF", ["StructuredMainForwardPoint", "-", "StructuredMainForwardSource"]],
+    ["SCPAFOF", ["StructuredParameterForwardPoint", "-", "StructuredParameterForwardSource"]],
+    ["SCPRMOF", ["StructuredProgramMainPoint", "-", "StructuredProgramMainSource"]],
+    ["SCLOMOF", ["StructuredLocalMainPoint", "-", "StructuredLocalMainSource"]],
+    ["SCPAMOF", ["StructuredParameterMainPoint", "-", "StructuredParameterMainSource"]],
+    ["SCLBCOF", ["StructuredLabelCapacityPoint", "-", "StructuredLabelCapacitySource"]],
+  ];
+
+  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "structured-control-z80-slice-proof");
+  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "structured-control-z80-slice-proof");
+  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "structured-control-z80-slice-proof");
+  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "structured-control-z80-slice-proof");
+  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "structured-control-z80-slice-proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "structured-control-z80-slice-proof");
+  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "structured-control-z80-slice-proof");
+  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "structured-control-z80-slice-proof");
+  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "structured-control-z80-slice-proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "structured-control-z80-slice-proof");
+  const spareOrgIndex = findPermanentOrgLine(lines, spareBase, "structured-control-z80-slice-proof");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "structured-control-z80-slice-proof");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "structured-control-z80-slice-proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "structured-control-z80-slice-proof");
+
+  const orderedIndexes = [
+    compilerOrgIndex,
+    sourceAdapterIncludeIndex,
+    tokenizerIncludeIndex,
+    semanticSinkIncludeIndex,
+    symbolsIncludeIndex,
+    parserIncludeIndex,
+    loopSinkIncludeIndex,
+    typedSinkIncludeIndex,
+    keywordsIncludeIndex,
+    sourceOrgIndex,
+    spareOrgIndex,
+    runtimeOrgIndex,
+    runtimeIncludeIndex,
+    proofOrgIndex,
+  ];
+  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
+    throw new Error("structured-control-z80-slice proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const writeSlice = (includeName, start, end) => {
+    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
+      ...lines.slice(start, end).filter((line) =>
+        !/^\s*%DEFINE\s+(LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
+      "",
+    ]);
+  };
+  writeSlice("structured-control-z80-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
+  writeSlice("structured-control-z80-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
+  writeSlice("structured-control-z80-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
+  writeSlice("structured-control-z80-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
+  writeSlice("structured-control-z80-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
+  writeSlice("structured-control-z80-slice-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
+  writeSlice("structured-control-z80-slice-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
+  writeSlice("structured-control-z80-slice-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, keywordsIncludeIndex);
+  writeSlice("structured-control-z80-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
+  writeSlice("structured-control-z80-slice-source.asmi", sourceOrgIndex, spareOrgIndex);
+  writeSlice("structured-control-z80-slice-spare.asmi", spareOrgIndex, runtimeOrgIndex);
+  writeSlice("structured-control-z80-slice-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
+  writeSlice("structured-control-z80-slice-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
+  writeGeneratedPermanentPart(translatedRoot, relative, "structured-control-z80-slice-proof-body.asmi", [
+    lines[proofOrgIndex],
+    "SCAREC EQU $2A0",
+    "SCRGCOF EQU $56",
+    "SCACTOF EQU $57",
+    "SCEXTOT EQU $29",
+    "SCZEROF EQU $54",
+    "SCSTELF EQU $11",
+    "SCSTEIF EQU $11",
+    "SCSECOF EQU $31",
+    "SCPRFOF EQU $20",
+    "SCLOFOF EQU $3D",
+    "SCMAFOF EQU $0C",
+    "SCPAFOF EQU $11",
+    "SCPRMOF EQU $04",
+    "SCLOMOF EQU $19",
+    "SCPAMOF EQU $11",
+    "SCLBCOF EQU $141",
+    "",
+    ...lines.slice(proofOrgIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the structured-control z80 proof.",
+    "            %DEFINE SegmentedOutput 0",
+    "            %DEFINE TargetStreamingOutput 0",
+    "            %DEFINE LegacyCompilerSlices 1",
+    "            %DEFINE AggregateCallSlices 0",
+    "            %DEFINE LegacyEncoders 0",
+    "            %DEFINE HybridLL1Full 0",
+    "            %DEFINE RuntimeProofServices 1",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"proof-unsegmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"loop-z80-state.asmi\"",
+    "            %INCLUDE \"structured-control-z80-slice-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"structured-control-z80-slice-after-source-adapter.asmi\"",
+    "            %INCLUDE \"loop-tokenizer.asm\"",
+    "            %INCLUDE \"structured-control-z80-slice-after-tokenizer.asmi\"",
+    "            %INCLUDE \"loop-semantic-sink.asm\"",
+    "            %INCLUDE \"structured-control-z80-slice-after-semantic-sink.asmi\"",
+    "            %INCLUDE \"loop-symbols.asm\"",
+    "            %INCLUDE \"structured-control-z80-slice-after-symbols.asmi\"",
+    "            %INCLUDE \"loop-parser.asm\"",
+    "            %INCLUDE \"structured-control-z80-slice-after-parser.asmi\"",
+    "            %INCLUDE \"loop-z80-sink.asm\"",
+    "            %INCLUDE \"structured-control-z80-slice-after-loop-z80-sink.asmi\"",
+    "            %INCLUDE \"typed-expression-z80.asm\"",
+    "            %INCLUDE \"structured-control-z80-slice-after-typed-expression-z80.asmi\"",
+    "            %INCLUDE \"loop-keywords.asmi\"",
+    "            %INCLUDE \"structured-control-z80-slice-after-keywords.asmi\"",
+    "            %INCLUDE \"structured-control-z80-slice-source.asmi\"",
+    "            %INCLUDE \"structured-control-z80-slice-runtime-begin.asmi\"",
+    "            %INCLUDE \"proof-z80-runtime.asm\"",
+    "            %INCLUDE \"structured-control-z80-slice-runtime-after.asmi\"",
+    "            %INCLUDE \"structured-control-z80-slice-proof-body.asmi\"",
+    "            %INCLUDE \"structured-control-z80-slice-spare.asmi\"",
     "",
   ].join("\n");
 }

@@ -848,6 +848,7 @@ describe("Nucleus Atom migration dry-run", () => {
         "source-provenance-proof.json",
         "stage7-ll1-engine-proof.json",
         "stage7-ll1-parser-coverage-proof.json",
+        "structured-control-z80-slice-proof.json",
         "typed-expression-z80-slice-proof.json",
         "z80-slice-proof.json",
       ]);
@@ -884,6 +885,7 @@ describe("Nucleus Atom migration dry-run", () => {
         "source-provenance-proof.json",
         "stage7-ll1-engine-proof.json",
         "stage7-ll1-parser-coverage-proof.json",
+        "structured-control-z80-slice-proof.json",
         "typed-expression-z80-slice-proof.json",
         "z80-slice-proof.json",
       ]);
