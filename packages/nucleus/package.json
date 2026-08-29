@@ -46,7 +46,8 @@
     "atom:migration:materialize:check": "node scripts/atom-migration-materialize.mjs --check",
     "atom:migration:proof-compare": "node scripts/atom-migration-proof-compare.mjs --report-only",
     "atom:migration:proof-run": "npm run build --silent && node scripts/atom-migration-proof-run.mjs",
-    "atom:migration:proof-run:permanent-ready": "npm run atom:migration:proof-run -- --mode permanent-ready"
+    "atom:migration:proof-run:permanent-ready": "npm run atom:migration:proof-run -- --mode permanent-ready",
+    "atom:migration:proof:permanent-gate": "npm run atom:migration:materialize:check && npm run atom:migration:proof-run:permanent-ready -- --json"
   },
   "dependencies": {
     "@jhlagado/azm": "^0.3.8",

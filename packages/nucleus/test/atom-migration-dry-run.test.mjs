@@ -163,6 +163,11 @@ describe("Nucleus Atom migration dry-run", () => {
       includeAfterHeader: 0,
       compatibilityLoweringRequired: 0,
     });
+    expect(report.measured.proofMatrix).toEqual({
+      "atom-permanent-ready": 26,
+      "measurement-artifact": 3,
+    });
+    expect(report.proofMatrix.filter(({ status }) => status !== "atom-permanent-ready" && status !== "measurement-artifact")).toEqual([]);
     expect(report.measured.issues).not.toHaveProperty("atom-symbol-expression");
     expect(report.measured.issues).not.toHaveProperty("preprocessor-definition-after-header");
     expect(report.issues).toEqual([]);
@@ -1666,8 +1671,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(translatedRoot, "vertical-slice", "flat-target-z80-slice-proof-body.asmi"),
         "utf8",
       );
-      expect(proofBody).toContain("FTADIMG EQU $98CB");
-      expect(proofBody).toContain("FTMPAGG EQU $9928");
+      expect(proofBody).toContain("FTADIMG EQU $990F");
+      expect(proofBody).toContain("FTMPAGG EQU $996C");
       expect(proofBody).toContain("FTIXBKC EQU");
       expect(proofBody).not.toContain("AdapterCapturedBegin+TargetDescriptorImageBase");
       expect(proofBody).not.toContain("IX+TargetDescriptorBankCount");
