@@ -16,6 +16,7 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDirectory, "..");
 const defaultAsmRoot = path.join(packageRoot, "asm");
 const defaultProofRoot = path.join(packageRoot, "proofs");
+const defaultPermanentRoot = path.join(packageRoot, "atom-asm");
 const defaultBudgetFile = path.join(defaultProofRoot, "atom-migration-preview-budgets.json");
 const defaultMaxInstructions = 200_000_000;
 const defaultMaxCycles = 2_000_000_000;
@@ -30,6 +31,8 @@ function parseArgs(argv) {
     maxCycles: defaultMaxCycles,
     budgetFile: defaultBudgetFile,
     mode: "preview",
+    permanentRoot: defaultPermanentRoot,
+    regeneratePermanentRoot: false,
     json: false,
     reportOnly: false,
     out: undefined,
@@ -70,6 +73,10 @@ function parseArgs(argv) {
       if (!["preview", "permanent-ready"].includes(options.mode)) {
         throw new Error("--mode must be preview or permanent-ready");
       }
+    } else if (arg === "--permanent-root") {
+      options.permanentRoot = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--regenerate-permanent-root") {
+      options.regeneratePermanentRoot = true;
     } else if (arg === "--out") {
       options.out = path.resolve(argv[++index] ?? "");
     } else if (arg === "--json") {
@@ -104,6 +111,11 @@ Options:
                        when present.
   --no-budget-file     Ignore the default per-manifest budget file.
   --mode MODE          preview or permanent-ready. Defaults to preview.
+  --permanent-root DIR Source-controlled Atom tree for permanent-ready mode.
+                       Defaults to packages/nucleus/atom-asm.
+  --regenerate-permanent-root
+                       Generate permanent Atom source in a temporary directory
+                       instead of reading --permanent-root.
   --out FILE           Write the JSON execution report.
   --json               Print the JSON execution report.
   --report-only        Exit 0 even when proof execution fails.
@@ -301,12 +313,15 @@ async function main() {
     proofRoot: options.proofRoot,
   });
   const proofMatrix = proofMatrixByManifest(migrationReport);
-  const permanentRoot = options.mode === "permanent-ready"
+  const generatedPermanentRoot = options.mode === "permanent-ready" && options.regeneratePermanentRoot
     ? mkdtempSync(path.join(os.tmpdir(), "nucleus-atom-permanent-run-"))
     : undefined;
-  if (permanentRoot !== undefined) {
-    writeTranslatedTree(migrationReport, permanentRoot, { symbols: "permanent" });
+  if (generatedPermanentRoot !== undefined) {
+    writeTranslatedTree(migrationReport, generatedPermanentRoot, { symbols: "permanent" });
   }
+  const permanentRoot = options.mode === "permanent-ready"
+    ? generatedPermanentRoot ?? options.permanentRoot
+    : undefined;
   const budgets = readBudgetFile(options.budgetFile);
   const proofs = selectedProofs(
     proofManifests(options.proofRoot),
@@ -347,8 +362,8 @@ async function main() {
       }
     }
   } finally {
-    if (permanentRoot !== undefined) {
-      rmSync(permanentRoot, { recursive: true, force: true });
+    if (generatedPermanentRoot !== undefined) {
+      rmSync(generatedPermanentRoot, { recursive: true, force: true });
     }
   }
   const execution = Object.freeze({
@@ -359,6 +374,8 @@ async function main() {
     asmRoot: options.asmRoot,
     proofRoot: options.proofRoot,
     maxPartBytes: options.maxPartBytes,
+    permanentRoot,
+    regeneratePermanentRoot: options.regeneratePermanentRoot,
     maxInstructions: options.maxInstructions,
     maxCycles: options.maxCycles,
     budgetFile: options.budgetFile,

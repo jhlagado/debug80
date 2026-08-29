@@ -102,3 +102,7 @@ translation under `atom-asm/`. The matching check command compares that tree
 with a fresh temporary translation and fails on drift. The AZM source in `asm/`
 remains the fallback path until the compiler and proof runner explicitly switch
 their default assembler.
+
+`npm run atom:migration:proof-run:permanent-ready -w nucleus` reads the
+checked-in `atom-asm/` tree by default. Pass `--regenerate-permanent-root` only
+when testing the generator itself rather than the source-controlled Atom tree.
