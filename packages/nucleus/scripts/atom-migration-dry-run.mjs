@@ -127,6 +127,26 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteCallZ80SliceProofPermanentAtomSource,
   })],
+  ["vertical-slice/stage7-ll1-parser-coverage-proof.asm", Object.freeze({
+    description: "stage7 parser coverage proof entry wrapper",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-parser-coverage-proof.asm",
+        code: "include-after-header",
+      }),
+    ]),
+    rewrite: rewriteStage7Ll1ParserCoverageProofPermanentAtomSource,
+  })],
+  ["vertical-slice/stage7-parser-coverage-proof.asmi", Object.freeze({
+    description: "stage7 parser coverage proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-parser-coverage-proof.asmi",
+        code: "include-after-header",
+      }),
+    ]),
+    rewrite: rewriteStage7ParserCoverageProofPermanentAtomSource,
+  })],
   ["vertical-slice/typed-expression-z80-slice-proof.asm", Object.freeze({
     description: "typed-expression z80 proof sectioned header-include layout",
     handledIssues: Object.freeze([
@@ -191,6 +211,11 @@ const permanentLayoutTransforms = new Map([
     description: "entry-owned unsegmented proof state feature flag",
     handledIssues: Object.freeze([]),
     rewrite: rewriteProofUnsegmentedStatePermanentAtomSource,
+  })],
+  ["vertical-slice/proof-segmented-state.asmi", Object.freeze({
+    description: "entry-owned segmented proof state feature flag",
+    handledIssues: Object.freeze([]),
+    rewrite: rewriteProofSegmentedStatePermanentAtomSource,
   })],
   ["vertical-slice/stage7-ll1-engine-proof.asm", Object.freeze({
     description: "stage7 LL(1) engine proof sectioned header-include layout",
@@ -304,6 +329,22 @@ const permanentLayoutTransforms = new Map([
       }),
     ]),
     rewrite: rewriteAggregateCallZ80PermanentAtomSource,
+  })],
+  ["vertical-slice/aggregate-z80.asm", Object.freeze({
+    description: "aggregate z80 sink constant-expression aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-z80.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SymbolAggregateFlag+SymbolClassMask",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-z80.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SymbolAggregateFlag+SymbolClassConstant",
+      }),
+    ]),
+    rewrite: rewriteAggregateZ80PermanentAtomSource,
   })],
   ["vertical-slice/loop-z80-sink.asm", Object.freeze({
     description: "loop z80 sink target-state and segment aliases",
@@ -2303,6 +2344,123 @@ function rewriteCallZ80SliceProofPermanentAtomSource(source, { relative, transla
   ].join("\n");
 }
 
+function rewriteStage7Ll1ParserCoverageProofPermanentAtomSource() {
+  return [
+    "; Permanent Atom layout for the Stage 7 LL(1) parser coverage proof.",
+    "            %DEFINE Stage7LL1 1",
+    "            %DEFINE SegmentedOutput 1",
+    "            %DEFINE TargetStreamingOutput 0",
+    "            %DEFINE LegacyCompilerSlices 0",
+    "            %DEFINE AggregateCallSlices 1",
+    "            %DEFINE LegacyEncoders 0",
+    "            %DEFINE HybridLL1Full 1",
+    "            %DEFINE RuntimeProofServices 1",
+    "            %INCLUDE \"stage7-parser-coverage-proof.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteStage7ParserCoverageProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const proofBase = atomSymbol(symbolMap, "ProofBase");
+
+  const lines = source.split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage7-parser-coverage-proof");
+  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "stage7-parser-coverage-proof");
+  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "stage7-parser-coverage-proof");
+  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "stage7-parser-coverage-proof");
+  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "stage7-parser-coverage-proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "stage7-parser-coverage-proof");
+  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "stage7-parser-coverage-proof");
+  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "stage7-parser-coverage-proof");
+  const aggregateSinkIncludeIndex = findPermanentIncludeLine(lines, "aggregate-z80.asm", "stage7-parser-coverage-proof");
+  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "stage7-parser-coverage-proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "stage7-parser-coverage-proof");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "stage7-parser-coverage-proof");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "stage7-parser-coverage-proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "stage7-parser-coverage-proof");
+
+  const orderedIndexes = [
+    compilerOrgIndex,
+    sourceAdapterIncludeIndex,
+    tokenizerIncludeIndex,
+    semanticSinkIncludeIndex,
+    symbolsIncludeIndex,
+    parserIncludeIndex,
+    loopSinkIncludeIndex,
+    typedSinkIncludeIndex,
+    aggregateSinkIncludeIndex,
+    keywordsIncludeIndex,
+    sourceOrgIndex,
+    runtimeOrgIndex,
+    runtimeIncludeIndex,
+    proofOrgIndex,
+  ];
+  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
+    throw new Error("stage7 parser coverage proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const writeSlice = (includeName, start, end) => {
+    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
+      ...lines.slice(start, end).filter((line) =>
+        !/^\s*%DEFINE\s+(LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
+      "",
+    ]);
+  };
+  writeSlice("stage7-parser-coverage-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, aggregateSinkIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-aggregate-z80.asmi", aggregateSinkIncludeIndex + 1, keywordsIncludeIndex);
+  writeSlice("stage7-parser-coverage-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
+  writeSlice("stage7-parser-coverage-source.asmi", sourceOrgIndex, runtimeOrgIndex);
+  writeSlice("stage7-parser-coverage-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
+  writeSlice("stage7-parser-coverage-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
+  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-parser-coverage-proof-body.asmi", [
+    ...lines.slice(proofOrgIndex),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the Stage 7 parser coverage proof body.",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"proof-segmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"aggregate-call-state.asmi\"",
+    "            %INCLUDE \"loop-z80-state.asmi\"",
+    "            %INCLUDE \"stage7-parser-coverage-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-source-adapter.asmi\"",
+    "            %INCLUDE \"loop-tokenizer.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-tokenizer.asmi\"",
+    "            %INCLUDE \"loop-semantic-sink.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-semantic-sink.asmi\"",
+    "            %INCLUDE \"loop-symbols.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-symbols.asmi\"",
+    "            %INCLUDE \"loop-parser.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-parser.asmi\"",
+    "            %INCLUDE \"loop-z80-sink.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-loop-z80-sink.asmi\"",
+    "            %INCLUDE \"typed-expression-z80.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-typed-expression-z80.asmi\"",
+    "            %INCLUDE \"aggregate-z80.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-aggregate-z80.asmi\"",
+    "            %INCLUDE \"loop-keywords.asmi\"",
+    "            %INCLUDE \"stage7-parser-coverage-after-keywords.asmi\"",
+    "            %INCLUDE \"stage7-parser-coverage-source.asmi\"",
+    "            %INCLUDE \"stage7-parser-coverage-runtime-begin.asmi\"",
+    "            %INCLUDE \"proof-z80-runtime.asm\"",
+    "            %INCLUDE \"stage7-parser-coverage-runtime-after.asmi\"",
+    "            %INCLUDE \"stage7-parser-coverage-proof-body.asmi\"",
+    "",
+  ].join("\n");
+}
+
 function rewriteTypedExpressionZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
   const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
   const sourceBase = atomSymbol(symbolMap, "SourceBase");
@@ -2560,6 +2718,15 @@ function rewriteProofUnsegmentedStatePermanentAtomSource(source) {
     .join("\n");
 }
 
+function rewriteProofSegmentedStatePermanentAtomSource(source) {
+  return source
+    .split("\n")
+    .map((line) => /^(\s*)%DEFINE\s+SegmentedOutput\b/i.test(line)
+      ? "; SegmentedOutput is defined by each permanent Atom proof entry."
+      : line)
+    .join("\n");
+}
+
 function rewriteStage7Ll1EngineProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
   const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
   const sourceBase = atomSymbol(symbolMap, "SourceBase");
@@ -2631,17 +2798,32 @@ function replaceAtomExpressionAliases(source, symbolMap, aliases) {
 }
 
 function rewriteAggregateCallParserPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const aliases = [
-    ["ACPTDBC", ["IX", "+", "TargetDescriptorBankCount"]],
-    ["ACPTDEB", ["IX", "+", "TargetDescriptorEntryBank"]],
-    ["ACPTDP1", ["IX", "+", "TargetDescriptorPartBanksPointer", "+1"]],
-    ["ACPTDPP", ["IX", "+", "TargetDescriptorPartBanksPointer"]],
-    ["ACPRLEN", ["TargetBankRoLengthLimit", "-", "TargetBankRoLengthBase"]],
-    ["ACPWSZ", ["Stage7CompilerWorkspaceEnd", "-", "Stage7StateBase"]],
-    ["ACPSAPR", ["SymbolAggregateFlag", "+", "SymbolClassParameter"]],
-    ["ACPSCU8", ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
+  const descriptorAliases = [
+    ["ACPTDBC", ["11"], ["IX", "+", "TargetDescriptorBankCount"]],
+    ["ACPTDEB", ["12"], ["IX", "+", "TargetDescriptorEntryBank"]],
+    ["ACPTDP1", ["14"], ["IX", "+", "TargetDescriptorPartBanksPointer", "+1"]],
+    ["ACPTDPP", ["13"], ["IX", "+", "TargetDescriptorPartBanksPointer"]],
   ];
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const aliases = [
+    ["ACPRLEN", ["8"], ["TargetBankRoLengthLimit", "-", "TargetBankRoLengthBase"]],
+    ["ACPWSZ", ["157"], ["Stage7CompilerWorkspaceEnd", "-", "Stage7StateBase"]],
+    ["ACPSAPR", ["$8C"], ["SymbolAggregateFlag", "+", "SymbolClassParameter"]],
+    ["ACPSCU8", ["$81"], ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
+  ];
+  let rewritten = source;
+  for (const [alias, , expression] of aliases) {
+    rewritten = rewritten.replaceAll(
+      expression.map((name) => atomSymbol(symbolMap, name)).join(""),
+      alias,
+    );
+  }
+  for (const [alias, , expression] of descriptorAliases) {
+    rewritten = rewritten.replaceAll(
+      expression.map((name) => atomSymbol(symbolMap, name)).join(""),
+      `IX+${alias}`,
+    );
+  }
+  const lines = rewritten.split("\n");
   const parserIncludeIndex = findPermanentIncludeLine(lines, "stage7-ll1-parser.asm", "aggregate-call-parser");
   const actionsIncludeIndex = findPermanentIncludeLine(lines, "stage7-ll1-actions.asm", "aggregate-call-parser");
   const ifIndex = lines
@@ -2656,7 +2838,8 @@ function rewriteAggregateCallParserPermanentAtomSource(source, { relative, trans
     throw new Error("aggregate-call-parser permanent Atom rewrite found an unexpected Stage7 include section");
   }
   writeGeneratedPermanentPart(translatedRoot, relative, "aggregate-call-parser-core.asmi", [
-    ...atomExpressionAliasLines(symbolMap, aliases),
+    ...atomExpressionAliasLines(symbolMap, descriptorAliases.map(([alias, expression]) => [alias, expression])),
+    ...atomExpressionAliasLines(symbolMap, aliases.map(([alias, expression]) => [alias, expression])),
     "",
     ...lines.slice(0, ifIndex),
     ...lines.slice(endifIndex + 1),
@@ -2702,6 +2885,36 @@ function rewriteAggregateCallZ80PermanentAtomSource(source, { symbolMap }) {
   const aliases = [
     ["ACZTOFF", ["TrapOffset", "-", "StateBase"]],
   ];
+  const aliasesMovedToTypedTail = [
+    "Stage7IndexToA",
+    "Stage7LoadIndirect8Bytes",
+    "Stage7CopyPrepare",
+    "Stage7DecSP2",
+    "Stage7LoadIXL",
+    "Stage7LoadIXH",
+    "Stage7StoreIXL",
+    "Stage7StoreIXH",
+    "Stage7PopIndexBase",
+    "Stage8PopErrorBytes",
+    "Stage8ErrorCarrierBytes",
+  ].map((name) => atomSymbol(symbolMap, name));
+  const rewritten = replaceAtomExpressionAliases(source, symbolMap, aliases)
+    .split("\n")
+    .filter((line) => !aliasesMovedToTypedTail.some((label) =>
+      new RegExp(`^\\s*${escapeRegExp(label)}\\s+EQU\\b`, "i").test(line)))
+    .join("\n");
+  return [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    rewritten,
+  ].join("\n");
+}
+
+function rewriteAggregateZ80PermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["AGZCLMS", ["SymbolAggregateFlag", "+", "SymbolClassMask"]],
+    ["AGZCNS2", ["SymbolAggregateFlag", "+", "SymbolClassConstant"]],
+  ];
   return [
     ...atomExpressionAliasLines(symbolMap, aliases),
     "",
@@ -2716,10 +2929,12 @@ function rewriteLoopZ80SinkPermanentAtomSource(source, { symbolMap }) {
     ["LZSREB", ["SegmentRoDataEntry", "+", "SegmentEntryBase"]],
     ["LZSDEL", ["SegmentDataEntry", "+", "SegmentEntryLimit"]],
     ["LZSBEB", ["SegmentBssEntry", "+", "SegmentEntryBase"]],
-    ["LZIXB1", ["IX", "+", "SegmentEntryBase", "+1"]],
-    ["LZIXL1", ["IX", "+", "SegmentEntryLimit", "+1"]],
-    ["LZIXEB", ["IX", "+", "SegmentEntryBase"]],
-    ["LZIXEL", ["IX", "+", "SegmentEntryLimit"]],
+  ];
+  const segmentedIndexAliases = [
+    ["LZIXB1", ["1"], ["IX", "+", "SegmentEntryBase", "+1"]],
+    ["LZIXL1", ["3"], ["IX", "+", "SegmentEntryLimit", "+1"]],
+    ["LZIXEB", ["0"], ["IX", "+", "SegmentEntryBase"]],
+    ["LZIXEL", ["2"], ["IX", "+", "SegmentEntryLimit"]],
   ];
   const targetStateAliases = [
     ["LZTNUM", ["TrapNumber", "-", "StateBase"]],
@@ -2729,11 +2944,19 @@ function rewriteLoopZ80SinkPermanentAtomSource(source, { symbolMap }) {
     ["LZTERR", ["TrapError", "-", "StateBase"]],
   ];
   const aliases = [...segmentedAliases, ...targetStateAliases];
+  let rewritten = replaceAtomExpressionAliases(source, symbolMap, aliases);
+  for (const [alias, , expression] of segmentedIndexAliases) {
+    rewritten = rewritten.replaceAll(
+      expression.map((name) => atomSymbol(symbolMap, name)).join(""),
+      `IX+${alias}`,
+    );
+  }
   return [
     "%IF AggregateCallSlices",
     "%IF TargetStreamingOutput",
     "%ELSE",
     ...atomExpressionAliasLines(symbolMap, segmentedAliases),
+    ...atomExpressionAliasLines(symbolMap, segmentedIndexAliases.map(([alias, expression]) => [alias, expression])),
     "%ENDIF",
     "%ENDIF",
     "",
@@ -2741,7 +2964,7 @@ function rewriteLoopZ80SinkPermanentAtomSource(source, { symbolMap }) {
     ...atomExpressionAliasLines(symbolMap, targetStateAliases),
     "%ENDIF",
     "",
-    replaceAtomExpressionAliases(source, symbolMap, aliases),
+    rewritten,
   ].join("\n");
 }
 
@@ -2853,15 +3076,79 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
   const typedBeginAndBytes = atomSymbol(symbolMap, "TypedBeginAndBytes");
   const typedBeginAndLowTest = "TYPDBG1";
   const typedBeginPattern = new RegExp(`^(${escapeRegExp(typedBeginAndBytes)}:\\s*)DB\\s+\\$E1,\\$7D,`, "i");
+  const segmentedCopyBytes = atomSymbol(symbolMap, "SegmentedCopyBytes");
+  const stage7Ldir = atomSymbol(symbolMap, "Stage7LDIR");
+  const stage7LoadIndirect8Prefix = atomSymbol(symbolMap, "Stage7LoadIndirect8Prefix");
+  const stage7LoadIndirect8Bytes = atomSymbol(symbolMap, "Stage7LoadIndirect8Bytes");
+  const typedAtoHl = atomSymbol(symbolMap, "TypedAtoHL");
+  const stage8ErrorCarrierBytes = atomSymbol(symbolMap, "Stage8ErrorCarrierBytes");
+  const typedLoadSpPrefix = atomSymbol(symbolMap, "TypedLoadSPPrefix");
+  const stage7IndexToA = atomSymbol(symbolMap, "Stage7IndexToA");
+  const typedParameter16Bytes = atomSymbol(symbolMap, "TypedParameter16Bytes");
+  const stage7DecSp2 = atomSymbol(symbolMap, "Stage7DecSP2");
+  const stage7StoreIxl = atomSymbol(symbolMap, "Stage7StoreIXL");
+  const stage7StoreIxh = atomSymbol(symbolMap, "Stage7StoreIXH");
+  const typedLoadLocalLow = atomSymbol(symbolMap, "TypedLoadLocalLow");
+  const stage7LoadIxl = atomSymbol(symbolMap, "Stage7LoadIXL");
+  const typedLoadLocalHigh = atomSymbol(symbolMap, "TypedLoadLocalHigh");
+  const stage7LoadIxh = atomSymbol(symbolMap, "Stage7LoadIXH");
+  const typedPopOperandsBytes = atomSymbol(symbolMap, "TypedPopOperandsBytes");
+  const stage7CopyPrepare = atomSymbol(symbolMap, "Stage7CopyPrepare");
+  const stage7PopIndexBase = atomSymbol(symbolMap, "Stage7PopIndexBase");
+  const typedNot8Bytes = atomSymbol(symbolMap, "TypedNot8Bytes");
+  const stage8PopErrorBytes = atomSymbol(symbolMap, "Stage8PopErrorBytes");
+  const simpleAliasTargets = new Map([
+    [segmentedCopyBytes, [[stage7Ldir, "Stage7LDIR"]]],
+    [stage7LoadIndirect8Prefix, [[stage7LoadIndirect8Bytes, "Stage7LoadIndirect8Bytes"]]],
+    [typedAtoHl, [[stage8ErrorCarrierBytes, "Stage8ErrorCarrierBytes"]]],
+    [typedLoadLocalLow, [[stage7LoadIxl, "Stage7LoadIXL"]]],
+    [typedLoadLocalHigh, [[stage7LoadIxh, "Stage7LoadIXH"]]],
+    [typedPopOperandsBytes, [
+      [stage7CopyPrepare, "Stage7CopyPrepare"],
+      [stage7PopIndexBase, "Stage7PopIndexBase"],
+    ]],
+    [typedNot8Bytes, [[stage8PopErrorBytes, "Stage8PopErrorBytes"]]],
+  ]);
+  const withMovedAliases = (line) => {
+    const labelMatch = /^([A-Za-z0-9_.$]+):/.exec(line.trimStart());
+    if (labelMatch === null) return [line];
+    const aliasesForLine = simpleAliasTargets.get(labelMatch[1]);
+    if (aliasesForLine === undefined) return [line];
+    return [
+      line,
+      ...aliasesForLine.map(([alias, original]) =>
+        `${alias} EQU ${labelMatch[1]} ;@NUC-GLOBAL ${original} PERMANENT ${alias}`),
+    ];
+  };
+  const typedLoadSpPattern = new RegExp(`^(${escapeRegExp(typedLoadSpPrefix)}:\\s*)DB\\s+\\$ED,\\$7B(.*)$`, "i");
+  const typedParameter16Pattern = new RegExp(`^(${escapeRegExp(typedParameter16Bytes)}:\\s*)DB\\s+\\$3B,\\$3B,\\$DD,\\$75,\\$FF,\\$DD,\\$74,\\$FE(.*)$`, "i");
   writeGeneratedPermanentPart(translatedRoot, relative, "typed-expression-z80-tail.asmi", lines
     .slice(endifIndex + 1)
     .flatMap((line) => {
       const match = typedBeginPattern.exec(line);
-      if (match === null) return [line];
-      return [
-        `${match[1]}DB $E1`,
-        `${typedBeginAndLowTest}:     DB $7D,${line.slice(match[0].length)}`,
-      ];
+      if (match !== null) {
+        return [
+          `${match[1]}DB $E1`,
+          `${typedBeginAndLowTest}:     DB $7D,${line.slice(match[0].length)}`,
+        ];
+      }
+      const typedLoadSpMatch = typedLoadSpPattern.exec(line);
+      if (typedLoadSpMatch !== null) {
+        return [
+          `${typedLoadSpMatch[1]}DB $ED${typedLoadSpMatch[2]}`,
+          `${stage7IndexToA}: DB $7B ;@NUC-GLOBAL Stage7IndexToA PERMANENT ${stage7IndexToA}`,
+        ];
+      }
+      const typedParameter16Match = typedParameter16Pattern.exec(line);
+      if (typedParameter16Match !== null) {
+        return [
+          `${typedParameter16Match[1]}DB $3B,$3B${typedParameter16Match[2]}`,
+          `${stage7DecSp2} EQU ${typedParameter16Bytes} ;@NUC-GLOBAL Stage7DecSP2 PERMANENT ${stage7DecSp2}`,
+          `${stage7StoreIxl}: DB $DD,$75,$FF ;@NUC-GLOBAL Stage7StoreIXL PERMANENT ${stage7StoreIxl}`,
+          `${stage7StoreIxh}: DB $DD,$74,$FE ;@NUC-GLOBAL Stage7StoreIXH PERMANENT ${stage7StoreIxh}`,
+        ];
+      }
+      return withMovedAliases(line);
     }));
   return [
     "; Permanent Atom layout for the typed-expression z80 backend.",

@@ -1101,6 +1101,55 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   }, 60_000);
 
+  it("runs the Stage 7 parser coverage proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const coverageProof = report.proofMatrix.find(
+        ({ proof }) => proof === "stage7-ll1-parser-coverage-proof.json",
+      );
+      expect(coverageProof?.status).toBe("blocked-by-contract-support");
+      expect(coverageProof?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-ll1-parser-coverage-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "stage7-parser-coverage-proof.asmi"');
+      const body = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-parser-coverage-proof.asmi"),
+        "utf8",
+      );
+      expect(body).toContain('%INCLUDE "stage7-parser-coverage-code-begin.asmi"');
+      expect(body).toContain('%INCLUDE "stage7-parser-coverage-proof-body.asmi"');
+      const aggregateZ80 = await readFile(
+        path.join(translatedRoot, "vertical-slice", "aggregate-z80.asm"),
+        "utf8",
+      );
+      expect(aggregateZ80).toContain("AGZCLMS EQU");
+      expect(aggregateZ80).toContain("AGZCNS2 EQU");
+      expect(aggregateZ80).not.toContain("SymbolAggregateFlag+SymbolClassMask");
+      expect(aggregateZ80).not.toContain("SymbolAggregateFlag+SymbolClassConstant");
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "stage7-ll1-parser-coverage-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/stage7-ll1-parser-coverage-proof.asm",
+            maxInstructions: 700_000_000,
+            maxCycles: 7_000_000_000,
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    });
+  }, 60_000);
+
   it("runs the array z80-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const arraySlice = report.proofMatrix.find(
@@ -1269,8 +1318,16 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(translatedRoot, "vertical-slice", "aggregate-call-parser-core.asmi"),
         "utf8",
       );
-      expect(core).toContain("ACPTDBC EQU IX+");
-      expect(core).toContain("ACPRLEN EQU");
+      expect(core).toContain("ACPTDBC EQU 11");
+      expect(core).toContain("ACPTDEB EQU 12");
+      expect(core).toContain("ACPTDP1 EQU 14");
+      expect(core).toContain("ACPTDPP EQU 13");
+      expect(core).toContain("IX+ACPTDBC");
+      expect(core).toContain("ACPRLEN EQU 8");
+      expect(core).toContain("ACPWSZ EQU 157");
+      expect(core).toContain("ACPSAPR EQU $8C");
+      expect(core).toContain("ACPSCU8 EQU $81");
+      expect(core).not.toContain("ACPTDBC EQU IX+");
       expect(core).not.toContain('%INCLUDE "stage7-ll1-parser.asm"');
       expect(core).not.toContain("IX+TRGTDSBC");
 
@@ -1295,15 +1352,22 @@ describe("Nucleus Atom migration dry-run", () => {
       );
       expect(aggregateCallZ80).toContain("ACZTOFF EQU");
       expect(aggregateCallZ80).not.toContain("TrapOffset-StateBase");
+      expect(aggregateCallZ80).not.toContain("STG7INDX            EQU");
+      expect(aggregateCallZ80).not.toContain("STG8ERRR EQU TYPDATHL");
 
       const loopZ80Sink = await readFile(
         path.join(translatedRoot, "vertical-slice", "loop-z80-sink.asm"),
         "utf8",
       );
       expect(loopZ80Sink).toContain("LZBKRO EQU");
-      expect(loopZ80Sink).toContain("LZIXB1 EQU IX+");
+      expect(loopZ80Sink).toContain("LZIXB1 EQU 1");
+      expect(loopZ80Sink).toContain("LZIXL1 EQU 3");
+      expect(loopZ80Sink).toContain("LZIXEB EQU 0");
+      expect(loopZ80Sink).toContain("LZIXEL EQU 2");
+      expect(loopZ80Sink).toContain("IX+LZIXB1");
       expect(loopZ80Sink).toContain("LZTNUM EQU");
       expect(loopZ80Sink).not.toContain("GeneratedRoDataBase-GeneratedBase");
+      expect(loopZ80Sink).not.toContain("LZIXB1 EQU IX+");
       expect(loopZ80Sink).not.toContain("IX+SegmentEntryBase");
       expect(loopZ80Sink).not.toContain("TrapNumber-StateBase");
 
@@ -1355,6 +1419,12 @@ describe("Nucleus Atom migration dry-run", () => {
         "utf8",
       );
       expect(typedExpressionZ80Tail).toContain(";@NUC-GLOBAL TypedAtoHL");
+      expect(typedExpressionZ80Tail).toContain("STG7INDX: DB $7B");
+      expect(typedExpressionZ80Tail).toContain("STG7LDI1 EQU STG7LDI4");
+      expect(typedExpressionZ80Tail).toContain("STG7DCSP EQU TYPDPRMT");
+      expect(typedExpressionZ80Tail).toContain("STG7STR3: DB $DD,$75,$FF");
+      expect(typedExpressionZ80Tail).toContain("STG7STR4: DB $DD,$74,$FE");
+      expect(typedExpressionZ80Tail).toContain("STG8ERRR EQU TYPDATHL");
 
       const loopKeywords = await readFile(
         path.join(translatedRoot, "vertical-slice", "loop-keywords.asmi"),
