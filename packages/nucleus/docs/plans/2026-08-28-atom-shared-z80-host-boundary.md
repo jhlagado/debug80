@@ -721,6 +721,14 @@ and storage-output capacities. It also models the Z80 proof runtime's
 `ServiceFailureCall` behavior, where a selected standard-output call fails
 atomically without appending the byte.
 
+The shared package now also owns reusable conformance vectors for the
+byte-wide port protocol used by generated Z80 service stubs. Those vectors prove
+operation selection, byte and word argument transfer, status and result returns,
+invalid operation handling, reset, and storage cursor effects. Nucleus runs the
+same vectors through `createNucleusHostRuntimeStreamAdapter`, while its
+runtime-service test still separately proves that the Nucleus service vector
+and generated JP stubs execute correctly on a Z80.
+
 The proof harness now exposes a decoded `runtimeStreams` snapshot on
 `ProofOutcome` when the proof image publishes service-state symbols. Existing
 direct-Z80 proof tests compare that snapshot with an independently driven

@@ -4,6 +4,7 @@ import {
   dispatchRuntimeStreamService,
   RUNTIME_STREAM_IO_OPERATION,
   runRuntimeByteStreamsConformance,
+  runRuntimeStreamIoConformance,
 } from "@jhlagado/z80-tool-services";
 
 import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
@@ -217,6 +218,27 @@ describe("Nucleus runtime stream services", () => {
       ServiceError.outputFailure,
     );
     expect([...failure.streams.output]).toEqual([]);
+  });
+
+  it("passes the shared byte-wide I/O port conformance vectors", () => {
+    expect(
+      runRuntimeStreamIoConformance(
+        {
+          create: (state) => {
+            const adapter = createNucleusHostRuntimeStreamAdapter({
+              baseServices: defaultRuntimeLinkContext.services,
+              stubBase: 0x4100,
+              streamOptions: state,
+            });
+            return {
+              streams: adapter.streams,
+              io: adapter.io,
+            };
+          },
+        },
+        NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
+      ),
+    ).toEqual({ vectors: 3, assertions: 21 });
   });
 
   it("preserves the Z80 proof runtime's selected output-call failure", () => {
