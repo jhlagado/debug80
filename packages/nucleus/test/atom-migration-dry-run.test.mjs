@@ -456,31 +456,17 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
-  it("keeps unresolved source-layout blockers visible on overlapping proof-memory rows", () => {
+  it("keeps the converted proof-composition overlap rows blocked only by memory layout", () => {
     const report = scanAssembly({ asmRoot, proofRoot });
-    const converted = report.proofMatrix.find(
-      ({ proof }) => proof === "stage7-ll1-aggregate-call-z80-slice-proof.json",
-    );
-    const convertedStage8 = report.proofMatrix.find(
-      ({ proof }) => proof === "stage8-failure-z80-slice-proof.json",
-    );
-    const remaining = report.proofMatrix.find(
-      ({ proof }) => proof === "stage9-conformance-z80-slice-proof.json",
-    );
-
-    expect(converted?.status).toBe("blocked-by-overlapping-proof-memory");
-    expect(converted?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
-    expect(convertedStage8?.status).toBe("blocked-by-overlapping-proof-memory");
-    expect(convertedStage8?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
-    expect(remaining?.status).toBe("blocked-by-overlapping-proof-memory");
-    expect(remaining?.blockers.map(({ code }) => code)).toEqual(
-      expect.arrayContaining([
-        "overlapping-proof-memory",
-        "include-after-header",
-        "atom-symbol-expression",
-        "preprocessor-definition-after-header",
-      ]),
-    );
+    for (const proof of [
+      "stage7-ll1-aggregate-call-z80-slice-proof.json",
+      "stage8-failure-z80-slice-proof.json",
+      "stage9-conformance-z80-slice-proof.json",
+    ]) {
+      const row = report.proofMatrix.find((candidate) => candidate.proof === proof);
+      expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
+      expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+    }
   });
 
   it("classifies include-after-header targets by emitted content", async () => {
@@ -1665,6 +1651,39 @@ describe("Nucleus Atom migration dry-run", () => {
       const atom = await assembleAtomProject({
         root: translatedRoot,
         entry: "vertical-slice/stage8-failure-z80-slice-proof.asm",
+        target: { start: 0, capacity: 0xffff },
+        maxInstructions: 900_000_000,
+        maxCycles: 9_000_000_000,
+        sink: createLegacyUnorderedMemoryAtomSink(),
+      });
+      const atomBin = materializeAtomGeneration(atom.generation, {
+        base: contentBase(atom.generation),
+      }).bytes;
+
+      expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
+    });
+  }, 90_000);
+
+  it("assembles the Stage 9 conformance proof from permanent Atom layout source byte-identically", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const row = report.proofMatrix.find(
+        ({ proof }) => proof === "stage9-conformance-z80-slice-proof.json",
+      );
+      expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
+      expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+
+      const current = await compile(
+        path.join(asmRoot, "vertical-slice", "stage9-conformance-z80-slice-proof.asm"),
+        { outputType: "bin" },
+      );
+      const diagnostics = current.diagnostics.filter(({ severity }) => severity === "error");
+      expect(diagnostics).toEqual([]);
+      const currentBin = current.artifacts.find(({ kind }) => kind === "bin")?.bytes;
+      expect(currentBin).toBeDefined();
+
+      const atom = await assembleAtomProject({
+        root: translatedRoot,
+        entry: "vertical-slice/stage9-conformance-z80-slice-proof.asm",
         target: { start: 0, capacity: 0xffff },
         maxInstructions: 900_000_000,
         maxCycles: 9_000_000_000,

@@ -156,11 +156,10 @@ remain measurement artifacts rather than proof-image migration targets. Three
 large proof manifests are still excluded from permanent-ready execution because
 their resident source blocks overlap the runtime/proof-output memory regions
 used by the current harness configuration. The Stage 7 aggregate-call and
-Stage 8 failure proofs now have permanent-layout Atom source that assembles
-byte-identically with the legacy unordered proof-output sink; their remaining
-blocker is only the known memory overlap. The Stage 9 conformance row continues
-to report its source-layout blockers, so the memory exclusion does not hide
-unresolved include, symbol-expression, or `%DEFINE` placement work.
+Stage 8 failure proofs, and the Stage 9 conformance proof now have
+permanent-layout Atom source that assembles byte-identically with the legacy
+unordered proof-output sink; their remaining blocker is only the known memory
+overlap.
 
 The proof harness accepts the generated metadata through
 `runProofManifest(..., { atomMigration })`. That path builds a manifest-facing
@@ -257,7 +256,7 @@ grouping:
 
 | Batch | Files | Late includes | Risk | Recommendation |
 | --- | ---: | ---: | --- | --- |
-| Proof composition files | 17 | 131 | Medium | First batch. These files mostly assemble proof images by placing included modules between labelled extent markers. Move the dependency declarations to the file header only after replacing positional include markers with explicit exported extent labels or another measured equivalent. |
+| Proof composition files | 17 | 131 | Medium | Source-layout blockers are cleared for the three large overlapping-memory proof rows; those rows now wait only on the proof memory map. Continue applying the same section-owned include layout to any remaining proof-composition source as it moves from preview to permanent Atom source. |
 | Module composition files | 5 | 9 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `aggregate-call-parser`, `typed-expression-z80`, `stage7-ll1-parser`, `typed-expression-parser`). Treat these as real module-boundary work, not mechanical line moves. |
 | Runtime wrapper files | 3 | 3 | Low to medium | Third batch. These are small wrappers around runtime/link modules. They should be straightforward once the composition convention is settled. |
 
