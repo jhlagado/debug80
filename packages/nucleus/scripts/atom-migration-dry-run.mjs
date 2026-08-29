@@ -183,6 +183,28 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteStage7Ll1ActionsPermanentAtomSource,
   })],
+  ["vertical-slice/aggregate-parser.asm", Object.freeze({
+    description: "aggregate parser constant-expression aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SymbolRecordTypeFlag+SymbolAggregateFlag",
+      }),
+    ]),
+    rewrite: rewriteAggregateParserPermanentAtomSource,
+  })],
+  ["vertical-slice/aggregate-call-z80.asm", Object.freeze({
+    description: "aggregate-call z80 sink constant-expression aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-z80.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "TrapOffset-StateBase",
+      }),
+    ]),
+    rewrite: rewriteAggregateCallZ80PermanentAtomSource,
+  })],
 ]);
 
 function parseArgs(argv) {
@@ -1810,6 +1832,28 @@ function rewriteStage7Ll1ActionsPermanentAtomSource(source, { symbolMap }) {
     ["H1MTMSK", ["ScalarMetaConstant", "+", "ScalarMetaTypeMask"]],
     ["H1MCBL", ["ScalarMetaConstant", "+", "ScalarTypeBoolean"]],
     ["H1CFCOF", ["ControlFrameCounter", "-", "ControlFrameLabelA"]],
+  ];
+  return [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    replaceAtomExpressionAliases(source, symbolMap, aliases),
+  ].join("\n");
+}
+
+function rewriteAggregateParserPermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["AGPRFLG", ["SymbolRecordTypeFlag", "+", "SymbolAggregateFlag"]],
+  ];
+  return [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    replaceAtomExpressionAliases(source, symbolMap, aliases),
+  ].join("\n");
+}
+
+function rewriteAggregateCallZ80PermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["ACZTOFF", ["TrapOffset", "-", "StateBase"]],
   ];
   return [
     ...atomExpressionAliasLines(symbolMap, aliases),

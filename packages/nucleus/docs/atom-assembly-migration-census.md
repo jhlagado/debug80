@@ -330,6 +330,12 @@ same treatment for its local packed constants. This clears those two files as
 transitive blockers; the dependent proof manifests remain blocked by their own
 entry-wrapper and other shared-module late includes.
 
+The following low-risk source-module aliases clear two more transitive blockers:
+`aggregate-parser.asm` now names its packed aggregate record-type mask, and
+`aggregate-call-z80.asm` now names the target-state trap-offset displacement.
+These are source-expression rewrites only; they do not split emitted sections or
+change proof-manifest status by themselves.
+
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a
 later resolved size equate:

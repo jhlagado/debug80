@@ -1028,7 +1028,9 @@ describe("Nucleus Atom migration dry-run", () => {
       );
       const aggregateCallBlockers = dependent?.blockers.filter(({ file }) =>
         file.includes("aggregate-call-parser.asm") ||
-        file.includes("stage7-ll1-actions.asm"),
+        file.includes("stage7-ll1-actions.asm") ||
+        file.includes("aggregate-parser.asm") ||
+        file.includes("aggregate-call-z80.asm"),
       );
       expect(aggregateCallBlockers).toEqual([]);
 
@@ -1057,6 +1059,20 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(actions).toContain("H1RCFLG EQU");
       expect(actions).toContain("H1CFCOF EQU");
       expect(actions).not.toContain("SymbolRecordTypeFlag+SymbolAggregateFlag");
+
+      const aggregateParser = await readFile(
+        path.join(translatedRoot, "vertical-slice", "aggregate-parser.asm"),
+        "utf8",
+      );
+      expect(aggregateParser).toContain("AGPRFLG EQU");
+      expect(aggregateParser).not.toContain("SymbolRecordTypeFlag+SymbolAggregateFlag");
+
+      const aggregateCallZ80 = await readFile(
+        path.join(translatedRoot, "vertical-slice", "aggregate-call-z80.asm"),
+        "utf8",
+      );
+      expect(aggregateCallZ80).toContain("ACZTOFF EQU");
+      expect(aggregateCallZ80).not.toContain("TrapOffset-StateBase");
     });
   });
 
