@@ -1043,6 +1043,7 @@
     "@jhlagado/debug80-runtime": "^0.1.0",
     "@jhlagado/glimmer": "^0.6.2",
     "@jhlagado/nucleus": "https://codeload.github.com/jhlagado/nucleus/tar.gz/2873c24b19adfec46dc57ba25ebbff9a8e500e44",
+    "@jhlagado/z80-tool-services": "file:../../packages/z80-tool-services",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0",
     "atom-z80": "file:../../packages/atom"

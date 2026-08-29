@@ -24,6 +24,7 @@ import {
 } from '@jhlagado/debug80-runtime/platforms/types';
 import { validateTec1gRomArtifacts } from './tec1g-rom-artifact-validation';
 import { parseCpm22Filename } from '@jhlagado/debug80-runtime/platforms/cpm22/filesystem';
+import { normalizeZ80AssemblerFlavour } from '@jhlagado/z80-tool-services';
 import {
   ADDRESS_MAX,
   ADDRESS_MIN,
@@ -128,9 +129,34 @@ export function validateGlimmerConfig(config: unknown): ValidationResult {
     return objectResult.result;
   }
   const assembler = objectResult.value.assembler;
-  return assembler === undefined || assembler === 'atom' || assembler === 'azm'
+  return acceptsConcreteZ80Assembler(assembler)
     ? validResult()
     : invalidResult('glimmer.assembler must be "atom" or "azm"');
+}
+
+function acceptsConcreteZ80Assembler(value: unknown): boolean {
+  try {
+    normalizeZ80AssemblerFlavour(value, { allowAuto: false });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function validateAssembler(value: unknown): ValidationResult {
+  if (value === undefined || value === null || value === '') {
+    return validResult();
+  }
+  if (typeof value !== 'string') {
+    return invalidResult(`assembler must be a string, got ${typeof value}`);
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'glimmer' || normalized === 'nucleus') {
+    return validResult();
+  }
+  return acceptsConcreteZ80Assembler(value)
+    ? validResult()
+    : invalidResult('assembler must be "atom", "azm", "glimmer", or "nucleus"');
 }
 
 function validateSimpleBinaryRange(binFrom: unknown, binTo: unknown): ValidationResult {
@@ -340,6 +366,7 @@ function collectLaunchValidationResults(args: LaunchRequestArguments): Validatio
     validateAddress(args.entry, 'entry'),
     ...LAUNCH_BOOLEAN_FIELDS.map((field) => validateBoolean(args[field], field)),
     validatePlatform(args.platform),
+    validateAssembler(args.assembler),
     validateStringArray(args.sourceRoots, 'sourceRoots'),
     validateStringArray(args.debugMaps, 'debugMaps'),
     ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) => validateInstructionLimit(args[field], field)),

@@ -12,6 +12,7 @@ import {
   validateStringArray,
   validateBoolean,
   validateTerminalConfig,
+  validateAssembler,
   validateGlimmerConfig,
   validateNucleusConfig,
   validateSimpleConfig,
@@ -434,7 +435,7 @@ describe('config-validation', () => {
           {
             id: 'tecm8-expansion',
             role: 'expansion',
-            assembler: 'azm',
+            assembler: 'ASM80',
             outputBin: 'build/roms/tec1g/tecm8/expansion/expansion-144k.bin',
             windowAddress: 0x8000,
             windowSize: 0x4000,
@@ -444,7 +445,7 @@ describe('config-validation', () => {
             banks: [
               {
                 physicalBank: 0,
-                assembler: 'atom',
+                assembler: 'ATOM-Z80',
                 sourceFile: 'roms/tec1g/tecm8/expansion/bank0.asm',
                 outputBin: 'build/roms/tec1g/tecm8/expansion/bank0.bin',
                 outputDebugMap: 'build/roms/tec1g/tecm8/expansion/bank0.d8.json',
@@ -1055,7 +1056,9 @@ describe('config-validation', () => {
 
     it('validates the Glimmer generated-source assembler', () => {
       expect(validateGlimmerConfig({ assembler: 'atom' })).toMatchObject({ valid: true });
+      expect(validateGlimmerConfig({ assembler: 'ATOM-Z80' })).toMatchObject({ valid: true });
       expect(validateGlimmerConfig({ assembler: 'azm' })).toMatchObject({ valid: true });
+      expect(validateGlimmerConfig({ assembler: 'ASM80' })).toMatchObject({ valid: true });
       expect(validateGlimmerConfig({ assembler: 'other' })).toMatchObject({
         valid: false,
         errors: ['glimmer.assembler must be "atom" or "azm"'],
@@ -1063,6 +1066,25 @@ describe('config-validation', () => {
       expect(validateGlimmerConfig(null)).toMatchObject({
         valid: false,
         errors: ['glimmer must be an object, got null'],
+      });
+    });
+
+    it('validates the top-level assembler selector', () => {
+      for (const assembler of ['atom', 'ATOM-Z80', 'azm', 'ASM80', 'glimmer', 'nucleus']) {
+        expect(validateAssembler(assembler)).toMatchObject({ valid: true });
+      }
+      expect(validateAssembler(undefined)).toMatchObject({ valid: true });
+      expect(validateAssembler('macro80')).toMatchObject({
+        valid: false,
+        errors: ['assembler must be "atom", "azm", "glimmer", or "nucleus"'],
+      });
+      expect(validateAssembler(80)).toMatchObject({
+        valid: false,
+        errors: ['assembler must be a string, got number'],
+      });
+      expect(validateLaunchArgs({ asm: 'main.asm', assembler: 'macro80' })).toMatchObject({
+        valid: false,
+        errors: ['assembler must be "atom", "azm", "glimmer", or "nucleus"'],
       });
     });
 

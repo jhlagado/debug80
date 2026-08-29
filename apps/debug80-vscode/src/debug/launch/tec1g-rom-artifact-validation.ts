@@ -1,5 +1,6 @@
 import type { Tec1gRomArtifactRole } from '@jhlagado/debug80-runtime/platforms/types';
 import { TEC1G_EXPAND_BANK_COUNT } from '@jhlagado/debug80-runtime/platforms/tec-common';
+import { normalizeZ80AssemblerFlavour } from '@jhlagado/z80-tool-services';
 import {
   invalidResult,
   mergeResults,
@@ -165,13 +166,12 @@ function validateTec1gRomArtifactAssembler(value: unknown, fieldName: string): V
   if (value === undefined || value === null || value === '') {
     return validResult();
   }
-  if (typeof value !== 'string') {
+  try {
+    normalizeZ80AssemblerFlavour(value, { allowAuto: false });
+  } catch {
     return invalidResult(`${fieldName} must be "atom" or "azm"`);
   }
-  const normalized = value.trim().toLowerCase();
-  return normalized === 'atom' || normalized === 'azm'
-    ? validResult()
-    : invalidResult(`${fieldName} must be "atom" or "azm"`);
+  return validResult();
 }
 
 function validateTec1gExpansionArtifactOutputs(
