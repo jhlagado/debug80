@@ -7,6 +7,10 @@
 
 TargetStreamingOutput .equ 0
 
+TEPNDOF .equ TypedNestedDivideOuter-TypedNestedDivideTrapSource ; nested divide outer trap offset
+TEPNNOF .equ TypedNestedNarrowOuter-TypedNestedNarrowTrapSource ; nested narrow outer trap offset
+TEPU8MT .equ ScalarMetaConstant+ScalarTypeU8                    ; u8 constant metadata
+
             .org CompilerCoreBase
 CompilerCodeStart:
 LegacyCompilerSlices .equ 1
@@ -529,7 +533,7 @@ ProofFillOperationCount:
             CP   RunTrapped
             JP   NZ,ProofFailNestedDivideState
             LD   HL,(TrapOffset)
-            LD   DE,TypedNestedDivideOuter-TypedNestedDivideTrapSource
+            LD   DE,TEPNDOF
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailNestedDivideOffset
@@ -555,7 +559,7 @@ ProofFillOperationCount:
             CP   RunTrapped
             JP   NZ,ProofFailNestedNarrowState
             LD   HL,(TrapOffset)
-            LD   DE,TypedNestedNarrowOuter-TypedNestedNarrowTrapSource
+            LD   DE,TEPNNOF
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailNestedNarrowOffset
@@ -568,7 +572,7 @@ ProofFillOperationCount:
             XOR  A
             LD   (ExpressionStackDepth),A
             LD   HL,1
-            LD   A,ScalarMetaConstant+ScalarTypeU8
+            LD   A,TEPU8MT
             CALL TypedRestoreOperands
             JP   NC,ProofFailExpressionUnderflow
             LD   A,(DiagnosticCode)

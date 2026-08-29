@@ -12,6 +12,12 @@ LegacyCompilerSlices .equ 0
 AggregateCallSlices  .equ 1
 Stage7LL1            .equ 1
 TargetStreamingOutput .equ 0
+S7CSLOF .equ Stage7CorruptStringLengthPoint-Stage7CorruptStringSource ; corrupt string length source offset
+S7CSIOF .equ Stage7CorruptStringIndexPoint-Stage7CorruptStringIndexSource ; corrupt string index source offset
+S7SACP  .equ Stage7SealedArrayCapacityPoint-Stage7SealedArraySource ; sealed array capacity source offset
+S7RDOF  .equ GeneratedRoDataBase-GeneratedBase ; read-only data offset from generated image base
+S7BRDO  .equ BackupBase+S7RDOF ; backup address corresponding to generated read-only data
+S7SREB  .equ SegmentRoDataEntry+SegmentEntryBase ; read-only segment entry base field
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -728,7 +734,7 @@ ProofStart:
             CP   1
             JP   NZ,ProofFailBoundsRun
             LD   HL,(TrapOffset)
-            LD   DE,Stage7CorruptStringLengthPoint-Stage7CorruptStringSource
+            LD   DE,S7CSLOF
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailBoundsRun
@@ -751,7 +757,7 @@ ProofStart:
             CP   1
             JP   NZ,ProofFailBoundsRun
             LD   HL,(TrapOffset)
-            LD   DE,Stage7CorruptStringIndexPoint-Stage7CorruptStringIndexSource
+            LD   DE,S7CSIOF
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailBoundsRun
@@ -1030,7 +1036,7 @@ ProofStart:
             CP   DiagnosticStringCapacity
             JP   NZ,ProofFailStringCapacity
             LD   HL,(DiagnosticOffset)
-            LD   DE,Stage7SealedArrayCapacityPoint-Stage7SealedArraySource
+            LD   DE,S7SACP
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailStringCapacity
@@ -1045,7 +1051,7 @@ ProofStart:
             CP   DiagnosticStringCapacity
             JP   NZ,ProofFailStringCapacity
             LD   HL,(DiagnosticOffset)
-            LD   DE,Stage7SealedArrayCapacityPoint-Stage7SealedArraySource
+            LD   DE,S7SACP
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailStringCapacity
@@ -1794,7 +1800,7 @@ ProofEncodeRollbackCompare:
 ProofEncodeRollbackReady:
             LD   BC,(GeneratedRoDataSize)
             LD   HL,GeneratedRoDataBase
-            LD   DE,BackupBase+(GeneratedRoDataBase-GeneratedBase)
+            LD   DE,S7BRDO
 ProofEncodeRollbackRoDataCompare:
             LD   A,B
             OR   C
@@ -1824,7 +1830,7 @@ ProofCheckSegmentOverlap:
             CALL BeginSegmentedProgram
             RET  C
             LD   HL,GeneratedCodeBase+1
-            LD   (SegmentRoDataEntry+SegmentEntryBase),HL
+            LD   (S7SREB),HL
             CALL ValidateSegmentTable
             JR   NC,ProofSegmentOverlapFailure
             LD   A,(DiagnosticCode)

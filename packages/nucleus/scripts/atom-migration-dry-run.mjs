@@ -3758,10 +3758,12 @@ function rewriteStage7Ll1AggregateCallZ80SliceProofPermanentAtomSource(source, {
     ["S7ACST", ["Stage7AggregateConstantScalarTypePoint", "-", "Stage7AggregateConstantScalarTypeSource"]],
     ["S7RCRJ", ["Stage7ReadOnlyCapacityRejectedPoint", "-", "Stage7ReadOnlyCapacityRejectedSource"]],
     ["S7RDOF", ["GeneratedRoDataBase", "-", "GeneratedBase"]],
+    ["S7BRDO", ["BackupBase", "+", "S7RDOF"]],
     ["S7SREB", ["SegmentRoDataEntry", "+", "SegmentEntryBase"]],
   ];
 
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
+  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
   const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage7 aggregate-call proof");
   const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "stage7 aggregate-call proof");
   const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "stage7 aggregate-call proof");
@@ -3839,6 +3841,7 @@ function rewriteStage7Ll1AggregateCallZ80SliceProofPermanentAtomSource(source, {
     "S7ACST EQU $10",
     "S7RCRJ EQU $96",
     "S7RDOF EQU $C00",
+    "S7BRDO EQU $AC00",
     "S7SREB EQU $4474",
     "",
     ...lines.slice(proofOrgIndex + 1),
@@ -4013,9 +4016,17 @@ function rewriteStage8FailureZ80SliceProofPermanentAtomSource(source, { relative
 function rewriteStage9ConformanceZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
   const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
   const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
-  const aliases = collectSimplePermanentExpressionAliases(source, "S9E");
+  const sourceAliases = [
+    ["S9RDOF", ["GeneratedRoDataBase", "-", "GeneratedBase"]],
+    ["S9BRDO", ["BackupBase", "+", "S9RDOF"]],
+  ];
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, sourceAliases.map(([alias]) => alias));
+  const aliases = [
+    ...sourceAliases,
+    ...collectSimplePermanentExpressionAliases(sourceWithoutAliases, "S9E"),
+  ];
 
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
   const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage9 conformance proof");
   const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "stage9 conformance proof");
   const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "stage9 conformance proof");

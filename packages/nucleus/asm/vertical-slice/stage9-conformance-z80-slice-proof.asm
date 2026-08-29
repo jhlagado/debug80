@@ -13,6 +13,8 @@ LegacyCompilerSlices .equ 0
 AggregateCallSlices  .equ 1
 Stage7LL1            .equ 1
 TargetStreamingOutput .equ 0
+S9RDOF  .equ GeneratedRoDataBase-GeneratedBase ; read-only data offset from generated image base
+S9BRDO  .equ BackupBase+S9RDOF ; backup address corresponding to generated read-only data
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -1418,7 +1420,7 @@ ProofComparePublishedLoop:
 ProofComparePublishedRoData:
             LD   BC,(GeneratedRoDataSize)
             LD   HL,GeneratedRoDataBase
-            LD   DE,BackupBase+(GeneratedRoDataBase-GeneratedBase)
+            LD   DE,S9BRDO
 ProofComparePublishedRoDataLoop:
             LD   A,B
             OR   C

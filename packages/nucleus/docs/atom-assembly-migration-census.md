@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `4bd07ed7`
+Current reusable-transform baseline HEAD: `09f4f313`
 
 ## Purpose
 
@@ -25,20 +25,20 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 69 |
-| Source lines | 29,602 |
-| Defined assembler symbols detected | 3,986 |
+| Source lines | 29,616 |
+| Defined assembler symbols detected | 3,998 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 751 |
 | Long symbols still needing global treatment | 3,159 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Forward-dependent emitted-statement symbol arithmetic sites | 56 |
-| Current permanent-source blockers | 259 |
+| Forward-dependent emitted-statement symbol arithmetic sites | 43 |
+| Current permanent-source blockers | 246 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
-| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 56 |
+| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 43 |
 | Permanent blocker: include after header | 143 |
 | Permanent blocker: feature definition after Atom entry header | 60 |
 | Proof-manifest symbol mappings | 146 |
@@ -394,6 +394,14 @@ their terminal structured-control and aggregate-call includes into rewritten
 root headers plus generated core/tail parts, preserving the original emitted
 order while clearing those shared module-boundary blockers. Proof-entry wrappers
 still own their separate late includes and source-position arithmetic.
+
+A follow-up proof-wrapper pass applies the same single-symbol operand rule to
+the smaller permanent-layout proof entries. `stage7-ll1-engine-proof.asm`,
+`typed-expression-z80-slice-proof.asm`,
+`stage7-ll1-aggregate-call-z80-slice-proof.asm`, and
+`stage9-conformance-z80-slice-proof.asm` now name their proof-stack boundary,
+trap offsets, metadata constants, generated read-only-data offsets, and segment
+field addresses before those values are emitted.
 
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a

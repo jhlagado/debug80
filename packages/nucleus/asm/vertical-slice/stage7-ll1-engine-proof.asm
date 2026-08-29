@@ -10,6 +10,8 @@
 
 AggregateCallSlices .equ 0
 
+HLL1STKL .equ HybridLL1StackBase+HybridLL1StackCapacity ; one-past LL(1) proof stack byte
+
             .org CompilerCoreBase
 .routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
 ParserPeek:
@@ -99,7 +101,7 @@ ProofStart:
             ; A four-symbol production exactly fills slots 60..63 without
             ; touching the action workspace immediately above the stack.
             LD   A,$5A
-            LD   (HybridLL1StackBase+HybridLL1StackCapacity),A
+            LD   (HLL1STKL),A
             LD   A,60
             LD   (HybridLL1StackDepth),A
             LD   A,31
@@ -108,7 +110,7 @@ ProofStart:
             LD   A,(HybridLL1StackDepth)
             CP   HybridLL1StackCapacity
             JR   NZ,ProofFailure
-            LD   A,(HybridLL1StackBase+HybridLL1StackCapacity)
+            LD   A,(HLL1STKL)
             CP   $5A
             JR   NZ,ProofFailure
 
@@ -134,7 +136,7 @@ ProofStart:
             LD   A,(HybridLL1StackDepth)
             CP   63
             JR   NZ,ProofFailure
-            LD   A,(HybridLL1StackBase+HybridLL1StackCapacity)
+            LD   A,(HLL1STKL)
             CP   $5A
             JR   NZ,ProofFailure
             LD   A,$A5
