@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { globSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { runProofManifest } from "../dist/src/proof.js";
 
-import { scanAssembly } from "./atom-migration-dry-run.mjs";
+import { scanAssembly, writeTranslatedTree } from "./atom-migration-dry-run.mjs";
 import {
   entryBudget,
   readBudgetFile,
@@ -28,6 +29,7 @@ function parseArgs(argv) {
     maxInstructions: defaultMaxInstructions,
     maxCycles: defaultMaxCycles,
     budgetFile: defaultBudgetFile,
+    mode: "preview",
     json: false,
     reportOnly: false,
     out: undefined,
@@ -63,6 +65,11 @@ function parseArgs(argv) {
       options.budgetFile = path.resolve(argv[++index] ?? "");
     } else if (arg === "--no-budget-file") {
       options.budgetFile = undefined;
+    } else if (arg === "--mode") {
+      options.mode = argv[++index];
+      if (!["preview", "permanent-ready"].includes(options.mode)) {
+        throw new Error("--mode must be preview or permanent-ready");
+      }
     } else if (arg === "--out") {
       options.out = path.resolve(argv[++index] ?? "");
     } else if (arg === "--json") {
@@ -96,6 +103,7 @@ Options:
                        packages/nucleus/proofs/atom-migration-preview-budgets.json
                        when present.
   --no-budget-file     Ignore the default per-manifest budget file.
+  --mode MODE          preview or permanent-ready. Defaults to preview.
   --out FILE           Write the JSON execution report.
   --json               Print the JSON execution report.
   --report-only        Exit 0 even when proof execution fails.
@@ -150,7 +158,7 @@ function summarize(results) {
 }
 
 function printText(report) {
-  console.log("Nucleus Atom-preview proof execution");
+  console.log(`Nucleus Atom ${report.mode} proof execution`);
   console.log("");
   console.log(`Proof manifests checked: ${report.results.length}`);
   for (const [status, count] of Object.entries(report.summary)) {
@@ -165,7 +173,21 @@ function printText(report) {
   }
 }
 
-async function runOne({ proof, asmRoot, proofRoot, report, budget, maxPartBytes }) {
+function proofMatrixByManifest(report) {
+  return new Map(report.proofMatrix.map((row) => [row.proof, row]));
+}
+
+async function runOne({
+  proof,
+  asmRoot,
+  proofRoot,
+  report,
+  proofMatrix,
+  budget,
+  maxPartBytes,
+  mode,
+  permanentRoot,
+}) {
   const entry = entryForManifest(asmRoot, proof);
   if (budget.skip !== undefined) {
     return Object.freeze({
@@ -188,6 +210,51 @@ async function runOne({ proof, asmRoot, proofRoot, report, budget, maxPartBytes 
       reason: "measurement artifact",
       budget: budgetResult,
     });
+  }
+
+  if (mode === "permanent-ready") {
+    const row = proofMatrix.get(proof.name);
+    if (row?.status !== "atom-permanent-ready") {
+      return Object.freeze({
+        manifest: proof.name,
+        entry,
+        status: "skipped",
+        reason: row?.status ?? "not in Atom migration proof matrix",
+        budget: budgetResult,
+      });
+    }
+    try {
+      const outcome = await runProofManifest(proof.file, {
+        assembler: {
+          kind: "atom-permanent",
+          root: permanentRoot,
+          entry,
+          maxInstructions: budget.maxInstructions,
+          maxCycles: budget.maxCycles,
+        },
+        atomMigration: {
+          proofSymbolMap: report.proofSymbolMap,
+          proofLimitMap: report.proofLimitMap,
+        },
+      });
+      return Object.freeze({
+        manifest: proof.name,
+        entry,
+        status: "passed",
+        instructions: outcome.instructions,
+        cycles: outcome.cycles,
+        extents: outcome.extents,
+        budget: budgetResult,
+      });
+    } catch (error) {
+      return Object.freeze({
+        manifest: proof.name,
+        entry,
+        status: "failed",
+        message: error?.message ?? String(error),
+        budget: budgetResult,
+      });
+    }
   }
 
   try {
@@ -232,6 +299,13 @@ async function main() {
     asmRoot: options.asmRoot,
     proofRoot: options.proofRoot,
   });
+  const proofMatrix = proofMatrixByManifest(migrationReport);
+  const permanentRoot = options.mode === "permanent-ready"
+    ? mkdtempSync(path.join(os.tmpdir(), "nucleus-atom-permanent-run-"))
+    : undefined;
+  if (permanentRoot !== undefined) {
+    writeTranslatedTree(migrationReport, permanentRoot, { symbols: "permanent" });
+  }
   const budgets = readBudgetFile(options.budgetFile);
   const proofs = selectedProofs(
     proofManifests(options.proofRoot),
@@ -246,31 +320,41 @@ async function main() {
     maxCycles: options.maxCycles,
   });
   const results = [];
-  for (const proof of proofs) {
-    const budget = entryBudget(proof, defaultBudget, budgets, {
-      force: options.entry !== undefined,
-    });
-    const entry = entryForManifest(options.asmRoot, proof);
-    if (!options.json) {
-      console.error(`running ${proof.name}\t${entry}`);
+  try {
+    for (const proof of proofs) {
+      const budget = entryBudget(proof, defaultBudget, budgets, {
+        force: options.entry !== undefined,
+      });
+      const entry = entryForManifest(options.asmRoot, proof);
+      if (!options.json) {
+        console.error(`running ${proof.name}\t${entry}`);
+      }
+      const result = await runOne({
+        proof,
+        asmRoot: options.asmRoot,
+        proofRoot: options.proofRoot,
+        report: migrationReport,
+        proofMatrix,
+        budget,
+        maxPartBytes: options.maxPartBytes,
+        mode: options.mode,
+        permanentRoot,
+      });
+      results.push(result);
+      if (!options.json) {
+        console.error(`${result.status} ${proof.name}`);
+      }
     }
-    const result = await runOne({
-      proof,
-      asmRoot: options.asmRoot,
-      proofRoot: options.proofRoot,
-      report: migrationReport,
-      budget,
-      maxPartBytes: options.maxPartBytes,
-    });
-    results.push(result);
-    if (!options.json) {
-      console.error(`${result.status} ${proof.name}`);
+  } finally {
+    if (permanentRoot !== undefined) {
+      rmSync(permanentRoot, { recursive: true, force: true });
     }
   }
   const execution = Object.freeze({
     status: results.every(({ status }) => status === "passed" || status === "skipped")
       ? "ready"
       : "blocked",
+    mode: options.mode,
     asmRoot: options.asmRoot,
     proofRoot: options.proofRoot,
     maxPartBytes: options.maxPartBytes,
