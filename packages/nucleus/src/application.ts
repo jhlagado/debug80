@@ -21,7 +21,7 @@ import {
   NUCLEUS_HOST_RUNTIME_STREAM_STUB_SPACING,
   type NucleusHostRuntimeStreamStub,
 } from "./runtime-stream-adapter.js";
-import type { SourcePart } from "./source-manifest.js";
+import type { SourcePart } from "./source-part.js";
 
 export type NucleusRuntimeServiceSelection =
   | {

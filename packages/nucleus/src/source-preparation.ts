@@ -10,7 +10,7 @@ import {
   type SourceSnapshot,
 } from "@jhlagado/z80-tool-services/source-preparation";
 
-import type { SourcePart } from "./source-manifest.js";
+import type { SourcePart } from "./source-part.js";
 
 export interface NucleusSourcePreparationOptions {
   readonly root: string;

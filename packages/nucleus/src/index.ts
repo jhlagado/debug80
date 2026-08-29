@@ -69,8 +69,10 @@ export {
 export {
   buildSourceParts,
   parseSourceManifest,
-  type SourcePart,
 } from "./source-manifest.js";
+export {
+  type SourcePart,
+} from "./source-part.js";
 export {
   NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES,
   nucleusRuntimeServiceOrder,

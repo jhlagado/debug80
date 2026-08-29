@@ -43,8 +43,9 @@ specification. The packed parser uses the machine-readable Stage 7 grammar in
 service assignments are checked against the direct-Z80 contract. The
 type-metadata model covers every Nucleus type, including arrays of records and
 bounded strings, without turning aggregate aliases into runtime types.
-The flat-manifest adapter preserves ordered source-part identities and
-diagnostic names outside the compiler core.
+The source-preparation boundary preserves ordered source-part identities and
+diagnostic names outside the compiler core. The older flat-manifest adapter
+remains as a compatibility path for low-level tests and legacy callers.
 
 The host NOBJ boundary encodes, validates, and materializes the strict
 append-only object stream. Image and patch records use independent sequential

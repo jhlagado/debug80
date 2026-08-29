@@ -1,9 +1,6 @@
-export interface SourcePart {
-  ordinal: number;
-  stableIdentity: string;
-  diagnosticName: string;
-  bytes: Uint8Array;
-}
+import type { SourcePart } from "./source-part.js";
+
+export type { SourcePart } from "./source-part.js";
 
 export function parseSourceManifest(text: string): string[] {
   if (/\r(?!\n)/.test(text)) {
