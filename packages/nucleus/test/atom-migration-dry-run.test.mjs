@@ -436,16 +436,15 @@ describe("Nucleus Atom migration dry-run", () => {
 
       expect(statuses).toEqual({
         "bad.json": "blocked-by-other",
-        "contract.json": "blocked-by-contract-support",
+        "contract.json": "atom-permanent-ready",
         "dispatcher-measurement.json": "measurement-artifact",
         "late.json": "blocked-by-late-emitted-include",
         "preview.json": "atom-preview-only",
         "ready.json": "atom-permanent-ready",
       });
       expect(report.measured.proofMatrix).toEqual({
-        "atom-permanent-ready": 1,
+        "atom-permanent-ready": 2,
         "atom-preview-only": 1,
-        "blocked-by-contract-support": 1,
         "blocked-by-late-emitted-include": 1,
         "blocked-by-other": 1,
         "measurement-artifact": 1,
@@ -828,15 +827,47 @@ describe("Nucleus Atom migration dry-run", () => {
   it("runs every permanent-ready proof through the proof harness using permanent Atom source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const readyProofs = report.proofMatrix
-        .filter(({ status }) => status === "atom-permanent-ready")
-        .map(({ proof }) => proof);
-      expect(readyProofs).toEqual([
+        .filter(({ status }) => status === "atom-permanent-ready");
+      expect(readyProofs.map(({ proof }) => proof)).toEqual([
+        "array-z80-slice-proof.json",
+        "call-z80-slice-proof.json",
+        "compiler-slice-proof.json",
+        "loop-compiler-slice-proof.json",
+        "loop-z80-slice-proof.json",
         "memory-map-proof.json",
         "nobj-runner-proof.json",
         "source-provenance-proof.json",
+        "stage7-ll1-engine-proof.json",
+        "stage7-ll1-parser-coverage-proof.json",
+        "typed-expression-z80-slice-proof.json",
+        "z80-slice-proof.json",
       ]);
 
-      const runAtomProof = (name, entry) =>
+      const runAtomProof = (name, entry) => runProofManifest(path.join(proofRoot, name), {
+        assembler: {
+          kind: "atom-permanent",
+          root: translatedRoot,
+          entry,
+          maxInstructions: 700_000_000,
+          maxCycles: 7_000_000_000,
+        },
+        atomMigration: {
+          proofSymbolMap: report.proofSymbolMap,
+          proofLimitMap: report.proofLimitMap,
+        },
+      });
+
+      for (const { proof, entry } of readyProofs) {
+        const outcome = await runAtomProof(proof, entry);
+        if (outcome.symbols.ProofStatus !== undefined) {
+          expect(outcome.memory[outcome.symbols.ProofStatus]).toBe(0xa5);
+        }
+        if (outcome.symbols.ProofCase !== undefined) {
+          expect(outcome.memory[outcome.symbols.ProofCase]).toBe(0);
+        }
+      }
+
+      const runSmallAtomProof = (name, entry) =>
         runProofManifest(path.join(proofRoot, name), {
           assembler: {
             kind: "atom-permanent",
@@ -849,7 +880,7 @@ describe("Nucleus Atom migration dry-run", () => {
           },
         });
 
-      const memoryMap = await runAtomProof(
+      const memoryMap = await runSmallAtomProof(
         "memory-map-proof.json",
         "vertical-slice/memory-map-proof.asm",
       );
@@ -859,7 +890,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(memoryMap.symbols.AddressSpaceLimit).toBe(0x10000);
       expect(memoryMap.regions.reduce((total, region) => total + region.bytes, 0)).toBe(65_536);
 
-      const nobjRunner = await runAtomProof(
+      const nobjRunner = await runSmallAtomProof(
         "nobj-runner-proof.json",
         "vertical-slice/nobj-runner-proof.asm",
       );
@@ -870,7 +901,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(nobjRunner.nobj?.memory[0x8081]).toBe(0x5a);
       expect(nobjRunner.memory[0x8081]).toBe(0);
 
-      const sourceProvenance = await runAtomProof(
+      const sourceProvenance = await runSmallAtomProof(
         "source-provenance-proof.json",
         "vertical-slice/source-provenance-proof.asm",
       );
@@ -887,14 +918,14 @@ describe("Nucleus Atom migration dry-run", () => {
         },
       ]);
     });
-  });
+  }, 120_000);
 
   it("runs the compiler-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const compilerSlice = report.proofMatrix.find(
         ({ proof }) => proof === "compiler-slice-proof.json",
       );
-      expect(compilerSlice?.status).toBe("blocked-by-contract-support");
+      expect(compilerSlice?.status).toBe("atom-permanent-ready");
       const helper = await readFile(
         path.join(translatedRoot, "vertical-slice", "compiler-slice-code-begin.asmi"),
         "utf8",
@@ -935,7 +966,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const z80Slice = report.proofMatrix.find(
         ({ proof }) => proof === "z80-slice-proof.json",
       );
-      expect(z80Slice?.status).toBe("blocked-by-contract-support");
+      expect(z80Slice?.status).toBe("atom-permanent-ready");
       expect(z80Slice?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "z80-slice-proof.asm"),
@@ -982,7 +1013,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const loopCompilerSlice = report.proofMatrix.find(
         ({ proof }) => proof === "loop-compiler-slice-proof.json",
       );
-      expect(loopCompilerSlice?.status).toBe("blocked-by-contract-support");
+      expect(loopCompilerSlice?.status).toBe("atom-permanent-ready");
       expect(loopCompilerSlice?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "loop-compiler-slice-proof.asm"),
@@ -1026,7 +1057,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const loopZ80Slice = report.proofMatrix.find(
         ({ proof }) => proof === "loop-z80-slice-proof.json",
       );
-      expect(loopZ80Slice?.status).toBe("blocked-by-contract-support");
+      expect(loopZ80Slice?.status).toBe("atom-permanent-ready");
       expect(loopZ80Slice?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "loop-z80-slice-proof.asm"),
@@ -1062,7 +1093,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const callZ80Slice = report.proofMatrix.find(
         ({ proof }) => proof === "call-z80-slice-proof.json",
       );
-      expect(callZ80Slice?.status).toBe("blocked-by-contract-support");
+      expect(callZ80Slice?.status).toBe("atom-permanent-ready");
       expect(callZ80Slice?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "call-z80-slice-proof.asm"),
@@ -1106,7 +1137,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const coverageProof = report.proofMatrix.find(
         ({ proof }) => proof === "stage7-ll1-parser-coverage-proof.json",
       );
-      expect(coverageProof?.status).toBe("blocked-by-contract-support");
+      expect(coverageProof?.status).toBe("atom-permanent-ready");
       expect(coverageProof?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "stage7-ll1-parser-coverage-proof.asm"),
@@ -1155,7 +1186,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const arraySlice = report.proofMatrix.find(
         ({ proof }) => proof === "array-z80-slice-proof.json",
       );
-      expect(arraySlice?.status).toBe("blocked-by-contract-support");
+      expect(arraySlice?.status).toBe("atom-permanent-ready");
       expect(arraySlice?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "array-z80-slice-proof.asm"),
@@ -1199,7 +1230,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const typedExpression = report.proofMatrix.find(
         ({ proof }) => proof === "typed-expression-z80-slice-proof.json",
       );
-      expect(typedExpression?.status).toBe("blocked-by-contract-support");
+      expect(typedExpression?.status).toBe("atom-permanent-ready");
       expect(typedExpression?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "typed-expression-z80-slice-proof.asm"),
@@ -1252,7 +1283,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const stage7 = report.proofMatrix.find(
         ({ proof }) => proof === "stage7-ll1-engine-proof.json",
       );
-      expect(stage7?.status).toBe("blocked-by-contract-support");
+      expect(stage7?.status).toBe("atom-permanent-ready");
       expect(stage7?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "stage7-ll1-engine-proof.asm"),

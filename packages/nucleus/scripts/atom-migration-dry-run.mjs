@@ -948,12 +948,11 @@ function dependencyClosure(entry, root, seen = new Set()) {
   return dependencies;
 }
 
-function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contractFiles, includeAfterHeaderFiles }) {
+function proofSelectionStatus({ proof, files, issueByFile, globalIssues, includeAfterHeaderFiles }) {
   if (isMeasurementProof(proof)) {
     return Object.freeze({ status: "measurement-artifact", blockers: [] });
   }
   const blockers = [];
-  const fileSet = new Set(files);
   const lateIncludeBlockers = files
     .filter((file) => includeAfterHeaderFiles.has(file))
     .flatMap((file) => issueByFile.get(file) ?? [])
@@ -972,7 +971,6 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contrac
   if (otherIssues.length > 0) {
     blockers.push(...otherIssues);
   }
-  const hasContracts = [...contractFiles].some((file) => fileSet.has(file));
   if (lateIncludeBlockers.length > 0) {
     return Object.freeze({ status: "blocked-by-late-emitted-include", blockers });
   }
@@ -981,9 +979,6 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contrac
   }
   if (previewOnlyIssues.length > 0) {
     return Object.freeze({ status: "atom-preview-only", blockers });
-  }
-  if (hasContracts) {
-    return Object.freeze({ status: "blocked-by-contract-support", blockers });
   }
   return Object.freeze({ status: "atom-permanent-ready", blockers });
 }
@@ -1044,7 +1039,6 @@ function buildProofSelectionMatrix({ proofRoot, asmRoot, packageRoot, issues, in
       files,
       issueByFile,
       globalIssues,
-      contractFiles,
       includeAfterHeaderFiles,
     });
     return Object.freeze({
