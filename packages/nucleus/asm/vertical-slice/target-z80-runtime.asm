@@ -2,5 +2,5 @@
 ; live outside the selected target helper image and are reached through the
 ; writable vector table.
 
-RuntimeProofServices .equ 0
+            .include "target-z80-runtime-config.asmi"
             .include "loop-z80-runtime.asm"
