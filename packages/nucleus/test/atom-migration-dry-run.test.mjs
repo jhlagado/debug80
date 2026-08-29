@@ -1057,6 +1057,50 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   }, 60_000);
 
+  it("runs the call z80-slice proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const callZ80Slice = report.proofMatrix.find(
+        ({ proof }) => proof === "call-z80-slice-proof.json",
+      );
+      expect(callZ80Slice?.status).toBe("blocked-by-contract-support");
+      expect(callZ80Slice?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "call-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "call-z80-slice-code-begin.asmi"');
+      expect(root).toContain('%INCLUDE "call-z80-slice-proof-body.asmi"');
+      const proofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "call-z80-slice-proof-body.asmi"),
+        "utf8",
+      );
+      expect(proofBody).toContain("CLTRNEN EQU SMNTCBFF+$10");
+      expect(proofBody).toContain("CLBDOFS EQU 136");
+      expect(proofBody).not.toContain("SemanticBufferBase+$10");
+      expect(proofBody).not.toContain("BadCompletionName-BadCompletionSource");
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "call-z80-slice-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/call-z80-slice-proof.asm",
+            maxInstructions: 700_000_000,
+            maxCycles: 7_000_000_000,
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    });
+  }, 60_000);
+
   it("runs the array z80-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const arraySlice = report.proofMatrix.find(

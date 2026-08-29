@@ -107,6 +107,26 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteLoopZ80SliceProofPermanentAtomSource,
   })],
+  ["vertical-slice/call-z80-slice-proof.asm", Object.freeze({
+    description: "call z80 proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/call-z80-slice-proof.asm",
+        code: "include-after-header",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/call-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SemanticBufferBase+$10",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/call-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "BadCompletionName-BadCompletionSource",
+      }),
+    ]),
+    rewrite: rewriteCallZ80SliceProofPermanentAtomSource,
+  })],
   ["vertical-slice/typed-expression-z80-slice-proof.asm", Object.freeze({
     description: "typed-expression z80 proof sectioned header-include layout",
     handledIssues: Object.freeze([
@@ -2172,6 +2192,113 @@ function rewriteLoopZ80SliceProofPermanentAtomSource(source, { relative, transla
     "            %INCLUDE \"proof-z80-runtime.asm\"",
     "            %INCLUDE \"loop-z80-slice-runtime-after.asmi\"",
     "            %INCLUDE \"loop-z80-slice-proof-body.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteCallZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const proofBase = atomSymbol(symbolMap, "ProofBase");
+  const semanticBufferBase = atomSymbol(symbolMap, "SemanticBufferBase");
+  const badCompletionName = atomSymbol(symbolMap, "BadCompletionName");
+  const badCompletionSource = atomSymbol(symbolMap, "BadCompletionSource");
+
+  const lines = source
+    .replaceAll(`${semanticBufferBase}+$10`, "CLTRNEN")
+    .replaceAll(`${badCompletionName}-${badCompletionSource}`, "CLBDOFS")
+    .split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "call-z80-slice-proof");
+  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "call-z80-slice-proof");
+  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "call-z80-slice-proof");
+  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "call-z80-slice-proof");
+  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "call-z80-slice-proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "call-z80-slice-proof");
+  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "call-z80-slice-proof");
+  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "call-z80-slice-proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "call-z80-slice-proof");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "call-z80-slice-proof");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "call-z80-slice-proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "call-z80-slice-proof");
+
+  const orderedIndexes = [
+    compilerOrgIndex,
+    sourceAdapterIncludeIndex,
+    tokenizerIncludeIndex,
+    semanticSinkIncludeIndex,
+    symbolsIncludeIndex,
+    parserIncludeIndex,
+    loopSinkIncludeIndex,
+    keywordsIncludeIndex,
+    sourceOrgIndex,
+    runtimeOrgIndex,
+    runtimeIncludeIndex,
+    proofOrgIndex,
+  ];
+  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
+    throw new Error("call-z80-slice proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const writeSlice = (includeName, start, end) => {
+    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
+      ...lines.slice(start, end).filter((line) =>
+        !/^\s*%DEFINE\s+(TargetStreamingOutput|LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
+      "",
+    ]);
+  };
+  writeSlice("call-z80-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
+  writeSlice("call-z80-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
+  writeSlice("call-z80-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
+  writeSlice("call-z80-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
+  writeSlice("call-z80-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
+  writeSlice("call-z80-slice-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
+  writeSlice("call-z80-slice-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, keywordsIncludeIndex);
+  writeSlice("call-z80-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
+  writeSlice("call-z80-slice-source.asmi", sourceOrgIndex, runtimeOrgIndex);
+  writeSlice("call-z80-slice-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
+  writeSlice("call-z80-slice-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
+  writeGeneratedPermanentPart(translatedRoot, relative, "call-z80-slice-proof-body.asmi", [
+    lines[proofOrgIndex],
+    `CLTRNEN EQU ${semanticBufferBase}+$10`,
+    "CLBDOFS EQU 136",
+    "",
+    ...lines.slice(proofOrgIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the call z80 proof.",
+    "            %DEFINE SegmentedOutput 0",
+    "            %DEFINE TargetStreamingOutput 0",
+    "            %DEFINE LegacyCompilerSlices 1",
+    "            %DEFINE AggregateCallSlices 0",
+    "            %DEFINE LegacyEncoders 1",
+    "            %DEFINE HybridLL1Full 0",
+    "            %DEFINE RuntimeProofServices 1",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"proof-unsegmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"loop-z80-state.asmi\"",
+    "            %INCLUDE \"call-z80-slice-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"call-z80-slice-after-source-adapter.asmi\"",
+    "            %INCLUDE \"loop-tokenizer.asm\"",
+    "            %INCLUDE \"call-z80-slice-after-tokenizer.asmi\"",
+    "            %INCLUDE \"loop-semantic-sink.asm\"",
+    "            %INCLUDE \"call-z80-slice-after-semantic-sink.asmi\"",
+    "            %INCLUDE \"loop-symbols.asm\"",
+    "            %INCLUDE \"call-z80-slice-after-symbols.asmi\"",
+    "            %INCLUDE \"loop-parser.asm\"",
+    "            %INCLUDE \"call-z80-slice-after-parser.asmi\"",
+    "            %INCLUDE \"loop-z80-sink.asm\"",
+    "            %INCLUDE \"call-z80-slice-after-loop-z80-sink.asmi\"",
+    "            %INCLUDE \"loop-keywords.asmi\"",
+    "            %INCLUDE \"call-z80-slice-after-keywords.asmi\"",
+    "            %INCLUDE \"call-z80-slice-source.asmi\"",
+    "            %INCLUDE \"call-z80-slice-runtime-begin.asmi\"",
+    "            %INCLUDE \"proof-z80-runtime.asm\"",
+    "            %INCLUDE \"call-z80-slice-runtime-after.asmi\"",
+    "            %INCLUDE \"call-z80-slice-proof-body.asmi\"",
     "",
   ].join("\n");
 }
