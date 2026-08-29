@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `2cc2ee45`
+Current reusable-transform baseline HEAD: `31d3ae3c`
 
 ## Purpose
 
@@ -25,20 +25,20 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 69 |
-| Source lines | 29,561 |
-| Defined assembler symbols detected | 3,956 |
+| Source lines | 29,566 |
+| Defined assembler symbols detected | 3,960 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 751 |
 | Long symbols still needing global treatment | 3,159 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Forward-dependent emitted-statement symbol arithmetic sites | 91 |
-| Current permanent-source blockers | 294 |
+| Forward-dependent emitted-statement symbol arithmetic sites | 87 |
+| Current permanent-source blockers | 290 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
-| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 91 |
+| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 87 |
 | Permanent blocker: include after header | 143 |
 | Permanent blocker: feature definition after Atom entry header | 60 |
 | Proof-manifest symbol mappings | 146 |
@@ -264,12 +264,13 @@ lowering may still resolve those expressions from the comparison symbol table,
 but permanent source needs an explicit alias, a source rewrite, or an ordering
 change.
 
-`target-output.asm` and `loop-z80-sink.asm` now carry the first source-level
-examples of that policy. Short aliases such as `TOUTRNL`, `TOUTRUN`, `LZBKRO`,
-and `LZTNUM` name runtime-state extents, target-state offsets, and segmented
-output fields that were formerly written inline. They are AZM-compatible `EQU`
-aliases, produce no bytes, and keep the permanent Atom transform from relying
-on hidden rewrites for those repeated expressions.
+`target-output.asm`, `loop-z80-sink.asm`, and `aggregate-call-parser.asm` now
+carry the first source-level examples of that policy. Short aliases such as
+`TOUTRNL`, `TOUTRUN`, `LZBKRO`, `LZTNUM`, and `ACPRLEN` name runtime-state
+extents, target-state offsets, segmented output fields, and parser workspace
+spans that were formerly written inline. They are AZM-compatible `EQU` aliases,
+produce no bytes, and keep the permanent Atom transform from relying on hidden
+rewrites for those repeated expressions.
 
 The proof harness also has an explicit `atom-preview` assembler mode. That mode
 uses the compatibility-lowered source produced by the migration tools, assembles

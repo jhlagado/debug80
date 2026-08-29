@@ -4197,7 +4197,10 @@ function rewriteAggregateCallParserPermanentAtomSource(source, { relative, trans
     ["ACPSAPR", ["$8C"], ["SymbolAggregateFlag", "+", "SymbolClassParameter"]],
     ["ACPSCU8", ["$81"], ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
   ];
-  let rewritten = source;
+  let rewritten = removeAtomAliasDefinitions(
+    source,
+    [...descriptorAliases, ...aliases].map(([alias]) => alias),
+  );
   for (const [alias, , expression] of aliases) {
     rewritten = rewritten.replaceAll(
       expression.map((name) => atomSymbol(symbolMap, name)).join(""),

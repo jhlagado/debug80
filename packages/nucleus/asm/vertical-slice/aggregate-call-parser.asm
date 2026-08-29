@@ -2,6 +2,11 @@
 ; predefined Stage 8 service surface. Runtime carriers are never entered in
 ; the source symbol model as integers.
 
+ACPRLEN .equ TargetBankRoLengthLimit-TargetBankRoLengthBase ; retained per-bank read-only length table size
+ACPWSZ  .equ Stage7CompilerWorkspaceEnd-Stage7StateBase     ; Stage 7 workspace clear size
+ACPSAPR .equ SymbolAggregateFlag+SymbolClassParameter       ; aggregate parameter symbol class
+ACPSCU8 .equ ScalarMetaConstant+ScalarTypeU8                ; predefined u8 constant metadata
+
 .routine in A out A,HL,carry,zero clobbers sign,parity,halfCarry,DE
 Stage7RoutineAddress:
             LD   L,A
@@ -138,7 +143,7 @@ TargetValidatePartBankLoop:
             INC  HL
             DJNZ TargetValidatePartBankLoop
             LD   HL,TargetBankRoLengthBase
-            LD   B,TargetBankRoLengthLimit-TargetBankRoLengthBase
+            LD   B,ACPRLEN
             XOR  A
 TargetResetBankRoLengthLoop:
             LD   (HL),A
@@ -247,7 +252,7 @@ CompileAggregateCallReady:
             INC  A
             LD   (AggregateMode),A
             LD   HL,Stage7StateBase
-            LD   B,Stage7CompilerWorkspaceEnd-Stage7StateBase
+            LD   B,ACPWSZ
             XOR  A
 CompileAggregateCallResetLoop:
             LD   (HL),A
@@ -470,7 +475,7 @@ Stage7InstallParameter:
             LD   A,(Stage7PathType)
             CP   AggregateFirstDynamicTypeId
             JR   C,Stage7InstallScalarParameter
-            LD   D,SymbolAggregateFlag+SymbolClassParameter
+            LD   D,ACPSAPR
             JR   Stage7InstallParameterSymbol
 Stage7InstallScalarParameter:
             OR   SymbolClassParameter
@@ -1450,7 +1455,7 @@ Stage8TypedPrimaryConstant:
             SUB  Stage8PredefinedConstantBase-1
             LD   L,A
             LD   H,0
-            LD   B,ScalarMetaConstant+ScalarTypeU8
+            LD   B,ACPSCU8
             JP   TypedPrimaryEmitTypedConstant
 
 ; A is the dense service ID and C says whether a successful u8 result is kept.
