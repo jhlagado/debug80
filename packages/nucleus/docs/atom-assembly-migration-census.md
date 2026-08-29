@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 106 |
-| Source lines | 29,732 |
-| Defined assembler symbols detected | 4,037 |
+| Assembly files, `.asm` and `.asmi` | 118 |
+| Source lines | 29,755 |
+| Defined assembler symbols detected | 4,039 |
 | Defined assembler symbols longer than eight characters | 3,910 |
-| Long labels classed as dot-local candidates | 749 |
-| Long symbols still needing global treatment | 3,161 |
+| Long labels classed as dot-local candidates | 750 |
+| Long symbols still needing global treatment | 3,160 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 129 |
+| Include-after-header violations | 121 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 129 |
+| Current permanent-source blockers | 121 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 129 |
+| Permanent blocker: include after header | 121 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -131,6 +131,10 @@ The array Z80 proof now uses the physical version of the generated section-owner
 layout: the entry file is an ordered include list, and each measured region
 boundary lives in an adjacent fragment. This preserves the assembled proof image
 while removing the proof's late includes from the permanent-source blocker set.
+The call Z80 proof now uses the same physical section-owner layout. Its
+diagnostic offset checks use short aliases inside the proof-body fragment, so the
+entry file remains an include-only owner and the permanent Atom path no longer
+needs generated fragments for that proof.
 
 It can also write the proof-manifest symbol join needed by the proof harness:
 

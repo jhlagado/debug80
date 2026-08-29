@@ -1,0 +1,35 @@
+            .org SourceBase
+CallProofSource:
+            .db "forward sub descend(value as u8) as u8",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    var result as u8 = "
+CallProofInitialCall:
+            .db "descend(3)",10
+            .db "    "
+CallProofOutputCall:
+            .db "writeOutputByte(result) else fail",10
+            .db "end",10
+            .db 10
+            .db "sub descend",10
+            .db "    if value = 0",10
+            .db "        return value",10
+            .db "    end",10
+            .db "    return "
+CallProofRecursiveCall:
+            .db "descend(value - 1)",10
+            .db "end",10
+CallProofSourceEnd:
+
+BadCompletionSource:
+            .db "forward sub descend(value as u8) as u8",10
+            .db "sub main() fails",10
+            .db "    var result as u8 = descend(3)",10
+            .db "    writeOutputByte(result) else fail",10
+            .db "end",10
+            .db "sub "
+BadCompletionName:
+            .db "descent",10
+            .db "    return descend(value - 1)",10
+            .db "end",10
+BadCompletionSourceEnd:
