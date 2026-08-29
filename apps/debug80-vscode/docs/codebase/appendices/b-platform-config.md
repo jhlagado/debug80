@@ -21,7 +21,7 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `platform`                | `string`   | `'simple'`                                             | Platform to emulate: `'simple'`, `'cpm22'`, `'tec1'`, or `'tec1g'`                    |
 | `asm`                     | `string`   | —                                                      | Path to the main Z80 assembly source file                                             |
 | `sourceFile`              | `string`   | —                                                      | Alias for `asm`                                                                       |
-| `assembler`               | `string`   | inferred                                               | Backend identifier. Set `atom` or `azm` explicitly for assembly source.               |
+| `assembler`               | `string`   | inferred                                               | Backend identifier. Use `atom` or `ATOM-Z80`, `azm` or `ASM80`, or the frontend IDs `glimmer` and `nucleus`. |
 | `hex`                     | `string`   | derived                                                | Path to the output Intel HEX file; derived from `asm` if omitted                      |
 | `outputDir`               | `string`   | `build`                                                | Directory for build artifacts                                                         |
 | `artifactBase`            | `string`   | asm filename                                           | Base name for generated artifacts such as `.hex`, `.bin`, `.d8.json`, and AZM reports |
@@ -41,9 +41,10 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 Debug80 selects Atom for `.asm`, `.inc`, and `.z80`, Glimmer for `.glim`, and
 Nucleus for `.nu` when `assembler` is omitted. Because Atom and AZM share
 ordinary assembly filenames, a target that requires AZM must set
-`"assembler": "azm"`. New project scaffolds write `"assembler": "atom"`
-explicitly. The top-level `azm` block configures direct AZM builds and the
-contract checker used by Glimmer.
+`"assembler": "azm"` or `"assembler": "ASM80"` explicitly. The same
+shared flavour parser accepts Atom as `atom` or `ATOM-Z80`. New project
+scaffolds write `"assembler": "atom"` explicitly. The top-level `azm`
+block configures direct AZM builds and the contract checker used by Glimmer.
 
 ```json
 {
@@ -82,9 +83,10 @@ Z80 source:
 }
 ```
 
-The accepted values are `atom` and `azm`. Atom is the normal choice and accepts
-ordered hand-written modules as separate source parts. Programs with AZM layout
-types or nested module imports currently require `azm`. Both paths produce HEX,
+The accepted concrete assembler flavours are Atom (`atom` or `ATOM-Z80`) and
+AZM (`azm` or `ASM80`). Atom is the normal choice and accepts ordered
+hand-written modules as separate source parts. Programs with AZM layout types
+or nested module imports currently require AZM. Both paths produce HEX,
 binary, and D8 artifacts, and both attribute user block instructions to the
 original `.glim` lines.
 
@@ -224,14 +226,14 @@ Config block key: `tec1g`
 
 ### `tec1g.romArtifacts`
 
-`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. A TEC-1G expansion artifact may either be a single source-backed 16K window or a multibank artifact with explicit per-bank sources. ROM artifacts default to `assembler: "atom"`; set `assembler: "azm"` only for source that still requires that backend. The build path forces AZM `registerContracts` off when AZM is selected, pads generated bank binaries to their configured size, writes configurable multibank output recipes when requested, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
+`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. A TEC-1G expansion artifact may either be a single source-backed 16K window or a multibank artifact with explicit per-bank sources. ROM artifacts default to `assembler: "atom"`; set `assembler` to an AZM flavour such as `azm` or `ASM80` only for source that still requires that backend. The build path forces AZM `registerContracts` off when AZM is selected, pads generated bank binaries to their configured size, writes configurable multibank output recipes when requested, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
 
 | Field            | Type       | Required  | Description                                                                  |
 | ---------------- | ---------- | --------- | ---------------------------------------------------------------------------- |
 | `id`             | `string`   | yes       | Stable artifact identifier used in diagnostics                               |
 | `role`           | `string`   | yes       | `'monitor'` or `'expansion'`                                                 |
 | `active`         | `boolean`  | no        | Defaults to active; `false` keeps a binary-only placeholder out of launch    |
-| `assembler`      | `string`   | no        | `'atom'` or `'azm'`; defaults to `'atom'` for source-backed ROM artifacts    |
+| `assembler`      | `string`   | no        | Any accepted Atom or AZM flavour ID; defaults to `'atom'` for source-backed ROM artifacts |
 | `sourceFile`     | `string`   | active    | Source file assembled for this ROM artifact                                  |
 | `outputBin`      | `string`   | active    | Binary output path. Must use `.bin`                                          |
 | `outputDebugMap` | `string`   | no        | Optional explicit D8 path. Must match the `outputBin` artifact base          |
