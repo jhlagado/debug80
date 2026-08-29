@@ -9,6 +9,15 @@
 
 TargetStreamingOutput .equ 1
 
+FTADIMG .equ AdapterCapturedBegin+TargetDescriptorImageBase ; captured descriptor image-base field
+FTMPWRI .equ AdapterCapturedMap+TargetMapWritableBase-TargetFlatMapBase ; captured writable-base map field
+FTMPVEC .equ AdapterCapturedMap+TargetMapVectorLength-TargetFlatMapBase ; captured vector-length map field
+FTMPINI .equ AdapterCapturedMap+TargetMapInitializedLength-TargetFlatMapBase ; captured initialized-length map field
+FTMPBSS .equ AdapterCapturedMap+TargetMapBssBase-TargetFlatMapBase ; captured BSS-base map field
+FTMPSTK .equ AdapterCapturedMap+TargetMapStackRequirement-TargetFlatMapBase ; captured stack-requirement map field
+FTMPDLA .equ AdapterCapturedMap+TargetMapDataLoadAddress-TargetFlatMapBase ; captured data-load-address map field
+FTMPAGG .equ AdapterCapturedMap+TargetMapAggregateBase-TargetFlatMapBase ; captured aggregate-base map field
+
             .org CompilerCoreBase
 CompilerCodeStart:
 LegacyCompilerSlices .equ 0
@@ -518,22 +527,22 @@ ProofStart:
             OR   A
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
-            LD   HL,(AdapterCapturedMap+TargetMapWritableBase-TargetFlatMapBase)
+            LD   HL,(FTMPWRI)
             LD   DE,$9000
             OR   A
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
-            LD   HL,(AdapterCapturedMap+TargetMapInitializedLength-TargetFlatMapBase)
+            LD   HL,(FTMPINI)
             LD   DE,72
             OR   A
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
-            LD   HL,(AdapterCapturedMap+TargetMapDataLoadAddress-TargetFlatMapBase)
+            LD   HL,(FTMPDLA)
             LD   DE,$9000
             OR   A
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
-            LD   HL,(AdapterCapturedMap+TargetMapAggregateBase-TargetFlatMapBase)
+            LD   HL,(FTMPAGG)
             LD   A,H
             OR   L
             JP   NZ,ProofLoadedFailure
@@ -665,7 +674,7 @@ ProofStart:
             LD   A,(AdapterAborted)
             OR   A
             JP   NZ,ProofCommitFailure
-            LD   HL,(AdapterCapturedBegin+TargetDescriptorImageBase)
+            LD   HL,(FTADIMG)
             LD   DE,$8000
             OR   A
             SBC  HL,DE
@@ -693,32 +702,32 @@ ProofStart:
             OR   A
             SBC  HL,DE
             JP   NZ,ProofMapFailure
-            LD   HL,(AdapterCapturedMap+TargetMapWritableBase-TargetFlatMapBase)
+            LD   HL,(FTMPWRI)
             LD   DE,$4000
             OR   A
             SBC  HL,DE
             JP   NZ,ProofMapFailure
-            LD   HL,(AdapterCapturedMap+TargetMapVectorLength-TargetFlatMapBase)
+            LD   HL,(FTMPVEC)
             LD   DE,NucleusRuntimeVectorLength
             OR   A
             SBC  HL,DE
             JP   NZ,ProofMapFailure
-            LD   HL,(AdapterCapturedMap+TargetMapInitializedLength-TargetFlatMapBase)
+            LD   HL,(FTMPINI)
             LD   DE,72
             OR   A
             SBC  HL,DE
             JP   NZ,ProofMapFailure
-            LD   HL,(AdapterCapturedMap+TargetMapBssBase-TargetFlatMapBase)
+            LD   HL,(FTMPBSS)
             LD   DE,$4048
             OR   A
             SBC  HL,DE
             JP   NZ,ProofMapFailure
-            LD   HL,(AdapterCapturedMap+TargetMapStackRequirement-TargetFlatMapBase)
+            LD   HL,(FTMPSTK)
             LD   DE,TargetStackRequirement
             OR   A
             SBC  HL,DE
             JP   NZ,ProofMapFailure
-            LD   HL,(AdapterCapturedMap+TargetMapDataLoadAddress-TargetFlatMapBase)
+            LD   HL,(FTMPDLA)
             LD   DE,$81AA
             OR   A
             SBC  HL,DE

@@ -2876,8 +2876,12 @@ function rewriteFlatTargetZ80SliceProofPermanentAtomSource(source, { relative, t
   const indexAliases = [
     ["FTIXBKC", ["TargetDescriptorBankCount"]],
   ];
-  let rewritten = replaceAtomExpressionAliases(
+  const sourceWithoutAliases = removeAtomAliasDefinitions(
     source,
+    [...aliases.map(([alias]) => alias), ...indexAliases.map(([alias]) => alias)],
+  );
+  let rewritten = replaceAtomExpressionAliases(
+    sourceWithoutAliases,
     symbolMap,
     aliases.map(([alias, , expression]) => [alias, expression]),
   );
