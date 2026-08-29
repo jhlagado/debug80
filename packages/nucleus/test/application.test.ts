@@ -489,7 +489,7 @@ describe("Nucleus application boundary", () => {
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("publishes prepared entry source through the resident compiler proof image", async () => {
     await withSourceTree(

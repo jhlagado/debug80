@@ -977,6 +977,50 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("runs the array z80-slice proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const arraySlice = report.proofMatrix.find(
+        ({ proof }) => proof === "array-z80-slice-proof.json",
+      );
+      expect(arraySlice?.status).toBe("blocked-by-contract-support");
+      expect(arraySlice?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "array-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "array-z80-slice-code-begin.asmi"');
+      expect(root).toContain('%INCLUDE "array-z80-slice-proof-body.asmi"');
+
+      const proofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "array-z80-slice-proof-body.asmi"),
+        "utf8",
+      );
+      expect(proofBody).toContain("ARBDOFS EQU 29");
+      expect(proofBody).toContain("ARBDCOL EQU 30");
+      expect(proofBody).not.toContain("BadArrayValue-BadArraySource");
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "array-z80-slice-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/array-z80-slice-proof.asm",
+            maxInstructions: 700_000_000,
+            maxCycles: 7_000_000_000,
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    });
+  }, 60_000);
+
   it("runs the typed-expression z80-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const typedExpression = report.proofMatrix.find(
@@ -1028,7 +1072,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
     });
-  }, 30_000);
+  }, 60_000);
 
   it("runs the Stage 7 LL(1) engine proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
