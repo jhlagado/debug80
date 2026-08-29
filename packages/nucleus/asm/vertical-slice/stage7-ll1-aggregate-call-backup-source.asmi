@@ -1,0 +1,424 @@
+            .org BackupLimit
+
+Stage7LargeDataSource:
+            .db "var first as string[253] = \"A\"",10
+            .db "var second as string[253] = \"B\"",10
+            .db "sub main() fails",10
+            .db "if first.length = 1 and second[0] = 'B'",10
+            .db "writeOutputByte('Y') else fail",10
+            .db "end",10
+            .db "end",10
+Stage7LargeDataSourceEnd:
+
+Stage7DataCapacityAcceptedSource:
+            .db "var a as string[253] = \"\"",10
+            .db "var b as string[253] = \"\"",10
+            .db "var c as string[253] = \"\"",10
+            .db "var d as string[253] = \"\"",10
+            .db "var tail as u8[4] = [0,0,0,0]",10
+            .db "sub main()",10,"end",10
+Stage7DataCapacityAcceptedSourceEnd:
+
+Stage7DataCapacityRejectedSource:
+            .db "var a as string[253] = \"\"",10
+            .db "var b as string[253] = \"\"",10
+            .db "var c as string[253] = \"\"",10
+            .db "var d as string[253] = \"\"",10
+            .db "var tail as u8[4] = [0,0,0,0]",10
+            .db "var e as u8 = 1"
+Stage7DataCapacityRejectedPoint:
+            .db 10
+Stage7DataCapacityRejectedSourceEnd:
+
+Stage7BssCapacityAcceptedSource:
+            .db "var bytes as u8[1024]",10
+            .db "sub main() fails",10
+            .db "bytes[1023] = 'Y'",10
+            .db "writeOutputByte(bytes[1023]) else fail",10
+            .db "end",10
+Stage7BssCapacityAcceptedSourceEnd:
+
+Stage7BssCapacityRejectedSource:
+            .db "var bytes as u8[1025"
+Stage7BssCapacityRejectedPoint:
+            .db "]",10
+Stage7BssCapacityRejectedSourceEnd:
+
+Stage7WideAggregateSource:
+            .db "record Wide",10
+            .db "padding as u8[300]",10
+            .db "values as u8[200]",10
+            .db "tail as u8",10
+            .db "end",10
+            .db "var items as Wide[2]",10
+            .db "sub main() fails",10
+            .db "items[0].values[199] = 'Y'",10
+            .db "items[1] = items[0]",10
+            .db "writeOutputByte(items[1].values[199]) else fail",10
+            .db "end",10
+Stage7WideAggregateSourceEnd:
+
+Stage7WideRecordRejectedSource:
+            .db "record TooLarge",10
+            .db "bytes as u8[1024]",10
+            .db "extra as u8"
+Stage7WideRecordRejectedPoint:
+            .db 10
+            .db "end",10
+Stage7WideRecordRejectedSourceEnd:
+
+Stage7WideInitializedSource:
+            .db "var bytes as u8[256] = ["
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]",10
+            .db "sub main()",10,"end",10
+Stage7WideInitializedSourceEnd:
+
+; These word lengths share their low byte. Structural interning must compare
+; the high byte and retain two different array descriptors.
+Stage7WordLengthInterningSource:
+            .db "var small as u8[1]",10
+            .db "var wide as u8[257]",10
+            .db "sub main() fails",10
+            .db "end",10
+Stage7WordLengthInterningSourceEnd:
+
+Stage7ParameterRoutineCollisionSource:
+            .db "sub choose(choose as u8)",10
+            .db "end",10
+Stage7ParameterRoutineCollisionSourceEnd:
+
+Stage7StringLengthWriteSource:
+            .db "var text as string[3] = \"ABC\"",10
+            .db "sub main()",10
+            .db "text.length = 0",10
+            .db "end",10
+Stage7StringLengthWriteSourceEnd:
+
+Stage7MainParameterSource:
+            .db "sub f(main as u8)",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage7MainParameterSourceEnd:
+
+Stage7MainParameterSyntaxSource:
+            .db "sub main(value as u8)",10
+            .db "end",10
+Stage7MainParameterSyntaxSourceEnd:
+
+Stage7MainResultSource:
+            .db "sub main() as u8",10
+            .db "end",10
+Stage7MainResultSourceEnd:
+
+Stage7RoutineFailsSource:
+            .db "sub f() fails",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage7RoutineFailsSourceEnd:
+
+Stage7MissingMainSource:
+            .db "sub f()",10
+            .db "end",10
+Stage7MissingMainSourceEnd:
+
+Stage7AfterMainSource:
+            .db "sub main()",10
+            .db "end",10
+            .db "var x as u8",10
+Stage7AfterMainSourceEnd:
+
+Stage7ServiceRoutineSource:
+            .db "sub writeOutputByte(value as u8)",10
+            .db "end",10
+Stage7ServiceRoutineSourceEnd:
+
+Stage7ServiceParameterSource:
+            .db "sub f(writeOutputByte as u8)",10
+            .db "end",10
+Stage7ServiceParameterSourceEnd:
+
+Stage7ServiceVariableSource:
+            .db "var writeOutputByte as u8",10
+            .db "sub main()",10
+            .db "end",10
+Stage7ServiceVariableSourceEnd:
+
+; Payload index 137 becomes StaticImageBase+138. Before the scalar-type guard,
+; u8 descriptor underflow could reinterpret this controlled byte as a string
+; descriptor and admit r.value.length.
+Stage7ScalarSuffixPoisonSource:
+            .db "var poison as string[140] = \""
+            .db "AAAAAAAAAA","AAAAAAAAAA","AAAAAAAAAA","AAAAAAAAAA"
+            .db "AAAAAAAAAA","AAAAAAAAAA","AAAAAAAAAA","AAAAAAAAAA"
+            .db "AAAAAAAAAA","AAAAAAAAAA","AAAAAAAAAA","AAAAAAAAAA"
+            .db "AAAAAAAAAA","AAAAAAA\\x05AA\"",10
+            .db "record R",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var r as R",10
+            .db "sub main()",10
+            .db "writeOutputByte(r.value.length)",10
+            .db "end",10
+Stage7ScalarSuffixPoisonSourceEnd:
+
+Stage7RecordIndexSource:
+            .db "record R",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var r as R",10
+            .db "sub main()",10
+            .db "writeOutputByte(r[0].value)",10
+            .db "end",10
+Stage7RecordIndexSourceEnd:
+
+Stage7ShortCircuitSource:
+            .db "record R",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var items as R[2]",10
+            .db "sub main()",10
+            .db "if false and items[2].value = 0",10
+            .db "end",10
+            .db "if true or items[2].value = 0",10
+            .db "end",10
+            .db "end",10
+Stage7ShortCircuitSourceEnd:
+
+Stage7StructuredRoutineSource:
+            .db "record R",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var items as R[2]",10
+            .db "sub identity(flag as boolean) as boolean",10
+            .db "return flag",10
+            .db "end",10
+            .db "sub first(flag as boolean) as u8",10
+            .db "if flag",10
+            .db "return 1",10
+            .db "else",10
+            .db "return 0",10
+            .db "end",10
+            .db "end",10
+            .db "sub second(word as u16) as u16",10
+            .db "if word > 0",10
+            .db "return word",10
+            .db "else",10
+            .db "return 0",10
+            .db "end",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "if identity(false and items[2].value = 0)",10
+            .db "writeOutputByte('X') else fail",10
+            .db "end",10
+            .db "if identity(true or items[2].value = 0)",10
+            .db "else",10
+            .db "writeOutputByte('X') else fail",10
+            .db "end",10
+            .db "if first(true) = 1 and second(513) = 513",10
+            .db "writeOutputByte('Y') else fail",10
+            .db "end",10
+            .db "end",10
+Stage7StructuredRoutineSourceEnd:
+
+Stage7RecursiveCapacitySource:
+            .db "var marker as u8",10
+            .db "sub descend(level as u8)",10
+            .db "if level = 0",10
+            .db "marker = 1",10
+            .db "else",10
+            .db "descend(level - 1)",10
+            .db "end",10
+            .db "end",10
+            .db "sub main()",10
+            .db "descend(8)",10
+            .db "end",10
+Stage7RecursiveCapacitySourceEnd:
+
+Stage7SuffixLengthSource: .db ".length",10
+Stage7SuffixLengthSourceEnd:
+Stage7SuffixFieldSource: .db ".value",10
+Stage7SuffixFieldSourceEnd:
+Stage7SuffixIndexSource: .db "[0]",10
+Stage7SuffixIndexSourceEnd:
+
+Stage7TooFewArgumentsSource:
+            .db "sub pair(a as u8, b as u8)",10
+            .db "end",10
+            .db "sub main()",10
+            .db "pair(1)",10
+            .db "end",10
+Stage7TooFewArgumentsSourceEnd:
+
+Stage7TooManyArgumentsSource:
+            .db "sub one(a as u8)",10
+            .db "end",10
+            .db "sub main()",10
+            .db "one(1, 2)",10
+            .db "end",10
+Stage7TooManyArgumentsSourceEnd:
+
+Stage7ScalarForAggregateSource:
+            .db "record R",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var r as R",10
+            .db "var x as u8",10
+            .db "sub take(item as R)",10
+            .db "end",10
+            .db "sub main()",10
+            .db "take(x)",10
+            .db "end",10
+Stage7ScalarForAggregateSourceEnd:
+
+Stage7AggregateForScalarSource:
+            .db "record R",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var r as R",10
+            .db "sub take(value as u8)",10
+            .db "end",10
+            .db "sub main()",10
+            .db "take(r)",10
+            .db "end",10
+Stage7AggregateForScalarSourceEnd:
+
+Stage7ScalarResultAggregateSource:
+            .db "record R",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var r as R",10
+            .db "sub get() as u8",10
+            .db "return r",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage7ScalarResultAggregateSourceEnd:
+
+Stage7AggregateResultScalarSource:
+            .db "record R",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var x as u8",10
+            .db "sub get() as R",10
+            .db "return x",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage7AggregateResultScalarSourceEnd:
+
+Stage7AggregateConstantSource:
+            .db "record Pair",10
+            .db "left as u8",10
+            .db "right as u16",10
+            .db "end",10
+            .db "const Origin as Pair = (7, 300)",10
+            .db "const Values as u8[3] = [1, 2, 3]",10
+            .db "const Text as string[3] = \"A\\0B\"",10
+            ; Declaring initialized data after constants forces the compiler
+            ; to shift the read-only suffix without changing constant offsets.
+            .db "var target as Pair = (1, 2)",10
+            .db "sub mutate(item as Pair)",10
+            .db "item.left = 9",10
+            .db "end",10
+            .db "sub returnOrigin() as Pair",10
+            .db "return Origin",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "target = Origin",10
+            .db "if target.left = 7 and target.right = 300 and Values[1] = 2 and Text.length = 3 and Text[2] = 'B'",10
+            .db "mutate(Origin)",10
+            .db "if Origin.left = 9 and target.left = 7",10
+            .db "target = returnOrigin()",10
+            .db "if target.left = 9",10
+            .db "writeOutputByte('Y') else fail",10
+            .db "end",10,"end",10,"end",10,"end",10
+Stage7AggregateConstantSourceEnd:
+
+Stage7ReadOnlyWholeAssignmentSource:
+            .db "record Pair",10,"value as u8",10,"end",10
+            .db "const Origin as Pair = (1)",10
+            .db "var target as Pair",10,"sub main()",10
+Stage7ReadOnlyWholeAssignmentPoint:
+            .db "Origin = target",10,"end",10
+Stage7ReadOnlyWholeAssignmentSourceEnd:
+
+Stage7ReadOnlyFieldAssignmentSource:
+            .db "record Pair",10,"value as u8",10,"end",10
+            .db "const Origin as Pair = (1)",10,"sub main()",10
+Stage7ReadOnlyFieldAssignmentPoint:
+            .db "Origin.value = 2",10,"end",10
+Stage7ReadOnlyFieldAssignmentSourceEnd:
+
+Stage7ReadOnlyArrayAssignmentSource:
+            .db "const Values as u8[2] = [1, 2]",10,"sub main()",10
+Stage7ReadOnlyArrayAssignmentPoint:
+            .db "Values[0] = 2",10,"end",10
+Stage7ReadOnlyArrayAssignmentSourceEnd:
+
+Stage7ReadOnlyStringAssignmentSource:
+            .db "const Text as string[2] = \"AB\"",10,"sub main()",10
+Stage7ReadOnlyStringAssignmentPoint:
+            .db "Text[0] = 'C'",10,"end",10
+Stage7ReadOnlyStringAssignmentSourceEnd:
+
+Stage7AggregateConstantIncompleteSource:
+            .db "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            .db "const Bad as Pair = (1"
+Stage7AggregateConstantIncompletePoint:
+            .db ")",10,"sub main()",10,"end",10
+Stage7AggregateConstantIncompleteSourceEnd:
+
+Stage7AggregateConstantWrongTypeSource:
+            .db "const Bad as u8[1] = [true"
+Stage7AggregateConstantWrongTypePoint:
+            .db "]",10,"sub main()",10,"end",10
+Stage7AggregateConstantWrongTypeSourceEnd:
+
+Stage7AggregateConstantRuntimeSource:
+            .db "const Bad as u8[1] = [readInputByte()"
+Stage7AggregateConstantRuntimePoint:
+            .db "]",10,"sub main()",10,"end",10
+Stage7AggregateConstantRuntimeSourceEnd:
+
+Stage7AggregateConstantScalarTypeSource:
+            .db "const Bad as u8 "
+Stage7AggregateConstantScalarTypePoint:
+            .db "= [1]",10,"sub main()",10,"end",10
+Stage7AggregateConstantScalarTypeSourceEnd:
+
+Stage7ReadOnlyCapacityAcceptedSource:
+            .db "const a as string[253] = \"\"",10
+            .db "const b as string[253] = \"\"",10
+            .db "const c as string[253] = \"\"",10
+            .db "const d as string[253] = \"\"",10
+            .db "const tail as u8[4] = [0,0,0,0]",10
+            .db "sub main()",10,"end",10
+Stage7ReadOnlyCapacityAcceptedSourceEnd:
+
+Stage7ReadOnlyCapacityRejectedSource:
+            .db "const a as string[253] = \"\"",10
+            .db "const b as string[253] = \"\"",10
+            .db "const c as string[253] = \"\"",10
+            .db "const d as string[253] = \"\"",10
+            .db "const tail as u8[4] = [0,0,0,0]",10
+            .db "const "
+Stage7ReadOnlyCapacityRejectedPoint:
+            .db "extra as u8[1] = [0]",10
+Stage7ReadOnlyCapacityRejectedSourceEnd:

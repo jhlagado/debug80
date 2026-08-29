@@ -1780,6 +1780,23 @@ describe("Nucleus Atom migration dry-run", () => {
       );
       expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
       expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-ll1-aggregate-call-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "stage7-ll1-aggregate-call-code-begin.asmi"');
+      expect(root).toContain('%INCLUDE "stage7-ll1-aggregate-call-backup-source.asmi"');
+      expect(root).toContain('%INCLUDE "stage7-ll1-aggregate-call-proof-body.asmi"');
+      const proofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-ll1-aggregate-call-proof-body.asmi"),
+        "utf8",
+      );
+      expect(proofBody).toMatch(/\bS7CSLOF\s+EQU\s+\$34\b/);
+      expect(proofBody).toMatch(/\bS7RDOF\s+EQU\s+\$C00\b/);
+      expect(proofBody).toMatch(/\bS7SREB\s+EQU\s+\$4474\b/);
+      expect(proofBody).not.toContain("Stage7CorruptStringLengthPoint-Stage7CorruptStringSource");
+      expect(proofBody).not.toContain("GeneratedRoDataBase-GeneratedBase");
+      expect(proofBody).not.toContain("SegmentRoDataEntry+SegmentEntryBase");
 
       const current = await compile(
         path.join(asmRoot, "vertical-slice", "stage7-ll1-aggregate-call-z80-slice-proof.asm"),

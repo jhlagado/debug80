@@ -1,0 +1,140 @@
+            .org SourceBase
+Stage7CopySource:
+            .db "record Counter",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var source as Counter = (1)",10
+            .db "var destination as Counter",10
+            .db "sub copyAndIncrement(input as Counter, output as Counter)",10
+            .db "output = input",10
+            .db "output.value = output.value + 1",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "source = source",10
+            .db "copyAndIncrement(source, destination)",10
+            .db "if source.value = 1 and destination.value = 2",10
+            .db "writeOutputByte('Y') else fail",10
+            .db "end",10
+            .db "end",10
+Stage7CopySourceEnd:
+
+Stage7ForwardSource:
+            .db "record Sample",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var samples as Sample[2] = [(3), (7)]",10
+            .db "sub select(items as Sample[2], index as u8) as Sample",10
+            .db "return items[index]",10
+            .db "end",10
+            .db "sub forwardSelection(items as Sample[2], index as u8) as Sample",10
+            .db "return select(items, index)",10
+            .db "end",10
+            .db "sub nine() as u8",10
+            .db "return 9",10
+            .db "end",10
+            .db "sub replace(item as Sample, value as u8)",10
+            .db "item.value = value",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "replace(forwardSelection(samples, 1), nine())",10
+            .db "if samples[1].value = 9",10
+            .db "writeOutputByte('Y') else fail",10
+            .db "end",10
+            .db "end",10
+Stage7ForwardSourceEnd:
+
+Stage7StringSource:
+            .db "var text as string[3] = \"ABC\"",10
+            .db "sub mutate(item as string[3], index as u8)",10
+            .db "item[index] = 'Y'",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "mutate(text, 1)",10
+            .db "if text.length = 3 and text[1] = 'Y'",10
+            .db "writeOutputByte('Y') else fail",10
+            .db "end",10
+            .db "end",10
+Stage7StringSourceEnd:
+
+Stage7BoundsSource:
+            .db "record Sample",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var samples as Sample[2] = [(3), (7)]",10
+            .db "sub select(items as Sample[2], index as u8) as Sample",10
+            .db "return items[index]",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "select(samples, 2)",10
+            .db "writeOutputByte('N') else fail",10
+            .db "end",10
+Stage7BoundsSourceEnd:
+
+Stage7ConstantBoundsSource:
+            .db "record Sample",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var samples as Sample[2] = [(3), (7)]",10
+            .db "sub main()",10
+            .db "samples[2].value = 9",10
+            .db "end",10
+Stage7ConstantBoundsSourceEnd:
+
+Stage7NominalMismatchSource:
+            .db "record Left",10
+            .db "value as u8",10
+            .db "end",10
+            .db "record Right",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var left as Left",10
+            .db "var right as Right",10
+            .db "sub main()",10
+            .db "right = left",10
+            .db "end",10
+Stage7NominalMismatchSourceEnd:
+
+Stage7TransientMisuseSource:
+            .db "record Sample",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var samples as Sample[2] = [(3), (7)]",10
+            .db "sub select(items as Sample[2], index as u8) as Sample",10
+            .db "return items[index]",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "writeOutputByte(u8(select(samples, 0))) else fail",10
+            .db "end",10
+Stage7TransientMisuseSourceEnd:
+
+Stage7RoutineCapacitySource:
+            .db "sub a()",10,"end",10
+            .db "sub b()",10,"end",10
+            .db "sub c()",10,"end",10
+            .db "sub d()",10,"end",10
+            .db "sub e()",10,"end",10
+Stage7RoutineCapacitySourceEnd:
+
+Stage7ParameterCapacitySource:
+            .db "sub many(a as u8, b as u8, c as u8, d as u8, e as u8, f as u8, g as u8, h as u8, i as u8, j as u8, k as u8, l as u8, m as u8, n as u8, o as u8, p as u8, "
+            .db "q as u8"
+Stage7ParameterCapacityPoint:
+            .db ")",10
+            .db "end",10
+Stage7ParameterCapacitySourceEnd:
+
+Stage7CallDepthSource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var box as Box",10
+            .db "sub keep(item as Box) as Box",10
+            .db "return item",10
+            .db "end",10
+            .db "sub main()",10
+            .db "keep(keep(keep(keep(keep(box)))))",10
+            .db "end",10
+Stage7CallDepthSourceEnd:
+
+            ; Additional adversarial source fixtures live after the Z80
+            ; transaction backup rather than consuming the 2 KiB source bank.
