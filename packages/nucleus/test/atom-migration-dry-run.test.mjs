@@ -977,6 +977,59 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("runs the typed-expression z80-slice proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const typedExpression = report.proofMatrix.find(
+        ({ proof }) => proof === "typed-expression-z80-slice-proof.json",
+      );
+      expect(typedExpression?.status).toBe("blocked-by-contract-support");
+      expect(typedExpression?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "typed-expression-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "typed-expression-z80-slice-code-begin.asmi"');
+      expect(root).toContain('%INCLUDE "typed-expression-z80-slice-proof-body.asmi"');
+
+      const proofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "typed-expression-z80-slice-proof-body.asmi"),
+        "utf8",
+      );
+      expect(proofBody).toContain("TEPNWOF EQU");
+      expect(proofBody).toContain("TEPDVOF EQU");
+      expect(proofBody).not.toContain("TypedNarrowTrapPoint-TypedNarrowTrapSource");
+      expect(proofBody).not.toContain("ScalarMetaConstant+ScalarTypeU8");
+
+      const loopParser = await readFile(
+        path.join(translatedRoot, "vertical-slice", "loop-parser.asm"),
+        "utf8",
+      );
+      expect(loopParser).toContain('%INCLUDE "loop-parser-core.asmi"');
+      expect(loopParser).toContain('%INCLUDE "typed-expression-parser.asm"');
+      expect(loopParser).toContain('%INCLUDE "aggregate-parser.asm"');
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "typed-expression-z80-slice-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/typed-expression-z80-slice-proof.asm",
+            maxInstructions: 700_000_000,
+            maxCycles: 7_000_000_000,
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    });
+  }, 30_000);
+
   it("runs the Stage 7 LL(1) engine proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const stage7 = report.proofMatrix.find(
