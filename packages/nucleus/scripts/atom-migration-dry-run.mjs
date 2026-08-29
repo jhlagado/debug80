@@ -225,17 +225,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteStage7Ll1AggregateCallZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/stage8-failure-z80-slice-proof.asm", Object.freeze({
-    description: "Stage 8 failure proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/stage8-failure-z80-slice-proof.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/stage8-failure-z80-slice-proof.asm",
-        code: "atom-symbol-expression",
-      }),
-    ]),
+    description: "Stage 8 failure proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteStage8FailureZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/stage9-conformance-z80-slice-proof.asm", Object.freeze({
@@ -3067,83 +3058,7 @@ function rewriteStage7Ll1AggregateCallZ80SliceProofPermanentAtomSource() {
     "",
   ].join("\n");
 }
-function rewriteStage8FailureZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const sourceBase = atomSymbol(symbolMap, "SourceBase");
-  const spareBase = atomSymbol(symbolMap, "SpareBase");
-  const backupLimit = atomSymbol(symbolMap, "BackupLimit");
-  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
-  const aliases = collectSimplePermanentExpressionAliases(source, "S8E");
-
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
-  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage8 failure proof");
-  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "stage8 failure proof");
-  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "stage8 failure proof");
-  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "stage8 failure proof");
-  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "stage8 failure proof");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "stage8 failure proof");
-  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "stage8 failure proof");
-  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "stage8 failure proof");
-  const aggregateSinkIncludeIndex = findPermanentIncludeLine(lines, "aggregate-z80.asm", "stage8 failure proof");
-  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "stage8 failure proof");
-  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "stage8 failure proof");
-  const spareOrgIndex = findPermanentOrgLine(lines, spareBase, "stage8 failure proof");
-  const backupOrgIndex = findPermanentOrgLine(lines, backupLimit, "stage8 failure proof");
-  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "stage8 failure proof");
-  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "stage8 failure proof");
-  const proofOrgIndex = findPermanentOrgLine(lines, "$D000", "stage8 failure proof");
-
-  const orderedIndexes = [
-    compilerOrgIndex,
-    sourceAdapterIncludeIndex,
-    tokenizerIncludeIndex,
-    semanticSinkIncludeIndex,
-    symbolsIncludeIndex,
-    parserIncludeIndex,
-    loopSinkIncludeIndex,
-    typedSinkIncludeIndex,
-    aggregateSinkIncludeIndex,
-    keywordsIncludeIndex,
-    sourceOrgIndex,
-    spareOrgIndex,
-    backupOrgIndex,
-    runtimeOrgIndex,
-    runtimeIncludeIndex,
-    proofOrgIndex,
-  ];
-  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
-    throw new Error("stage8 failure proof permanent Atom rewrite found an unexpected section order");
-  }
-
-  const writeSlice = (includeName, start, end) => {
-    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
-      ...lines.slice(start, end).filter((line) =>
-        !/^\s*%DEFINE\s+(TargetStreamingOutput|LegacyCompilerSlices|AggregateCallSlices|Stage7LL1|LegacyEncoders)\b/i.test(line)),
-      "",
-    ]);
-  };
-  writeSlice("stage8-failure-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
-  writeSlice("stage8-failure-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
-  writeSlice("stage8-failure-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
-  writeSlice("stage8-failure-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
-  writeSlice("stage8-failure-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
-  writeSlice("stage8-failure-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
-  writeSlice("stage8-failure-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
-  writeSlice("stage8-failure-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, aggregateSinkIncludeIndex);
-  writeSlice("stage8-failure-after-aggregate-z80.asmi", aggregateSinkIncludeIndex + 1, keywordsIncludeIndex);
-  writeSlice("stage8-failure-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
-  writeSlice("stage8-failure-source.asmi", sourceOrgIndex, spareOrgIndex);
-  writeSlice("stage8-failure-spare-source.asmi", spareOrgIndex, backupOrgIndex);
-  writeSlice("stage8-failure-backup-source.asmi", backupOrgIndex, runtimeOrgIndex);
-  writeSlice("stage8-failure-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
-  writeSlice("stage8-failure-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
-  writeGeneratedPermanentPart(translatedRoot, relative, "stage8-failure-proof-body.asmi", [
-    lines[proofOrgIndex],
-    ...atomExpressionAliasLines(symbolMap, aliases),
-    "",
-    ...lines.slice(proofOrgIndex + 1),
-  ]);
-
+function rewriteStage8FailureZ80SliceProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the Stage 8 failure proof.",
     "            %DEFINE SegmentedOutput 1",

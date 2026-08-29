@@ -1840,6 +1840,21 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
       expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
 
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage8-failure-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "stage8-failure-source.asmi"');
+      expect(root).toContain('%INCLUDE "stage8-failure-backup-source.asmi"');
+      expect(root).toContain('%INCLUDE "stage8-failure-proof-body.asmi"');
+      const proofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage8-failure-proof-body.asmi"),
+        "utf8",
+      );
+      expect(proofBody).toContain("S8E00 EQU");
+      expect(proofBody).toContain(";@NUC-GLOBAL ProofStart PERMANENT");
+      expect(proofBody).not.toContain("%INCLUDE");
+
       const current = await compile(
         path.join(asmRoot, "vertical-slice", "stage8-failure-z80-slice-proof.asm"),
         { outputType: "bin" },

@@ -1,0 +1,158 @@
+            .org SourceBase
+Stage8MainFailSource:
+            .db "sub helper() as u8",10
+            .db "return 7",10
+            .db "end",10
+            .db "sub main() fails",10
+Stage8MainFailPoint:
+            .db "fail helper()",10
+            .db "end",10
+Stage8MainFailSourceEnd:
+
+Stage8InfallibleFailSource:
+            .db "sub main()",10
+Stage8InfallibleFailPoint:
+            .db "fail 7",10
+            .db "end",10
+Stage8InfallibleFailSourceEnd:
+
+Stage8FailureRangeSource:
+            .db "sub main() fails",10
+Stage8FailureRangePoint:
+            .db "fail 300",10
+            .db "end",10
+Stage8FailureRangeSourceEnd:
+
+Stage8FailureFlowSource:
+            .db "sub helper() as u8 fails",10
+            .db "end",10
+Stage8FailureFlowPoint:
+            .db "sub main()",10
+            .db "end",10
+Stage8FailureFlowSourceEnd:
+
+Stage8PropagationSuccessSource:
+            .db "sub pass(input as u8) as u8 fails",10
+            .db "return input",10
+            .db "end",10
+            .db "sub relay(value as u8) as u8 fails",10
+            .db "var out as u8 = pass(value) else fail",10
+            .db "return out",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var out as u8 = relay('A') else fail",10
+            .db "writeOutputByte(out) else fail",10
+            .db "end",10
+Stage8PropagationSuccessSourceEnd:
+
+Stage8PropagationFailureSource:
+            .db "sub stop(input as u8) as u8 fails",10
+            .db "fail input",10
+            .db "end",10
+            .db "sub relay(value as u8) as u8 fails",10
+            .db "var out as u8 = stop(value) else fail",10
+            .db "return out",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var out as u8 = "
+Stage8PropagationFailurePoint:
+            .db "relay(10) else fail",10
+            .db "end",10
+Stage8PropagationFailureSourceEnd:
+
+Stage8BareReturnSource:
+            .db "var mark as u8",10
+            .db "sub stop() fails",10
+            .db "return",10
+            .db "mark = 9",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "stop() else fail",10
+            .db "writeOutputByte(mark) else fail",10
+            .db "end",10
+Stage8BareReturnSourceEnd:
+
+Stage8SixteenArgumentsSource:
+            .db "sub pick(a as u8, b as u8, c as u8, d as u8, e as u8, f as u8, g as u8, h as u8, i as u8, j as u8, k as u8, l as u8, m as u8, n as u8, o as u8, p as u8) as u8",10
+            .db "return p",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var out as u8 = pick(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)",10
+            .db "writeOutputByte(out) else fail",10
+            .db "end",10
+Stage8SixteenArgumentsSourceEnd:
+
+Stage8LocalHandlerSource:
+            .db "const sampleFailure = 7",10
+            .db "sub alwaysFails() as u8 fails",10
+            .db "fail sampleFailure",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "code = alwaysFails() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "writeOutputByte(0) else fail",10
+            .db "end",10
+Stage8LocalHandlerSourceEnd:
+
+; A program variable is a valid handler destination. The handler performs a
+; later expression and service call so a one-byte address operand cannot pass
+; by accidentally consuming the following semantic opcode.
+Stage8ProgramHandlerSource:
+            .db "var saved as u8",10
+            .db "const sampleFailure = 7",10
+            .db "sub alwaysFails() as u8 fails",10
+            .db "fail sampleFailure",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var value as u8",10
+            .db "value = alwaysFails() handle saved",10
+            .db "writeOutputByte(saved + 1) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "writeOutputByte(0) else fail",10
+            .db "end",10
+Stage8ProgramHandlerSourceEnd:
+
+Stage8ReadInputSuccessSource:
+            .db "sub identity(value as u8) as u8",10
+            .db "return value",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var value as u8 = readInputByte() else fail",10
+Stage8ReadInputNestedServicePoint:
+            .db "writeOutputByte(identity(value)) else fail",10
+            .db "end",10
+Stage8ReadInputSuccessSourceEnd:
+
+Stage8ServiceFrameBoundarySource:
+            .db "sub one() as u8",10
+            .db "return 1",10
+            .db "end",10
+            .db "sub two(value as u8) as u8",10
+            .db "return value",10
+            .db "end",10
+            .db "sub three(value as u8) as u8",10
+            .db "return value",10
+            .db "end",10
+            .db "sub four(value as u8) as u8",10
+            .db "return value",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "writeOutputByte(four(three(two(one())))) else fail",10
+            .db "end",10
+Stage8ServiceFrameBoundarySourceEnd:
+
+Stage8ReadInputHandlerSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "var value as u8",10
+            .db "value = readInputByte() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "writeOutputByte(value) else fail",10
+            .db "end",10
+Stage8ReadInputHandlerSourceEnd:

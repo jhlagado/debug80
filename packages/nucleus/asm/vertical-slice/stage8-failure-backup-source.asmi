@@ -1,0 +1,497 @@
+            .org BackupLimit
+Stage8PredefinedVariableSource:
+            .db "var "
+Stage8PredefinedVariablePoint:
+            .db "readInputByte as u8 = 1 + 2",10
+            .db "sub main()",10
+            .db "end",10
+Stage8PredefinedVariableSourceEnd:
+
+Stage8PredefinedRoutineSource:
+            .db "sub "
+Stage8PredefinedRoutinePoint:
+            .db "writeStorageByte(value as u8) fails",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage8PredefinedRoutineSourceEnd:
+
+Stage8PredefinedParameterSource:
+            .db "sub helper("
+Stage8PredefinedParameterPoint:
+            .db "outputFailure as u8)",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage8PredefinedParameterSourceEnd:
+
+Stage8WriteStorageTypeSource:
+            .db "sub main() fails",10
+            .db "var word as u16 = 300",10
+            .db "writeStorageByte("
+Stage8WriteStorageTypePoint:
+            .db "word) else fail",10
+            .db "end",10
+Stage8WriteStorageTypeSourceEnd:
+
+Stage8SeekStorageTypeSource:
+            .db "sub main() fails",10
+            .db "var flag as boolean = true",10
+            .db "seekStorageOutput("
+Stage8SeekStorageTypePoint:
+            .db "flag) else fail",10
+            .db "end",10
+Stage8SeekStorageTypeSourceEnd:
+
+Stage8SecondForwardSource:
+            .db "forward sub duplicate(value as u8)",10
+            .db "forward sub "
+Stage8SecondForwardPoint:
+            .db "duplicate(value as u8)",10
+            .db "sub duplicate",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage8SecondForwardSourceEnd:
+
+Stage8UnknownCompletionSource:
+            .db "sub "
+Stage8UnknownCompletionPoint:
+            .db "missing",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage8UnknownCompletionSourceEnd:
+
+Stage8UnconsumedServiceSource:
+            .db "sub main() fails",10
+            .db "writeOutputByte('A')",10
+Stage8UnconsumedServicePoint:
+            .db "end",10
+Stage8UnconsumedServiceSourceEnd:
+
+Stage8NestedServiceSource:
+            .db "sub main() fails",10
+            .db "writeOutputByte(readInputByte()"
+Stage8NestedServicePoint:
+            .db ") else fail",10
+            .db "end",10
+Stage8NestedServiceSourceEnd:
+
+Stage8ServiceArgumentSource:
+            .db "sub take(value as u8)",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "take("
+Stage8ServiceArgumentPoint:
+            .db "readInputByte())",10
+            .db "end",10
+Stage8ServiceArgumentSourceEnd:
+
+Stage8TrapBypassesHandlerSource:
+            .db "sub dive(value as u16) as u8 fails",10
+            .db "var result as u8",10
+            .db "if value = 0",10
+            .db "return 0",10
+            .db "end",10
+            .db "result = "
+Stage8TrapRecursiveCallPoint:
+            .db "dive(value - 1) else fail",10
+            .db "return result",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "var result as u8",10
+            .db "result = "
+Stage8TrapBypassesHandlerPoint:
+            .db "dive(2) handle code",10
+            .db "writeOutputByte('H') else fail",10
+            .db "end",10
+            .db "end",10
+Stage8TrapBypassesHandlerSourceEnd:
+
+Stage8ResultFreeReturnSource:
+            .db "sub emitMarker() fails",10
+            .db "writeOutputByte('R') else fail",10
+            .db "return",10
+            .db "end",10
+            .db "sub relay() fails",10
+            .db "emitMarker() else fail",10
+            .db "return",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "relay() else fail",10
+            .db "return",10
+            .db "end",10
+Stage8ResultFreeReturnSourceEnd:
+
+Stage8ForwardMainSource:
+            .db "var depth as u8",10
+            .db "forward sub main() fails",10
+            .db "sub relay() fails",10
+            .db "main() else fail",10
+            .db "return",10
+            .db "end",10
+            .db "sub main",10
+            .db "if depth = 0",10
+            .db "depth = 1",10
+            .db "relay() else fail",10
+            .db "writeOutputByte('M') else fail",10
+            .db "end",10
+            .db "return",10
+            .db "end",10
+Stage8ForwardMainSourceEnd:
+
+Stage8RecursiveMainSource:
+            .db "var depth as u8",10
+            .db "sub main() fails",10
+            .db "if depth = 0",10
+            .db "depth = 1",10
+            .db "main() else fail",10
+            .db "writeOutputByte('D') else fail",10
+            .db "end",10
+            .db "return",10
+            .db "end",10
+Stage8RecursiveMainSourceEnd:
+
+Stage8IncompleteForwardMainSource:
+            .db "forward sub main() fails",10
+Stage8IncompleteForwardMainSourceEnd:
+
+Stage8BoundsTrapSource:
+            .db "var bytes as u8[2]",10
+            .db "sub main() fails",10
+            .db "var index as u8 = readInputByte() else fail",10
+            .db "bytes"
+Stage8BoundsTrapPoint:
+            .db "[index] = 1",10
+            .db "end",10
+Stage8BoundsTrapSourceEnd:
+
+Stage8NarrowTrapSource:
+            .db "var wide as u16 = 300",10
+            .db "sub main() fails",10
+            .db "var out as u8",10
+            .db "out = "
+Stage8NarrowTrapPoint:
+            .db "u8(wide)",10
+            .db "end",10
+Stage8NarrowTrapSourceEnd:
+
+Stage8DivideTrapSource:
+            .db "sub main() fails",10
+            .db "var divisor as u16 = readInputByte() else fail",10
+            .db "var result as u16",10
+            .db "result = 8 "
+Stage8DivideTrapPoint:
+            .db "/ divisor",10
+            .db "end",10
+Stage8DivideTrapSourceEnd:
+
+Stage8LoopRangeTrapSource:
+            .db "sub main()",10
+            .db "var index as u8",10
+            .db "for "
+Stage8LoopRangeTrapPoint:
+            .db "index = 250 to 300 step 10",10
+            .db "end",10
+            .db "end",10
+Stage8LoopRangeTrapSourceEnd:
+
+Stage8ComposedFailableSource:
+            .db "sub read() as u8 fails",10
+            .db "return 1",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var out as u8",10
+            .db "out = read() "
+Stage8ComposedFailablePoint:
+            .db "+ 1 else fail",10
+            .db "end",10
+Stage8ComposedFailableSourceEnd:
+
+Stage8AggregateSuffixFailableSource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var stored as Box = (1)",10
+            .db "sub get() as Box fails",10
+            .db "return stored",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var out as u8",10
+            .db "out = get()"
+Stage8AggregateSuffixFailablePoint:
+            .db ".value else fail",10
+            .db "end",10
+Stage8AggregateSuffixFailableSourceEnd:
+
+Stage8IndexFailableSource:
+            .db "var items as u8[2]",10
+            .db "sub main() fails",10
+            .db "var out as u8",10
+            .db "out = items[readInputByte()"
+Stage8IndexFailablePoint:
+            .db "] else fail",10
+            .db "end",10
+Stage8IndexFailableSourceEnd:
+
+Stage8AggregateArgumentFailableSource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var stored as Box",10
+            .db "sub get() as Box fails",10
+            .db "return stored",10
+            .db "end",10
+            .db "sub take(value as Box)",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "take(get("
+Stage8AggregateArgumentFailablePoint:
+            .db "))",10
+            .db "end",10
+Stage8AggregateArgumentFailableSourceEnd:
+
+Stage8NestedFrameSource:
+            .db "sub inner() as u8",10
+            .db "return 'N'",10
+            .db "end",10
+            .db "sub outer(value as u8) as u8 fails",10
+            .db "return value",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var out as u8 = outer(inner()) else fail",10
+            .db "writeOutputByte(out) else fail",10
+            .db "end",10
+Stage8NestedFrameSourceEnd:
+
+Stage8PredefinedStepSource:
+            .db "sub main() fails",10
+            .db "var index as u8",10
+            .db "for index = 0 until 4 step outputFailure",10
+            .db "writeOutputByte('S') else fail",10
+            .db "end",10
+            .db "end",10
+Stage8PredefinedStepSourceEnd:
+
+Stage8IndirectHandlerSource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var target as Box = (9)",10
+            .db "sub stop() as u8 fails",10
+            .db "fail 7",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "target.value = stop() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "writeOutputByte(target.value) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8IndirectHandlerSourceEnd:
+
+Stage8AggregateCopyHandlerSource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var source as Box = (5)",10
+            .db "var target as Box = (9)",10
+            .db "sub choose(shouldFail as boolean) as Box fails",10
+            .db "if shouldFail",10
+            .db "fail 7",10
+            .db "end",10
+            .db "return source",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "target = choose(false) else fail",10
+            .db "writeOutputByte(target.value) else fail",10
+            .db "target = choose(true) handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "writeOutputByte(target.value) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8AggregateCopyHandlerSourceEnd:
+
+Stage8RetainedResetSource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var source as Box = (1)",10
+            .db "var target as Box = (2)",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "target = source",10
+            .db "rewindStorageInput() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8RetainedResetSourceEnd:
+
+Stage8IndirectServiceHandlerSource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var target as Box = (9)",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "target.value = readInputByte() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "writeOutputByte(target.value) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8IndirectServiceHandlerSourceEnd:
+
+; Keep the indirect destination count distinct from the following handler's
+; symbol metadata. This source leaves the original failable call as the last
+; consumer in the transcript so its backpatched fields remain inspectable.
+Stage8RetainedFieldSource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var target as Box = (9)",10
+            .db "sub stop() as u8 fails",10
+            .db "fail 7",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "target.value = stop() handle code",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8RetainedFieldSourceEnd:
+
+; The redesigned surface keeps handling attached to the call's logical line.
+; This one program discriminates success-handler skipping, same-destination
+; error storage, handler fallthrough, conditional `else` on the next line,
+; and the release of `on` and `error` as ordinary identifiers.
+Stage8ImmediateConsumerSource:
+            .db "var on as u8 = 1",10
+            .db "var error as u8 = 2",10
+            .db "var value as u8",10
+            .db "sub pass(input as u8) as u8 fails",10
+            .db "return input",10
+            .db "end",10
+            .db "sub stop(input as u8) as u8 fails",10
+            .db "fail input",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "value = pass(5) handle code",10
+            .db "fail 90",10
+            .db "end",10
+            .db "if on + error = 3",10
+            .db "value = pass(6) else fail",10
+            .db "else",10
+            .db "fail 91",10
+            .db "end",10
+            .db "value = stop(7) handle value",10
+            .db "if value = 7",10
+            .db "writeOutputByte('H') else fail",10
+            .db "end",10
+            .db "end",10
+            .db "writeOutputByte(value) else fail",10
+            .db "end",10
+Stage8ImmediateConsumerSourceEnd:
+
+Stage8HandlerPropagatesSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "writeOutputByte('X') handle code",10
+Stage8HandlerExplicitFailPoint:
+            .db "fail code",10
+            .db "end",10
+            .db "end",10
+Stage8HandlerPropagatesSourceEnd:
+
+Stage8BareLocalSource:
+            .db "sub main() fails",10
+            .db "var value as u8 = readInputByte()"
+Stage8BareLocalPoint: .db 10,"end",10
+Stage8BareLocalSourceEnd:
+Stage8BareAssignmentSource:
+            .db "sub main() fails",10,"var value as u8",10
+            .db "value = readInputByte()"
+Stage8BareAssignmentPoint: .db 10,"end",10
+Stage8BareAssignmentSourceEnd:
+Stage8LegacyOrFailSource:
+            .db "sub main() fails",10,"var value as u8",10
+            .db "value = readInputByte() "
+Stage8LegacyOrFailPoint: .db "or fail",10,"end",10
+Stage8LegacyOrFailSourceEnd:
+Stage8LegacyOnErrorSource:
+            .db "sub main() fails",10,"var code as u8",10
+            .db "writeOutputByte(1)"
+Stage8LegacyOnErrorPoint: .db 10,"on error code",10,"end",10,"end",10
+Stage8LegacyOnErrorSourceEnd:
+Stage8InfalliblePropagationSource:
+            .db "sub main()",10,"var value as u8",10
+            .db "value = readInputByte() "
+Stage8InfalliblePropagationPoint: .db "else fail",10,"end",10
+Stage8InfalliblePropagationSourceEnd:
+Stage8InfallibleHandleSource:
+            .db "sub helper()",10,"end",10,"sub main()",10
+            .db "var code as u8",10,"helper() "
+Stage8InfallibleHandlePoint: .db "handle code",10,"end",10,"end",10
+Stage8InfallibleHandleSourceEnd:
+Stage8DoubleConsumerSource:
+            .db "sub main() fails",10,"var code as u8",10
+            .db "writeOutputByte(1) else fail "
+Stage8DoubleConsumerPoint: .db "handle code",10,"end",10,"end",10
+Stage8DoubleConsumerSourceEnd:
+Stage8LocalHandleSource:
+            .db "sub main() fails",10
+            .db "var value as u8 = 1 "
+Stage8LocalHandlePoint: .db "handle value",10,"end",10,"end",10
+Stage8LocalHandleSourceEnd:
+Stage8ResultReturnPropagationSource:
+            .db "sub result() as u8 fails",10,"return readInputByte() "
+Stage8ResultReturnPropagationPoint: .db "else fail",10,"end",10
+            .db "sub main()",10,"end",10
+Stage8ResultReturnPropagationSourceEnd:
+Stage8FreeReturnPropagationSource:
+            .db "sub helper() fails",10,"end",10,"sub main() fails",10,"return "
+Stage8FreeReturnPropagationPoint: .db "helper() else fail",10,"end",10
+Stage8FreeReturnPropagationSourceEnd:
+
+Stage8MissingHandleNameSource:
+            .db "sub main() fails",10,"writeOutputByte(1) handle"
+Stage8MissingHandleNamePoint: .db 10,"end",10,"end",10
+Stage8MissingHandleNameSourceEnd:
+Stage8UnknownHandleNameSource:
+            .db "sub main() fails",10,"writeOutputByte(1) handle "
+Stage8UnknownHandleNamePoint: .db "missing",10,"end",10,"end",10
+Stage8UnknownHandleNameSourceEnd:
+Stage8WideHandleNameSource:
+            .db "sub main() fails",10,"var code as u16",10
+            .db "writeOutputByte(1) handle "
+Stage8WideHandleNamePoint: .db "code",10,"end",10,"end",10
+Stage8WideHandleNameSourceEnd:
+Stage8ConstantHandleNameSource:
+            .db "const code = 1",10,"sub main() fails",10
+            .db "writeOutputByte(1) handle "
+Stage8ConstantHandleNamePoint: .db "code",10,"end",10,"end",10
+Stage8ConstantHandleNameSourceEnd:
+Stage8AggregateHandleNameSource:
+            .db "record Box",10,"value as u8",10,"end",10
+            .db "var box as Box",10,"sub main() fails",10
+            .db "writeOutputByte(1) handle "
+Stage8AggregateHandleNamePoint: .db "box",10,"end",10,"end",10
+Stage8AggregateHandleNameSourceEnd:
+Stage8CounterHandleNameSource:
+            .db "sub main() fails",10,"var index as u8",10
+            .db "for index = 0 until 1",10
+            .db "writeOutputByte(1) handle "
+Stage8CounterHandleNamePoint: .db "index",10,"end",10,"end",10,"end",10
+Stage8CounterHandleNameSourceEnd:

@@ -1,0 +1,115 @@
+            .org SpareBase
+Stage8ConstantsSource:
+            .db "sub main() fails",10
+            .db "if endOfInput = 1 and inputFailure = 2 and outputFailure = 3 and storageFailure = 4",10
+            .db "writeOutputByte('C') else fail",10
+            .db "end",10
+            .db "end",10
+Stage8ConstantsSourceEnd:
+
+Stage8StorageSuccessSource:
+            .db "sub main() fails",10
+            .db "var first as u8",10
+            .db "var again as u8",10
+            .db "first = readStorageByte() else fail",10
+            .db "rewindStorageInput() else fail",10
+            .db "again = readStorageByte() else fail",10
+            .db "writeStorageByte(first) else fail",10
+            .db "writeStorageByte('B') else fail",10
+            .db "seekStorageOutput(0) else fail",10
+            .db "writeStorageByte('Z') else fail",10
+            .db "writeOutputByte(again) else fail",10
+            .db "end",10
+Stage8StorageSuccessSourceEnd:
+
+Stage8WriteFailureSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "writeStorageByte('Z') handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8WriteFailureSourceEnd:
+
+Stage8SeekFailureSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "seekStorageOutput(3) handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8SeekFailureSourceEnd:
+
+Stage8RewindFailureSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "rewindStorageInput() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8RewindFailureSourceEnd:
+
+Stage8ReadStorageFailureSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "var value as u8",10
+            .db "value = readStorageByte() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "return",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8ReadStorageFailureSourceEnd:
+
+Stage8WriteOutputFailureSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "writeOutputByte('X') handle code",10
+            .db "if code = outputFailure",10
+            .db "return",10
+            .db "end",10
+            .db "end",10
+            .db "fail 99",10
+            .db "end",10
+Stage8WriteOutputFailureSourceEnd:
+
+Stage8MutualForwardSource:
+            .db "forward sub odd(value as u16) as boolean fails",10
+            .db "sub even(value as u16) as boolean fails",10
+            .db "var result as boolean",10
+            .db "if value = 0",10
+            .db "return true",10
+            .db "end",10
+            .db "result = odd(value - 1) else fail",10
+            .db "return result",10
+            .db "end",10
+            .db "sub odd",10
+            .db "var result as boolean",10
+            .db "if value = 0",10
+            .db "return false",10
+            .db "end",10
+            .db "result = even(value - 1) else fail",10
+            .db "return result",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var result as boolean = even(2) else fail",10
+            .db "if result",10
+            .db "writeOutputByte('M') else fail",10
+            .db "end",10
+            .db "end",10
+Stage8MutualForwardSourceEnd:
+
+Stage8IncompleteForwardSource:
+            .db "forward sub missing(value as u8)",10
+            .db "sub main()",10
+            .db "end",10
+Stage8IncompleteForwardSourceEnd:
+
+            ; Later negative and trap sources live beyond the transactional
+            ; backup region so repeated encoding cannot overwrite them.
