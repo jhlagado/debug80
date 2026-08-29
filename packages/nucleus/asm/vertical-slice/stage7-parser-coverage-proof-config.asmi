@@ -1,3 +1,4 @@
 LegacyCompilerSlices .equ 0
 AggregateCallSlices  .equ 1
+HybridLL1Full        .equ 1
 LegacyEncoders       .equ 0

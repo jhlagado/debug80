@@ -4749,9 +4749,15 @@ function rewriteNucleusTargetRuntimeLinkPermanentAtomSource(source, { relative, 
 function rewriteNucleusRuntimeLinkContextPermanentAtomSource(source) {
   return source
     .split("\n")
-    .map((line) => /^\s*%DEFINE\s+AggregateCallSlices\b/i.test(line)
-      ? "; AggregateCallSlices is defined by the target runtime link entry."
-      : line)
+    .map((line) => {
+      if (/^\s*%DEFINE\s+AggregateCallSlices\b/i.test(line)) {
+        return "; AggregateCallSlices is defined by the target runtime link entry.";
+      }
+      if (/^\s*%INCLUDE\s+"nucleus-runtime-link-context-config\.asmi"\s*$/i.test(line)) {
+        return "; AggregateCallSlices config is owned by the target runtime link entry.";
+      }
+      return line;
+    })
     .join("\n");
 }
 

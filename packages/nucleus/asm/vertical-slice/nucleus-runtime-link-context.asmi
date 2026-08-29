@@ -1,6 +1,8 @@
 ; Default standalone link context. The operating-layer provider writes a
 ; context-specific copy of this file in a temporary assembly directory.
 
+            .include "nucleus-runtime-link-context-config.asmi"
+
 RuntimeLinkBase             .equ $6800
 RuntimeWritableStateBase    .equ $7800
 RuntimeProgramDataBase      .equ $7900
@@ -34,8 +36,6 @@ ProgramDataBase           .equ RuntimeProgramDataBase
 ProgramDataRegionCapacity .equ RuntimeProgramDataCapacity
 GeneratedRoDataBase       .equ RuntimeReadOnlyBase
 GeneratedRoDataCapacity   .equ RuntimeReadOnlyCapacity
-
-AggregateCallSlices .equ 1
 
 ComparisonEqual        .equ 0
 ComparisonNotEqual     .equ 1

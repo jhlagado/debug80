@@ -1,16 +1,6 @@
 ; Predictive parser for the counted-loop and checked-array proof programs.
 
-; Only the Stage 7 packed parser selects the complete grammar overlay. Nesting the
-; Stage7LL1 reference keeps every older proof source independent of that flag.
-.if AggregateCallSlices
-.if Stage7LL1
-HybridLL1Full .equ 1
-.else
-HybridLL1Full .equ 0
-.endif
-.else
-HybridLL1Full .equ 0
-.endif
+; The including proof or build context defines HybridLL1Full explicitly.
 
 LPAIMOD .equ AggregateHasInitializer-AggregateMode+1 ; aggregate mode clear span through initializer flag
 
