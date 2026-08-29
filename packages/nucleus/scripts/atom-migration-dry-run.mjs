@@ -77,6 +77,36 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteZ80SlicePermanentAtomSource,
   })],
+  ["vertical-slice/stage7-ll1-parser.asm", Object.freeze({
+    description: "stage7 LL(1) parser generated-table tail layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-parser.asm",
+        code: "include-after-header",
+      }),
+    ]),
+    rewrite: rewriteStage7Ll1ParserPermanentAtomSource,
+  })],
+  ["vertical-slice/proof-unsegmented-state.asmi", Object.freeze({
+    description: "entry-owned unsegmented proof state feature flag",
+    handledIssues: Object.freeze([]),
+    rewrite: rewriteProofUnsegmentedStatePermanentAtomSource,
+  })],
+  ["vertical-slice/stage7-ll1-engine-proof.asm", Object.freeze({
+    description: "stage7 LL(1) engine proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-engine-proof.asm",
+        code: "include-after-header",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-engine-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "HybridLL1StackBase+HybridLL1StackCapacity",
+      }),
+    ]),
+    rewrite: rewriteStage7Ll1EngineProofPermanentAtomSource,
+  })],
 ]);
 
 function parseArgs(argv) {
@@ -491,8 +521,14 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contrac
 }
 
 function permanentLayoutHandlesIssue(proof, issue) {
-  const transform = permanentLayoutTransforms.get(proof.entry);
-  return transform?.handledIssues.some((handled) => permanentLayoutIssueMatches(handled, issue)) ?? false;
+  const proofTransform = permanentLayoutTransforms.get(proof.entry);
+  if (proofTransform?.handledIssues.some((handled) => permanentLayoutIssueMatches(handled, issue))) {
+    return true;
+  }
+  const issueRelative = permanentLayoutIssueRelative(issue);
+  if (issueRelative === undefined) return false;
+  const sourceTransform = permanentLayoutTransforms.get(issueRelative);
+  return sourceTransform?.handledIssues.some((handled) => permanentLayoutIssueMatches(handled, issue)) ?? false;
 }
 
 function permanentLayoutIssueMatches(handled, issue) {
@@ -507,6 +543,15 @@ function permanentLayoutIssueFileMatches(expected, actual) {
   if (actual === expected || actual.endsWith(`/${expected}`)) return true;
   if (expected.startsWith("asm/") && actual.endsWith(`/${expected.slice(4)}`)) return true;
   return false;
+}
+
+function permanentLayoutIssueRelative(issue) {
+  if (issue.file === undefined) return undefined;
+  const marker = "/asm/";
+  const markerIndex = issue.file.lastIndexOf(marker);
+  if (markerIndex >= 0) return issue.file.slice(markerIndex + marker.length);
+  if (issue.file.startsWith("asm/")) return issue.file.slice(4);
+  return undefined;
 }
 
 function buildProofSelectionMatrix({ proofRoot, asmRoot, packageRoot, issues, includeAfterHeaderRecords, contractMap }) {
@@ -1341,8 +1386,9 @@ function writeTranslatedTree(report, translatedRoot, { symbols = "preview" } = {
   const symbolMap = symbolMapFromLedger(report.ledger, { symbols });
   const symbolMetadata = symbolMetadataFromLedger(report.ledger);
   const preprocessorSymbols = new Set(report.preprocessorSymbols);
-  for (const file of findAssemblyFiles(report.asmRoot)) {
-    const relative = path.relative(report.asmRoot, file).split(path.sep).join("/");
+  const packageRoot = sourcePackageRoot(report.asmRoot);
+  for (const file of findAssemblyFilesWithIncludes(report.asmRoot)) {
+    const relative = translatedSourceRelative(report.asmRoot, packageRoot, file);
     const output = path.join(translatedRoot, relative);
     const lines = readFileSync(file, "utf8").split(/\n/);
     let translated = lines
@@ -1367,6 +1413,18 @@ function writeTranslatedTree(report, translatedRoot, { symbols = "preview" } = {
     mkdirSync(path.dirname(output), { recursive: true });
     writeFileSync(output, translated);
   }
+}
+
+function translatedSourceRelative(asmRoot, packageRoot, file) {
+  const asmRelative = path.relative(asmRoot, file);
+  if (!asmRelative.startsWith("..") && !path.isAbsolute(asmRelative)) {
+    return asmRelative.split(path.sep).join("/");
+  }
+  const packageRelative = path.relative(packageRoot, file);
+  if (packageRelative.startsWith("..") || path.isAbsolute(packageRelative)) {
+    throw new Error(`cannot place translated source outside package root: ${file}`);
+  }
+  return packageRelative.split(path.sep).join("/");
 }
 
 function atomSymbol(symbolMap, original) {
@@ -1520,6 +1578,92 @@ function rewriteZ80SlicePermanentAtomSource(source, { relative, translatedRoot, 
     "            %INCLUDE \"z80-slice-runtime-begin.asmi\"",
     "            %INCLUDE \"z80-runtime.asm\"",
     "            %INCLUDE \"z80-slice-proof-body.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteStage7Ll1ParserPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const hybridLL1TablesEnd = atomSymbol(symbolMap, "HybridLL1TablesEnd");
+  const lines = source.split("\n");
+  const tableIncludeIndex = findPermanentIncludeLine(lines, "../../grammar/stage7-tables.asmi", "stage7-ll1-parser");
+  const tableEndIndex = findPermanentLabelLine(lines, hybridLL1TablesEnd, "stage7-ll1-parser");
+  if (!(tableIncludeIndex < tableEndIndex)) {
+    throw new Error("stage7-ll1-parser permanent Atom rewrite found an unexpected table section order");
+  }
+  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-parser-core.asmi", [
+    ...lines.slice(0, tableIncludeIndex),
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-parser-table-end.asmi", [
+    ...lines.slice(tableEndIndex),
+  ]);
+  return [
+    "; Permanent Atom layout for the Stage 7 LL(1) parser.",
+    "            %INCLUDE \"stage7-ll1-parser-core.asmi\"",
+    "            %INCLUDE \"../grammar/stage7-tables.asmi\"",
+    "            %INCLUDE \"stage7-ll1-parser-table-end.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteProofUnsegmentedStatePermanentAtomSource(source) {
+  return source
+    .split("\n")
+    .map((line) => /^(\s*)%DEFINE\s+SegmentedOutput\b/i.test(line)
+      ? "; SegmentedOutput is defined by each permanent Atom proof entry."
+      : line)
+    .join("\n");
+}
+
+function rewriteStage7Ll1EngineProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const proofBase = atomSymbol(symbolMap, "ProofBase");
+  const stackBase = atomSymbol(symbolMap, "HybridLL1StackBase");
+  const stackCapacity = atomSymbol(symbolMap, "HybridLL1StackCapacity");
+  const stackLimit = "HLL1STKL";
+
+  const lines = source.split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage7-ll1-engine-proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "stage7-ll1-parser.asm", "stage7-ll1-engine-proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "stage7-ll1-engine-proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "stage7-ll1-engine-proof");
+  const actionsIncludeIndex = findPermanentIncludeLine(lines, "../../grammar/stage7-proof-actions.asmi", "stage7-ll1-engine-proof");
+
+  if (!(compilerOrgIndex < parserIncludeIndex &&
+    parserIncludeIndex < sourceOrgIndex &&
+    sourceOrgIndex < proofOrgIndex &&
+    proofOrgIndex < actionsIncludeIndex)) {
+    throw new Error("stage7-ll1-engine proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const rewriteStackLimit = (line) => line.replaceAll(`${stackBase}+${stackCapacity}`, stackLimit);
+  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-engine-front.asmi", [
+    ...lines.slice(compilerOrgIndex, parserIncludeIndex),
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-engine-proof-before-actions.asmi", [
+    `            ${stackLimit} EQU ${stackBase}+${stackCapacity}`,
+    ...lines.slice(parserIncludeIndex + 1, actionsIncludeIndex).map(rewriteStackLimit),
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-engine-proof-after-actions.asmi", [
+    ...lines.slice(actionsIncludeIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the Stage 7 LL(1) engine proof.",
+    "            %DEFINE SegmentedOutput 0",
+    "            %DEFINE AggregateCallSlices 0",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"proof-unsegmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"aggregate-call-state.asmi\"",
+    "            %INCLUDE \"stage7-ll1-engine-front.asmi\"",
+    "            %INCLUDE \"stage7-ll1-parser.asm\"",
+    "            %INCLUDE \"stage7-ll1-engine-proof-before-actions.asmi\"",
+    "            %INCLUDE \"../grammar/stage7-proof-actions.asmi\"",
+    "            %INCLUDE \"stage7-ll1-engine-proof-after-actions.asmi\"",
     "",
   ].join("\n");
 }

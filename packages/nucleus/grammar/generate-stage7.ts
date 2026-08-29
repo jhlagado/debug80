@@ -331,6 +331,9 @@ export function generateStage7Tables(): string {
     throw new Error("low production directory offset overflow");
   if (productionHalfBytes(productionSplit, physicalProductions.length) > 255)
     throw new Error("high production directory offset overflow");
+  const finalTokens = new Set<string>();
+  const byteLiteral = (value: number): string =>
+    value < 10 ? String(value) : `$${value.toString(16).padStart(2, "0")}`;
 
   const symbol = (name: string): string => {
     if (name.startsWith("Token")) return name;
@@ -340,6 +343,18 @@ export function generateStage7Tables(): string {
     const action = actions.indexOf(name);
     if (action >= 0) return `$${(0x80 + action).toString(16).padStart(2, "0")}`;
     throw new Error(`unencoded symbol ${name}`);
+  };
+  const byteSymbol = (name: string, final = false): string => {
+    if (!final) return symbol(name);
+    if (name.startsWith("Token")) {
+      finalTokens.add(name);
+      return `${name}Final`;
+    }
+    const base = symbol(name);
+    if (!base.startsWith("$")) {
+      throw new Error(`cannot set high bit on non-byte symbol ${name}`);
+    }
+    return byteLiteral(Number.parseInt(base.slice(1), 16) | 0x80);
   };
 
   const lines = [
@@ -359,7 +374,7 @@ export function generateStage7Tables(): string {
     ...nonterminals.map((name, index) => {
       const diagnostic = grammar.diagnostics[name];
       if (!diagnostic) throw new Error(`missing diagnostic for ${name}`);
-      return `            .db HybridLL1Row${index}-HybridLL1Rows,${diagnostic} ; ${name}`;
+      return `            .db HybridLL1Row${index}Offset,${diagnostic} ; ${name}`;
     }),
     "HybridLL1RowDirectoryEnd:",
     "HybridLL1Rows:",
@@ -374,35 +389,47 @@ export function generateStage7Tables(): string {
       if (predictions.length === 0)
         throw new Error(`production ${productionIndex} has no prediction`);
       lines.push(
-        `            .db ${logicalToPhysicalProduction[productionIndex]}${rowIndex === rowProductions.length - 1 ? "+$80" : ""}`,
+        `            .db ${byteLiteral(logicalToPhysicalProduction[productionIndex] | (rowIndex === rowProductions.length - 1 ? 0x80 : 0))}`,
       );
       predictions.forEach((token, index) =>
         lines.push(
-          `            .db ${token}${index === predictions.length - 1 ? "+$80" : ""}`,
+          `            .db ${byteSymbol(token, index === predictions.length - 1)}`,
         ),
       );
     });
   }
-  lines.push("HybridLL1RowsEnd:", "", "HybridLL1ProductionDirectory:");
+  lines.push(
+    "HybridLL1RowsEnd:",
+    "",
+    ...[...finalTokens].sort().map((token) =>
+      `${token}Final .equ ${token}+$80`,
+    ),
+    "",
+    ...nonterminals.map((name, index) =>
+      `HybridLL1Row${index}Offset .equ HybridLL1Row${index}-HybridLL1Rows ; ${name}`,
+    ),
+    "",
+    "HybridLL1ProductionDirectory:",
+  );
   physicalProductions
     .slice(0, productionSplit)
     .forEach((production, index) =>
       lines.push(
-        `            .db HybridLL1Production${index}-HybridLL1Productions ; ${production.lhs}`,
+        `            .db HybridLL1Production${index}Offset ; ${production.lhs}`,
       ),
     );
   lines.push(
-    "            .db HybridLL1ProductionsHigh-HybridLL1Productions",
+    "            .db HybridLL1ProductionsHighOffset",
     "HybridLL1ProductionDirectoryHigh:",
   );
   physicalProductions.slice(productionSplit).forEach((production, relative) => {
     const index = productionSplit + relative;
     lines.push(
-      `            .db HybridLL1Production${index}-HybridLL1ProductionsHigh ; ${production.lhs}`,
+      `            .db HybridLL1Production${index}Offset ; ${production.lhs}`,
     );
   });
   lines.push(
-    "            .db HybridLL1ProductionsEnd-HybridLL1ProductionsHigh",
+    "            .db HybridLL1ProductionsEndOffset",
     "HybridLL1ProductionDirectoryEnd:",
     "HybridLL1Productions:",
   );
@@ -413,7 +440,21 @@ export function generateStage7Tables(): string {
     if (reversed.length)
       lines.push(`            .db ${reversed.map(symbol).join(",")}`);
   });
-  lines.push("HybridLL1ProductionsEnd:", "", "HybridLL1ActionDirectory:");
+  lines.push(
+    "HybridLL1ProductionsEnd:",
+    "",
+    ...physicalProductions.slice(0, productionSplit).map((production, index) =>
+      `HybridLL1Production${index}Offset .equ HybridLL1Production${index}-HybridLL1Productions ; ${production.lhs}`,
+    ),
+    "HybridLL1ProductionsHighOffset .equ HybridLL1ProductionsHigh-HybridLL1Productions",
+    ...physicalProductions.slice(productionSplit).map((production, relative) => {
+      const index = productionSplit + relative;
+      return `HybridLL1Production${index}Offset .equ HybridLL1Production${index}-HybridLL1ProductionsHigh ; ${production.lhs}`;
+    }),
+    "HybridLL1ProductionsEndOffset .equ HybridLL1ProductionsEnd-HybridLL1ProductionsHigh",
+    "",
+    "HybridLL1ActionDirectory:",
+  );
   for (const { logical, handler, parameter } of actionLayout) {
     const suffix = parameter === undefined ? "" : `, parameter ${parameter}`;
     lines.push(`            .dw HybridLL1${handler} ; ${logical}${suffix}`);

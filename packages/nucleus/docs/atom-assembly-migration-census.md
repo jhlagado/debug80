@@ -25,16 +25,16 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 69 |
-| Source lines | 29,391 |
-| Defined assembler symbols detected | 3,799 |
-| Defined assembler symbols longer than eight characters | 3,766 |
-| Long labels classed as dot-local candidates | 676 |
-| Long symbols still needing global treatment | 3,090 |
+| Source lines | 29,538 |
+| Defined assembler symbols detected | 3,943 |
+| Defined assembler symbols longer than eight characters | 3,910 |
+| Long labels classed as dot-local candidates | 751 |
+| Long symbols still needing global treatment | 3,159 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
 | Emitted-statement symbol arithmetic sites | 441 |
-| Current permanent-source blockers | 584 |
+| Current permanent-source blockers | 397 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
@@ -44,8 +44,8 @@ Measured files:
 | Proof manifests classified | 29 |
 | Atom permanent-ready proof manifests | 3 |
 | Atom-preview-only proof manifests | 0 |
-| Proof manifests blocked by external contract support only | 2 |
-| Proof manifests blocked by late emitted-content includes | 21 |
+| Proof manifests blocked by external contract support only | 3 |
+| Proof manifests blocked by late emitted-content includes | 20 |
 | Measurement-artifact proof manifests | 3 |
 
 The source set is large enough that manual renaming without tooling is not credible.
@@ -144,11 +144,12 @@ npm run atom:migration:census -w nucleus -- \
 
 Current measurement: three proof manifests are ready for permanent Atom-source
 execution now (`memory-map-proof`, `nobj-runner-proof`, and
-`source-provenance-proof`), one proof manifest has an Atom-permanent source
-layout but is still blocked from the ready set by external contract-checker
-support (`compiler-slice-proof`), twenty-two are blocked by late emitted-content
-includes, and three dispatcher measurement manifests remain measurement
-artifacts rather than proof-image migration targets.
+`source-provenance-proof`), three proof manifests have Atom-permanent source
+layouts but are still blocked from the ready set by external contract-checker
+support (`compiler-slice-proof`, `z80-slice-proof`, and
+`stage7-ll1-engine-proof`), twenty are blocked by late emitted-content includes,
+and three dispatcher measurement manifests remain measurement artifacts rather
+than proof-image migration targets.
 
 The proof harness accepts the generated metadata through
 `runProofManifest(..., { atomMigration })`. That path builds a manifest-facing
@@ -308,6 +309,15 @@ body. All includes then appear in the header of the rewritten root source while
 the emitted order remains byte-equivalent. This proof also runs from
 Atom-permanent source and is classified as blocked only by external contract
 support.
+
+The third transform promotes `stage7-ll1-engine-proof`. It first makes the
+generated Stage 7 grammar table Atom-friendly by replacing emitted
+`LABEL-BASE` and `Token+$80` terms with named single-symbol constants whose
+`EQU` definitions carry the arithmetic. The `stage7-ll1-parser.asm` translated
+module then owns a generated parser-core part, the generated table include, and
+a table-end part. The proof wrapper owns the measured front-end stubs and
+proof-only action aliases as explicit section parts. This is the first
+implementation-module late include converted under the permanent layout model.
 
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a
@@ -627,7 +637,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | `.INCLUDE` | Header-only for permanent source; compatibility-lowered for current proofs | Current emitted-content include-after-header cases are preserved by the lowering bridge |
 | `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
 | `.ROUTINE` | Mapped as proof metadata | Atom source uses `;@ROUTINE`; the generated contract map ties each contract to the target routine label |
-| Long labels | Classified | 995 can become dot-local labels; the rest have generated permanent global abbreviations |
+| Long labels | Classified | 751 can become dot-local labels; the rest have generated permanent global abbreviations |
 | Proof JSON symbol references | Mapped | The dry-run emits a proof-symbol map from existing proof names to preview and permanent Atom names |
 | `$10000` limit constants | Mapped as proof metadata | Atom source lowers these to `EQU 0` plus `;@ATOM-PROOF-LIMIT`, and the proof-limit map carries `65536` |
 | Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |

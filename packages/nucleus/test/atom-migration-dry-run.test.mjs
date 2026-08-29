@@ -977,6 +977,50 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("runs the Stage 7 LL(1) engine proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const stage7 = report.proofMatrix.find(
+        ({ proof }) => proof === "stage7-ll1-engine-proof.json",
+      );
+      expect(stage7?.status).toBe("blocked-by-contract-support");
+      expect(stage7?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-ll1-engine-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "stage7-ll1-parser.asm"');
+      expect(root).toContain('%INCLUDE "../grammar/stage7-proof-actions.asmi"');
+      const parser = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-ll1-parser.asm"),
+        "utf8",
+      );
+      expect(parser).toContain('%INCLUDE "../grammar/stage7-tables.asmi"');
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "stage7-ll1-engine-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/stage7-ll1-engine-proof.asm",
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.extents).toEqual([
+        { name: "ll1-engine-and-tables", bytes: 985 },
+        { name: "ll1-engine", bytes: 230 },
+        { name: "ll1-tables", bytes: 755 },
+        { name: "ll1-workspace", bytes: 65 },
+      ]);
+    });
+  }, 15_000);
+
   it("runs a late-include proof through the proof harness using Atom-preview lowering", async () => {
     const report = scanAssembly({ asmRoot, proofRoot });
     const outcome = await runProofManifest(
