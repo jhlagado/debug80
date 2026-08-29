@@ -429,49 +429,56 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteStage9ConformanceZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/aggregate-call-parser.asm", Object.freeze({
-    description: "aggregate-call parser Stage 7 header include layout",
+    description: "aggregate-call parser base section owner",
+    handledIssues: Object.freeze([
+    ]),
+    rewrite: rewriteAggregateCallParserPermanentAtomSource,
+  })],
+  ["vertical-slice/aggregate-call-parser-stage7.asm", Object.freeze({
+    description: "aggregate-call parser Stage 7 section owner",
+    handledIssues: Object.freeze([]),
+    rewrite: rewriteAggregateCallParserStage7PermanentAtomSource,
+  })],
+  ["vertical-slice/aggregate-call-parser-core.asmi", Object.freeze({
+    description: "aggregate-call parser core aliases",
     handledIssues: Object.freeze([
       Object.freeze({
-        file: "asm/vertical-slice/aggregate-call-parser.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        file: "asm/vertical-slice/aggregate-call-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "IX+TargetDescriptorBankCount",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        file: "asm/vertical-slice/aggregate-call-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "IX+TargetDescriptorEntryBank",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        file: "asm/vertical-slice/aggregate-call-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "IX+TargetDescriptorPartBanksPointer",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        file: "asm/vertical-slice/aggregate-call-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "TargetBankRoLengthLimit-TargetBankRoLengthBase",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        file: "asm/vertical-slice/aggregate-call-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "Stage7CompilerWorkspaceEnd-Stage7StateBase",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        file: "asm/vertical-slice/aggregate-call-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "SymbolAggregateFlag+SymbolClassParameter",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        file: "asm/vertical-slice/aggregate-call-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "ScalarMetaConstant+ScalarTypeU8",
       }),
     ]),
-    rewrite: rewriteAggregateCallParserPermanentAtomSource,
+    rewrite: rewriteAggregateCallParserCorePermanentAtomSource,
   })],
   ["vertical-slice/stage7-ll1-actions.asm", Object.freeze({
     description: "stage7 LL(1) action constant-expression aliases",
@@ -4184,7 +4191,7 @@ function replaceAtomExpressionAliases(source, symbolMap, aliases) {
   return rewritten;
 }
 
-function rewriteAggregateCallParserPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+function rewriteAggregateCallParserCorePermanentAtomSource(source, { symbolMap }) {
   const descriptorAliases = [
     ["ACPTDBC", ["11"], ["IX", "+", "TargetDescriptorBankCount"]],
     ["ACPTDEB", ["12"], ["IX", "+", "TargetDescriptorEntryBank"]],
@@ -4213,34 +4220,28 @@ function rewriteAggregateCallParserPermanentAtomSource(source, { relative, trans
       `IX+${alias}`,
     );
   }
-  const lines = rewritten.split("\n");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "stage7-ll1-parser.asm", "aggregate-call-parser");
-  const actionsIncludeIndex = findPermanentIncludeLine(lines, "stage7-ll1-actions.asm", "aggregate-call-parser");
-  const ifIndex = lines
-    .slice(0, parserIncludeIndex)
-    .findLastIndex((line) => /^\s*%IF\s+Stage7LL1\s*$/i.test(line));
-  const endifIndex = lines.findIndex((line, index) =>
-    index > actionsIncludeIndex && /^\s*%ENDIF\s*$/i.test(line));
-  if (!(ifIndex >= 0 &&
-    ifIndex < parserIncludeIndex &&
-    parserIncludeIndex < actionsIncludeIndex &&
-    actionsIncludeIndex < endifIndex)) {
-    throw new Error("aggregate-call-parser permanent Atom rewrite found an unexpected Stage7 include section");
-  }
-  writeGeneratedPermanentPart(translatedRoot, relative, "aggregate-call-parser-core.asmi", [
+  return [
     ...atomExpressionAliasLines(symbolMap, descriptorAliases.map(([alias, expression]) => [alias, expression])),
     ...atomExpressionAliasLines(symbolMap, aliases.map(([alias, expression]) => [alias, expression])),
     "",
-    ...lines.slice(0, ifIndex),
-    ...lines.slice(endifIndex + 1),
-  ]);
+    rewritten,
+  ].join("\n");
+}
+
+function rewriteAggregateCallParserPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the aggregate-call parser.",
     "            %INCLUDE \"aggregate-call-parser-core.asmi\"",
-    "            %IF Stage7LL1",
+    "",
+  ].join("\n");
+}
+
+function rewriteAggregateCallParserStage7PermanentAtomSource() {
+  return [
+    "; Permanent Atom layout for the Stage 7 aggregate-call parser.",
+    "            %INCLUDE \"aggregate-call-parser-core.asmi\"",
     "            %INCLUDE \"stage7-ll1-parser.asm\"",
     "            %INCLUDE \"stage7-ll1-actions.asm\"",
-    "            %ENDIF",
     "",
   ].join("\n");
 }
@@ -4446,17 +4447,26 @@ function rewriteLoopParserPermanentAtomSource(source, { relative, translatedRoot
   const typedExpressionIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-parser.asm", "loop-parser");
   const aggregateParserIncludeIndex = findPermanentIncludeLine(lines, "aggregate-parser.asm", "loop-parser");
   const aggregateCallParserIncludeIndex = findPermanentIncludeLine(lines, "aggregate-call-parser.asm", "loop-parser");
+  const aggregateCallParserStage7IncludeIndex = findPermanentIncludeLine(lines, "aggregate-call-parser-stage7.asm", "loop-parser");
   const firstRoutineIndex = lines.findIndex((line) => /^\s*;@ROUTINE\b/i.test(line));
   const ifIndex = lines
-    .slice(aggregateParserIncludeIndex + 1, aggregateCallParserIncludeIndex)
+    .slice(aggregateParserIncludeIndex + 1, aggregateCallParserStage7IncludeIndex)
     .findIndex((line) => /^\s*%IF\s+AggregateCallSlices\s*$/i.test(line));
+  const stage7IfIndex = lines
+    .slice(aggregateParserIncludeIndex + 1, aggregateCallParserStage7IncludeIndex)
+    .findIndex((line) => /^\s*%IF\s+Stage7LL1\s*$/i.test(line));
+  const stage7ElseIndex = lines.findIndex((line, index) =>
+    index > aggregateCallParserStage7IncludeIndex && index < aggregateCallParserIncludeIndex && /^\s*%ELSE\s*$/i.test(line));
   const endifIndex = lines.findIndex((line, index) =>
     index > aggregateCallParserIncludeIndex && /^\s*%ENDIF\s*$/i.test(line));
   if (!(firstRoutineIndex >= 0 &&
     firstRoutineIndex < typedExpressionIncludeIndex &&
     typedExpressionIncludeIndex < aggregateParserIncludeIndex &&
-    aggregateParserIncludeIndex < aggregateCallParserIncludeIndex &&
+    aggregateParserIncludeIndex < aggregateCallParserStage7IncludeIndex &&
+    aggregateCallParserStage7IncludeIndex < aggregateCallParserIncludeIndex &&
     ifIndex >= 0 &&
+    stage7IfIndex >= 0 &&
+    stage7ElseIndex > aggregateCallParserStage7IncludeIndex &&
     endifIndex > aggregateCallParserIncludeIndex)) {
     throw new Error("loop-parser permanent Atom rewrite found an unexpected include section");
   }
@@ -4472,7 +4482,11 @@ function rewriteLoopParserPermanentAtomSource(source, { relative, translatedRoot
     "            %INCLUDE \"typed-expression-parser.asm\"",
     "            %INCLUDE \"aggregate-parser.asm\"",
     "            %IF AggregateCallSlices",
+    "            %IF Stage7LL1",
+    "            %INCLUDE \"aggregate-call-parser-stage7.asm\"",
+    "            %ELSE",
     "            %INCLUDE \"aggregate-call-parser.asm\"",
+    "            %ENDIF",
     "            %ENDIF",
     "",
   ].join("\n");

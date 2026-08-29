@@ -1505,9 +1505,14 @@ describe("Nucleus Atom migration dry-run", () => {
         "utf8",
       );
       expect(root).toContain('%INCLUDE "aggregate-call-parser-core.asmi"');
-      expect(root).toContain("%IF Stage7LL1");
-      expect(root).toContain('%INCLUDE "stage7-ll1-parser.asm"');
-      expect(root).toContain('%INCLUDE "stage7-ll1-actions.asm"');
+      expect(root).not.toContain("Stage7LL1");
+      const stage7Root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "aggregate-call-parser-stage7.asm"),
+        "utf8",
+      );
+      expect(stage7Root).toContain('%INCLUDE "aggregate-call-parser-core.asmi"');
+      expect(stage7Root).toContain('%INCLUDE "stage7-ll1-parser.asm"');
+      expect(stage7Root).toContain('%INCLUDE "stage7-ll1-actions.asm"');
 
       const core = await readFile(
         path.join(translatedRoot, "vertical-slice", "aggregate-call-parser-core.asmi"),

@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 92 |
-| Source lines | 29,700 |
+| Assembly files, `.asm` and `.asmi` | 94 |
+| Source lines | 29,709 |
 | Defined assembler symbols detected | 4,035 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 749 |
 | Long symbols still needing global treatment | 3,161 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 138 |
+| Include-after-header violations | 137 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 138 |
+| Current permanent-source blockers | 137 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 138 |
+| Permanent blocker: include after header | 137 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -122,6 +122,11 @@ include while keeping the existing core/table extent labels.
 The typed-expression parser now follows the same section-owner pattern: its core
 parser source and structured-control extension are header includes, while the
 core file retains the permanent Atom alias lowering for its packed constants.
+The aggregate-call parser uses selected owner files for its conditional Stage 7
+extension: the base owner includes only the parser core, while the Stage 7 owner
+includes the same core plus the LL(1) parser and action modules. Callers select
+the required owner by filename instead of wrapping header includes in a
+conditional block.
 
 It can also write the proof-manifest symbol join needed by the proof harness:
 

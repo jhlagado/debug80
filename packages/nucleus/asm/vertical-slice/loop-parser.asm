@@ -1135,5 +1135,9 @@ CompileSliceResetAggregateLoop:
             .include "typed-expression-parser.asm"
             .include "aggregate-parser.asm"
 .if AggregateCallSlices
+.if Stage7LL1
+            .include "aggregate-call-parser-stage7.asm"
+.else
             .include "aggregate-call-parser.asm"
+.endif
 .endif
