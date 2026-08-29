@@ -107,6 +107,82 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteStage7Ll1EngineProofPermanentAtomSource,
   })],
+  ["vertical-slice/aggregate-call-parser.asm", Object.freeze({
+    description: "aggregate-call parser Stage 7 header include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        code: "include-after-header",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorBankCount",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorEntryBank",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorPartBanksPointer",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "TargetBankRoLengthLimit-TargetBankRoLengthBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "Stage7CompilerWorkspaceEnd-Stage7StateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SymbolAggregateFlag+SymbolClassParameter",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-call-parser.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ScalarMetaConstant+ScalarTypeU8",
+      }),
+    ]),
+    rewrite: rewriteAggregateCallParserPermanentAtomSource,
+  })],
+  ["vertical-slice/stage7-ll1-actions.asm", Object.freeze({
+    description: "stage7 LL(1) action constant-expression aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-actions.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SymbolRecordTypeFlag+SymbolAggregateFlag",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-actions.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SymbolAggregateFlag+SymbolClassConstant",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-actions.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ScalarMetaConstant+ScalarMetaTypeMask",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-actions.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ScalarMetaConstant+ScalarTypeBoolean",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-actions.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ControlFrameCounter-ControlFrameLabelA",
+      }),
+    ]),
+    rewrite: rewriteStage7Ll1ActionsPermanentAtomSource,
+  })],
 ]);
 
 function parseArgs(argv) {
@@ -1665,6 +1741,80 @@ function rewriteStage7Ll1EngineProofPermanentAtomSource(source, { relative, tran
     "            %INCLUDE \"../grammar/stage7-proof-actions.asmi\"",
     "            %INCLUDE \"stage7-ll1-engine-proof-after-actions.asmi\"",
     "",
+  ].join("\n");
+}
+
+function atomExpressionAliasLines(symbolMap, aliases) {
+  return aliases.map(([alias, expression]) =>
+    `            ${alias} EQU ${expression.map((name) => atomSymbol(symbolMap, name)).join("")}`,
+  );
+}
+
+function replaceAtomExpressionAliases(source, symbolMap, aliases) {
+  let rewritten = source;
+  for (const [alias, expression] of aliases) {
+    rewritten = rewritten.replaceAll(
+      expression.map((name) => atomSymbol(symbolMap, name)).join(""),
+      alias,
+    );
+  }
+  return rewritten;
+}
+
+function rewriteAggregateCallParserPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const aliases = [
+    ["ACPTDBC", ["IX", "+", "TargetDescriptorBankCount"]],
+    ["ACPTDEB", ["IX", "+", "TargetDescriptorEntryBank"]],
+    ["ACPTDP1", ["IX", "+", "TargetDescriptorPartBanksPointer", "+1"]],
+    ["ACPTDPP", ["IX", "+", "TargetDescriptorPartBanksPointer"]],
+    ["ACPRLEN", ["TargetBankRoLengthLimit", "-", "TargetBankRoLengthBase"]],
+    ["ACPWSZ", ["Stage7CompilerWorkspaceEnd", "-", "Stage7StateBase"]],
+    ["ACPSAPR", ["SymbolAggregateFlag", "+", "SymbolClassParameter"]],
+    ["ACPSCU8", ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
+  ];
+  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "stage7-ll1-parser.asm", "aggregate-call-parser");
+  const actionsIncludeIndex = findPermanentIncludeLine(lines, "stage7-ll1-actions.asm", "aggregate-call-parser");
+  const ifIndex = lines
+    .slice(0, parserIncludeIndex)
+    .findLastIndex((line) => /^\s*%IF\s+Stage7LL1\s*$/i.test(line));
+  const endifIndex = lines.findIndex((line, index) =>
+    index > actionsIncludeIndex && /^\s*%ENDIF\s*$/i.test(line));
+  if (!(ifIndex >= 0 &&
+    ifIndex < parserIncludeIndex &&
+    parserIncludeIndex < actionsIncludeIndex &&
+    actionsIncludeIndex < endifIndex)) {
+    throw new Error("aggregate-call-parser permanent Atom rewrite found an unexpected Stage7 include section");
+  }
+  writeGeneratedPermanentPart(translatedRoot, relative, "aggregate-call-parser-core.asmi", [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    ...lines.slice(0, ifIndex),
+    ...lines.slice(endifIndex + 1),
+  ]);
+  return [
+    "; Permanent Atom layout for the aggregate-call parser.",
+    "            %INCLUDE \"aggregate-call-parser-core.asmi\"",
+    "            %IF Stage7LL1",
+    "            %INCLUDE \"stage7-ll1-parser.asm\"",
+    "            %INCLUDE \"stage7-ll1-actions.asm\"",
+    "            %ENDIF",
+    "",
+  ].join("\n");
+}
+
+function rewriteStage7Ll1ActionsPermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["H1RCFLG", ["SymbolRecordTypeFlag", "+", "SymbolAggregateFlag"]],
+    ["H1AGCST", ["SymbolAggregateFlag", "+", "SymbolClassConstant"]],
+    ["H1MTMSK", ["ScalarMetaConstant", "+", "ScalarMetaTypeMask"]],
+    ["H1MCBL", ["ScalarMetaConstant", "+", "ScalarTypeBoolean"]],
+    ["H1CFCOF", ["ControlFrameCounter", "-", "ControlFrameLabelA"]],
+  ];
+  return [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    replaceAtomExpressionAliases(source, symbolMap, aliases),
   ].join("\n");
 }
 

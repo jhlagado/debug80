@@ -1021,6 +1021,45 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   }, 15_000);
 
+  it("writes aggregate-call parser permanent source with Stage 7 header includes", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const dependent = report.proofMatrix.find(
+        ({ proof }) => proof === "stage7-ll1-aggregate-call-z80-slice-proof.json",
+      );
+      const aggregateCallBlockers = dependent?.blockers.filter(({ file }) =>
+        file.includes("aggregate-call-parser.asm") ||
+        file.includes("stage7-ll1-actions.asm"),
+      );
+      expect(aggregateCallBlockers).toEqual([]);
+
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "aggregate-call-parser.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "aggregate-call-parser-core.asmi"');
+      expect(root).toContain("%IF Stage7LL1");
+      expect(root).toContain('%INCLUDE "stage7-ll1-parser.asm"');
+      expect(root).toContain('%INCLUDE "stage7-ll1-actions.asm"');
+
+      const core = await readFile(
+        path.join(translatedRoot, "vertical-slice", "aggregate-call-parser-core.asmi"),
+        "utf8",
+      );
+      expect(core).toContain("ACPTDBC EQU IX+");
+      expect(core).toContain("ACPRLEN EQU");
+      expect(core).not.toContain('%INCLUDE "stage7-ll1-parser.asm"');
+      expect(core).not.toContain("IX+TRGTDSBC");
+
+      const actions = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-ll1-actions.asm"),
+        "utf8",
+      );
+      expect(actions).toContain("H1RCFLG EQU");
+      expect(actions).toContain("H1CFCOF EQU");
+      expect(actions).not.toContain("SymbolRecordTypeFlag+SymbolAggregateFlag");
+    });
+  });
+
   it("runs a late-include proof through the proof harness using Atom-preview lowering", async () => {
     const report = scanAssembly({ asmRoot, proofRoot });
     const outcome = await runProofManifest(

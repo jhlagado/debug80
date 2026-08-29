@@ -319,6 +319,17 @@ a table-end part. The proof wrapper owns the measured front-end stubs and
 proof-only action aliases as explicit section parts. This is the first
 implementation-module late include converted under the permanent layout model.
 
+The next implementation-module transform applies that same model to
+`aggregate-call-parser.asm`. The translated module now owns a generated
+`aggregate-call-parser-core.asmi` part, while the packed LL(1) parser and action
+includes move into the rewritten root header under the original `Stage7LL1`
+condition. The transform also gives the module's emitted descriptor offsets,
+workspace span, and packed type/class constants short named aliases so permanent
+Atom source emits one symbol per operand. `stage7-ll1-actions.asm` receives the
+same treatment for its local packed constants. This clears those two files as
+transitive blockers; the dependent proof manifests remain blocked by their own
+entry-wrapper and other shared-module late includes.
+
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a
 later resolved size equate:
