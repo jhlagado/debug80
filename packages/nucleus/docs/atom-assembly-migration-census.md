@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `015e1417`
+Current reusable-transform baseline HEAD: `79f71bd7`
 
 ## Purpose
 
@@ -25,20 +25,20 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 69 |
-| Source lines | 29,639 |
-| Defined assembler symbols detected | 4,019 |
+| Source lines | 29,655 |
+| Defined assembler symbols detected | 4,035 |
 | Defined assembler symbols longer than eight characters | 3,910 |
-| Long labels classed as dot-local candidates | 751 |
-| Long symbols still needing global treatment | 3,159 |
+| Long labels classed as dot-local candidates | 749 |
+| Long symbols still needing global treatment | 3,161 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Forward-dependent emitted-statement symbol arithmetic sites | 16 |
-| Current permanent-source blockers | 219 |
+| Forward-dependent emitted-statement symbol arithmetic sites | 0 |
+| Current permanent-source blockers | 203 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
-| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 16 |
+| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
 | Permanent blocker: include after header | 143 |
 | Permanent blocker: feature definition after Atom entry header | 60 |
 | Proof-manifest symbol mappings | 146 |
@@ -409,9 +409,13 @@ each emitted operand a single short symbol while leaving the existing proof
 layout and byte output unchanged.
 
 `flat-target-z80-slice-proof.asm` now names its captured descriptor and target
-map fields before emitting those addresses. After this pass, the only remaining
-forward-dependent emitted-statement symbol arithmetic reports are in dispatcher
-measurement artifacts, not in proof-image migration targets.
+map fields before emitting those addresses.
+
+The two dispatcher offset measurement artifacts now name their page-local table
+offsets with single-symbol aliases. This closes the
+forward-dependent emitted-statement symbol arithmetic class across the measured
+source set. Permanent source is still blocked by include/header placement, not
+by emitted two-symbol operands.
 
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a

@@ -6,14 +6,14 @@
 CompilerCodeStart:
 OffsetTrampolineSelectionStart:
 OffsetTrampolinePage:
-            .db OffsetTrampoline0-OffsetTrampolinePage
-            .db OffsetTrampoline1-OffsetTrampolinePage
-            .db OffsetTrampoline2-OffsetTrampolinePage
-            .db OffsetTrampoline3-OffsetTrampolinePage
-            .db OffsetTrampoline4-OffsetTrampolinePage
-            .db OffsetTrampoline5-OffsetTrampolinePage
-            .db OffsetTrampoline6-OffsetTrampolinePage
-            .db OffsetTrampoline7-OffsetTrampolinePage
+            .db OT0OFF
+            .db OT1OFF
+            .db OT2OFF
+            .db OT3OFF
+            .db OT4OFF
+            .db OT5OFF
+            .db OT6OFF
+            .db OT7OFF
 OffsetTrampoline0: JP Dispatch0
 OffsetTrampoline1: JP Dispatch1
 OffsetTrampoline2: JP Dispatch2
@@ -61,6 +61,14 @@ Dispatch6:  OR A
 .routine out carry,zero clobbers sign,parity,halfCarry,A
 Dispatch7:  OR A
             RET
+OT0OFF .equ OffsetTrampoline0-OffsetTrampolinePage ; trampoline dispatcher page offset 0
+OT1OFF .equ OffsetTrampoline1-OffsetTrampolinePage ; trampoline dispatcher page offset 1
+OT2OFF .equ OffsetTrampoline2-OffsetTrampolinePage ; trampoline dispatcher page offset 2
+OT3OFF .equ OffsetTrampoline3-OffsetTrampolinePage ; trampoline dispatcher page offset 3
+OT4OFF .equ OffsetTrampoline4-OffsetTrampolinePage ; trampoline dispatcher page offset 4
+OT5OFF .equ OffsetTrampoline5-OffsetTrampolinePage ; trampoline dispatcher page offset 5
+OT6OFF .equ OffsetTrampoline6-OffsetTrampolinePage ; trampoline dispatcher page offset 6
+OT7OFF .equ OffsetTrampoline7-OffsetTrampolinePage ; trampoline dispatcher page offset 7
 CompilerCodeEnd:
 CompilerCoreEnd:
 

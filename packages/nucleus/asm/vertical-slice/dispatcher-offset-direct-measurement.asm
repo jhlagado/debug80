@@ -6,14 +6,14 @@
 CompilerCodeStart:
 OffsetDirectSelectionStart:
 OffsetDirectPage:
-            .db OffsetDirect0-OffsetDirectPage
-            .db OffsetDirect1-OffsetDirectPage
-            .db OffsetDirect2-OffsetDirectPage
-            .db OffsetDirect3-OffsetDirectPage
-            .db OffsetDirect4-OffsetDirectPage
-            .db OffsetDirect5-OffsetDirectPage
-            .db OffsetDirect6-OffsetDirectPage
-            .db OffsetDirect7-OffsetDirectPage
+            .db OD0OFF
+            .db OD1OFF
+            .db OD2OFF
+            .db OD3OFF
+            .db OD4OFF
+            .db OD5OFF
+            .db OD6OFF
+            .db OD7OFF
 .routine in A out carry,zero clobbers sign,parity,halfCarry,A,HL
 OffsetDirectDispatch:
             SUB  12
@@ -53,6 +53,14 @@ OffsetDirect6: OR A
 .routine out carry,zero clobbers sign,parity,halfCarry,A
 OffsetDirect7: OR A
                RET
+OD0OFF .equ OffsetDirect0-OffsetDirectPage ; direct dispatcher page offset 0
+OD1OFF .equ OffsetDirect1-OffsetDirectPage ; direct dispatcher page offset 1
+OD2OFF .equ OffsetDirect2-OffsetDirectPage ; direct dispatcher page offset 2
+OD3OFF .equ OffsetDirect3-OffsetDirectPage ; direct dispatcher page offset 3
+OD4OFF .equ OffsetDirect4-OffsetDirectPage ; direct dispatcher page offset 4
+OD5OFF .equ OffsetDirect5-OffsetDirectPage ; direct dispatcher page offset 5
+OD6OFF .equ OffsetDirect6-OffsetDirectPage ; direct dispatcher page offset 6
+OD7OFF .equ OffsetDirect7-OffsetDirectPage ; direct dispatcher page offset 7
 CompilerCodeEnd:
 CompilerCoreEnd:
 
