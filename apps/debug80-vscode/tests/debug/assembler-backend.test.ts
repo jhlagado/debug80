@@ -39,11 +39,13 @@ describe('assembler-backend', () => {
 
   it('matches azm case-insensitively', () => {
     expectAzmBackend('AZM');
+    expectAzmBackend('ASM80');
   });
 
   it('matches Atom case-insensitively', () => {
     expectAtomBackend('atom', '/tmp/program.asm');
     expectAtomBackend('ATOM', '/tmp/program.asm');
+    expectAtomBackend('ATOM-Z80', '/tmp/program.asm');
   });
 
   it('throws for unknown backends', () => {

@@ -14,6 +14,10 @@ import { AtomBackend } from './atom-backend';
 import { AzmBackend } from './azm-backend';
 import { GlimmerBackend } from './glimmer-backend';
 import { NucleusBackend } from './nucleus-backend';
+import {
+  normalizeZ80AssemblerFlavour,
+  Z80_ASSEMBLER_FLAVOUR,
+} from '@jhlagado/z80-tool-services';
 
 const assemblySourceExtensions = new Set(['.asm', '.inc', '.z80']);
 
@@ -71,17 +75,25 @@ export function resolveAssemblerBackend(
   const id =
     explicitId === undefined || explicitId === '' ? inferAssemblerBackend(asmPath) : explicitId;
 
-  if (id === undefined || id === '' || id === 'atom') {
+  if (id === undefined || id === '') {
     return new AtomBackend();
-  }
-  if (id === 'azm') {
-    return new AzmBackend();
   }
   if (id === 'glimmer') {
     return new GlimmerBackend();
   }
   if (id === 'nucleus') {
     return new NucleusBackend();
+  }
+  try {
+    const z80Assembler = normalizeZ80AssemblerFlavour(id, { allowAuto: false });
+    if (z80Assembler === Z80_ASSEMBLER_FLAVOUR.atom) {
+      return new AtomBackend();
+    }
+    if (z80Assembler === Z80_ASSEMBLER_FLAVOUR.azm) {
+      return new AzmBackend();
+    }
+  } catch {
+    // Report the original backend value below.
   }
 
   throw new Error(`Unknown assembler backend: "${assembler}"`);

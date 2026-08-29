@@ -71,6 +71,7 @@ describe('Atom backend', () => {
     expect(compiler.assembleAtomProject).toHaveBeenCalledWith({
       root: project.root,
       entry: 'main.asm',
+      assembler: 'atom',
       target: { start: 0, capacity: 0xffff },
     });
     expect(compiler.renderAtomArtifacts).toHaveBeenCalledWith(expect.anything(), {
@@ -148,6 +149,7 @@ describe('Atom backend', () => {
     expect(compiler.assembleAtomProject).toHaveBeenCalledWith({
       root: project.root,
       entry: 'main.asm',
+      assembler: 'atom',
       target: { start: 0, capacity: 0xffff },
     });
     expect(compiler.renderAtomArtifacts).not.toHaveBeenCalled();

@@ -46,6 +46,7 @@ export interface AtomCompilerApi {
   readonly assembleAtomProject: (options: {
     root: string;
     entry: string;
+    assembler?: string;
     target: { start: number; capacity: number };
   }) => Promise<AtomBuildResult>;
   readonly renderAtomArtifacts: (
@@ -160,6 +161,7 @@ export class AtomBackend implements AssemblerBackend {
       const result = await compiler.assembleAtomProject({
         root,
         entry,
+        assembler: 'atom',
         target: { start: 0, capacity: 0xffff },
       });
       const base = contentBase(result.generation);
@@ -195,6 +197,7 @@ export class AtomBackend implements AssemblerBackend {
       const result = await compiler.assembleAtomProject({
         root,
         entry,
+        assembler: 'atom',
         target: { start: 0, capacity: 0xffff },
       });
       const binPath = binPathFromHexPath(options.hexPath);
