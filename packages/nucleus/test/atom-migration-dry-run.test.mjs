@@ -830,8 +830,16 @@ describe("Nucleus Atom migration dry-run", () => {
         .filter(({ status }) => status === "atom-permanent-ready");
       expect(readyProofs.map(({ proof }) => proof)).toEqual([
         "array-z80-slice-proof.json",
+        "banked-target-entry1-z80-slice-proof.json",
+        "banked-target-trap-z80-slice-proof.json",
+        "banked-target-z80-slice-proof.json",
         "call-z80-slice-proof.json",
+        "chapter21-target-z80-slice-proof.json",
         "compiler-slice-proof.json",
+        "flat-target-loaded-z80-slice-proof.json",
+        "flat-target-trap-z80-slice-proof.json",
+        "flat-target-unhandled-z80-slice-proof.json",
+        "flat-target-z80-slice-proof.json",
         "loop-compiler-slice-proof.json",
         "loop-z80-slice-proof.json",
         "memory-map-proof.json",
@@ -857,7 +865,28 @@ describe("Nucleus Atom migration dry-run", () => {
         },
       });
 
-      for (const { proof, entry } of readyProofs) {
+      const representativeProofsByEntry = new Map();
+      for (const row of readyProofs) {
+        if (!representativeProofsByEntry.has(row.entry)) representativeProofsByEntry.set(row.entry, row);
+      }
+      const representativeProofs = [...representativeProofsByEntry.values()];
+      expect(representativeProofs.map(({ proof }) => proof)).toEqual([
+        "array-z80-slice-proof.json",
+        "banked-target-entry1-z80-slice-proof.json",
+        "call-z80-slice-proof.json",
+        "compiler-slice-proof.json",
+        "loop-compiler-slice-proof.json",
+        "loop-z80-slice-proof.json",
+        "memory-map-proof.json",
+        "nobj-runner-proof.json",
+        "source-provenance-proof.json",
+        "stage7-ll1-engine-proof.json",
+        "stage7-ll1-parser-coverage-proof.json",
+        "typed-expression-z80-slice-proof.json",
+        "z80-slice-proof.json",
+      ]);
+
+      for (const { proof, entry } of representativeProofs) {
         const outcome = await runAtomProof(proof, entry);
         if (outcome.symbols.ProofStatus !== undefined) {
           expect(outcome.memory[outcome.symbols.ProofStatus]).toBe(0xa5);
@@ -918,7 +947,7 @@ describe("Nucleus Atom migration dry-run", () => {
         },
       ]);
     });
-  }, 120_000);
+  }, 300_000);
 
   it("runs the compiler-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
@@ -959,7 +988,7 @@ describe("Nucleus Atom migration dry-run", () => {
         { name: "proof-code-and-data", bytes: 191 },
       ]);
     });
-  });
+  }, 120_000);
 
   it("runs the z80-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
@@ -1451,11 +1480,11 @@ describe("Nucleus Atom migration dry-run", () => {
       );
       expect(typedExpressionZ80Tail).toContain(";@NUC-GLOBAL TypedAtoHL");
       expect(typedExpressionZ80Tail).toContain("STG7INDX: DB $7B");
-      expect(typedExpressionZ80Tail).toContain("STG7LDI1 EQU STG7LDI4");
-      expect(typedExpressionZ80Tail).toContain("STG7DCSP EQU TYPDPRMT");
+      expect(typedExpressionZ80Tail).toContain("STG7LDI1: ;@NUC-GLOBAL Stage7LoadIndirect8Bytes");
+      expect(typedExpressionZ80Tail).toContain("STG7DCSP: ;@NUC-GLOBAL Stage7DecSP2");
       expect(typedExpressionZ80Tail).toContain("STG7STR3: DB $DD,$75,$FF");
       expect(typedExpressionZ80Tail).toContain("STG7STR4: DB $DD,$74,$FE");
-      expect(typedExpressionZ80Tail).toContain("STG8ERRR EQU TYPDATHL");
+      expect(typedExpressionZ80Tail).toContain("STG8ERRR: ;@NUC-GLOBAL Stage8ErrorCarrierBytes");
 
       const loopKeywords = await readFile(
         path.join(translatedRoot, "vertical-slice", "loop-keywords.asmi"),

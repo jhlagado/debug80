@@ -147,6 +147,96 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteStage7ParserCoverageProofPermanentAtomSource,
   })],
+  ["vertical-slice/flat-target-z80-slice-proof.asm", Object.freeze({
+    description: "flat target z80 proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "include-after-header",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedBegin+TargetDescriptorImageBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedContext+$00",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedContext+$06",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedContext+$0E",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+$01",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+$03",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+$05",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+$09",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+TargetMapAggregateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+TargetMapBssBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+TargetMapDataLoadAddress",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+TargetMapInitializedLength",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+TargetMapStackRequirement",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+TargetMapVectorLength",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "AdapterCapturedMap+TargetMapWritableBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/flat-target-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorBankCount",
+      }),
+    ]),
+    rewrite: rewriteFlatTargetZ80SliceProofPermanentAtomSource,
+  })],
   ["vertical-slice/typed-expression-z80-slice-proof.asm", Object.freeze({
     description: "typed-expression z80 proof sectioned header-include layout",
     handledIssues: Object.freeze([
@@ -411,6 +501,57 @@ const permanentLayoutTransforms = new Map([
       }),
     ]),
     rewrite: rewriteLoopZ80SinkPermanentAtomSource,
+  })],
+  ["vertical-slice/target-output.asm", Object.freeze({
+    description: "target output descriptor and state aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorRuntimeIdentity",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorFlags",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorImageBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorImageCapacity",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorWritableBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+TargetDescriptorWritableCapacity",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "NucleusRuntimeVectorLength+NucleusRuntimeStateLength",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "RunState-StateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/target-output.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "TrapNumber-StateBase",
+      }),
+    ]),
+    rewrite: rewriteTargetOutputPermanentAtomSource,
   })],
   ["vertical-slice/loop-parser.asm", Object.freeze({
     description: "loop parser typed and aggregate header include layout",
@@ -2455,6 +2596,168 @@ function rewriteStage7ParserCoverageProofPermanentAtomSource(source, { relative,
   ].join("\n");
 }
 
+function rewriteFlatTargetZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const releasedGeneratedStagingBase = atomSymbol(symbolMap, "ReleasedGeneratedStagingBase");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const proofBase = atomSymbol(symbolMap, "ProofBase");
+  const generatedBase = atomSymbol(symbolMap, "GeneratedBase");
+  const aliases = [
+    ["FTADIMG", "$98CB", ["AdapterCapturedBegin", "+", "TargetDescriptorImageBase"]],
+    ["FTCTX00", "$98D8", ["AdapterCapturedContext", "+", "$00"]],
+    ["FTCTX06", "$98DE", ["AdapterCapturedContext", "+", "$06"]],
+    ["FTCTX0E", "$98E6", ["AdapterCapturedContext", "+", "$0E"]],
+    ["FTMAP01", "$9905", ["AdapterCapturedMap", "+", "$01"]],
+    ["FTMAP03", "$9907", ["AdapterCapturedMap", "+", "$03"]],
+    ["FTMAP05", "$9909", ["AdapterCapturedMap", "+", "$05"]],
+    ["FTMAP09", "$990D", ["AdapterCapturedMap", "+", "$09"]],
+    ["FTMPWRI", "$9911", ["AdapterCapturedMap", "+", "TargetMapWritableBase", "-", "TargetFlatMapBase"]],
+    ["FTMPVEC", "$9917", ["AdapterCapturedMap", "+", "TargetMapVectorLength", "-", "TargetFlatMapBase"]],
+    ["FTMPINI", "$991B", ["AdapterCapturedMap", "+", "TargetMapInitializedLength", "-", "TargetFlatMapBase"]],
+    ["FTMPBSS", "$991D", ["AdapterCapturedMap", "+", "TargetMapBssBase", "-", "TargetFlatMapBase"]],
+    ["FTMPSTK", "$9921", ["AdapterCapturedMap", "+", "TargetMapStackRequirement", "-", "TargetFlatMapBase"]],
+    ["FTMPDLA", "$9924", ["AdapterCapturedMap", "+", "TargetMapDataLoadAddress", "-", "TargetFlatMapBase"]],
+    ["FTMPAGG", "$9928", ["AdapterCapturedMap", "+", "TargetMapAggregateBase", "-", "TargetFlatMapBase"]],
+  ];
+  const indexAliases = [
+    ["FTIXBKC", ["TargetDescriptorBankCount"]],
+  ];
+  let rewritten = replaceAtomExpressionAliases(
+    source,
+    symbolMap,
+    aliases.map(([alias, , expression]) => [alias, expression]),
+  );
+  for (const [alias, expression] of indexAliases) {
+    rewritten = rewritten.replaceAll(
+      ["IX", "+", ...expression].map((name) => atomSymbol(symbolMap, name)).join(""),
+      `IX+${alias}`,
+    );
+  }
+
+  const lines = rewritten.split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "flat-target-z80-slice-proof");
+  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "flat-target-z80-slice-proof");
+  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "flat-target-z80-slice-proof");
+  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "flat-target-z80-slice-proof");
+  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "flat-target-z80-slice-proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "flat-target-z80-slice-proof");
+  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "flat-target-z80-slice-proof");
+  const targetOutputIncludeIndex = findPermanentIncludeLine(lines, "target-output.asm", "flat-target-z80-slice-proof");
+  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "flat-target-z80-slice-proof");
+  const aggregateSinkIncludeIndex = findPermanentIncludeLine(lines, "aggregate-z80.asm", "flat-target-z80-slice-proof");
+  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "flat-target-z80-slice-proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "flat-target-z80-slice-proof");
+  const stagingOrgIndex = findPermanentOrgLine(lines, releasedGeneratedStagingBase, "flat-target-z80-slice-proof");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "flat-target-z80-slice-proof");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "flat-target-z80-slice-proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "flat-target-z80-slice-proof");
+
+  const orderedIndexes = [
+    compilerOrgIndex,
+    sourceAdapterIncludeIndex,
+    tokenizerIncludeIndex,
+    semanticSinkIncludeIndex,
+    symbolsIncludeIndex,
+    parserIncludeIndex,
+    loopSinkIncludeIndex,
+    targetOutputIncludeIndex,
+    typedSinkIncludeIndex,
+    aggregateSinkIncludeIndex,
+    keywordsIncludeIndex,
+    sourceOrgIndex,
+    stagingOrgIndex,
+    runtimeOrgIndex,
+    runtimeIncludeIndex,
+    proofOrgIndex,
+  ];
+  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
+    throw new Error("flat-target-z80-slice proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const writeSlice = (includeName, start, end) => {
+    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
+      ...lines.slice(start, end).filter((line) =>
+        !/^\s*%DEFINE\s+(TargetStreamingOutput|LegacyCompilerSlices|AggregateCallSlices|Stage7LL1|LegacyEncoders)\b/i.test(line)),
+      "",
+    ]);
+  };
+  writeSlice("flat-target-z80-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, targetOutputIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-target-output.asmi", targetOutputIncludeIndex + 1, typedSinkIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, aggregateSinkIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-aggregate-z80.asmi", aggregateSinkIncludeIndex + 1, keywordsIncludeIndex);
+  writeSlice("flat-target-z80-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
+  writeSlice("flat-target-z80-slice-source.asmi", sourceOrgIndex, stagingOrgIndex);
+  writeSlice("flat-target-z80-slice-staging.asmi", stagingOrgIndex, runtimeOrgIndex);
+  writeSlice("flat-target-z80-slice-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
+  writeSlice("flat-target-z80-slice-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
+  writeGeneratedPermanentPart(translatedRoot, relative, "flat-target-z80-slice-generated-base.asmi", [
+    "; Legacy generated-image constants in loop-z80-state map to the released staging range in target proofs.",
+    `${generatedBase} EQU ${releasedGeneratedStagingBase}`,
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "flat-target-z80-slice-proof-body.asmi", [
+    lines[proofOrgIndex],
+    ...aliases.map(([alias, value]) => `${alias} EQU ${value}`),
+    ...atomExpressionAliasLines(symbolMap, indexAliases),
+    "",
+    ...lines.slice(proofOrgIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the flat target z80 proof.",
+    "            %DEFINE SegmentedOutput 1",
+    "            %DEFINE TargetStreamingOutput 1",
+    "            %DEFINE LegacyCompilerSlices 0",
+    "            %DEFINE AggregateCallSlices 1",
+    "            %DEFINE Stage7LL1 1",
+    "            %DEFINE LegacyEncoders 0",
+    "            %DEFINE HybridLL1Full 1",
+    "            %DEFINE RuntimeProofServices 1",
+    "            %INCLUDE \"target-memory-map.asmi\"",
+    "            %INCLUDE \"proof-segmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"aggregate-call-state.asmi\"",
+    "            %INCLUDE \"target-output-state.asmi\"",
+    "            %INCLUDE \"flat-target-z80-slice-generated-base.asmi\"",
+    "            %INCLUDE \"loop-z80-state.asmi\"",
+    "            %INCLUDE \"flat-target-z80-slice-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-source-adapter.asmi\"",
+    "            %INCLUDE \"loop-tokenizer.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-tokenizer.asmi\"",
+    "            %INCLUDE \"loop-semantic-sink.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-semantic-sink.asmi\"",
+    "            %INCLUDE \"loop-symbols.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-symbols.asmi\"",
+    "            %INCLUDE \"loop-parser.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-parser.asmi\"",
+    "            %INCLUDE \"loop-z80-sink.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-loop-z80-sink.asmi\"",
+    "            %INCLUDE \"target-output.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-target-output.asmi\"",
+    "            %INCLUDE \"typed-expression-z80.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-typed-expression-z80.asmi\"",
+    "            %INCLUDE \"aggregate-z80.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-aggregate-z80.asmi\"",
+    "            %INCLUDE \"loop-keywords.asmi\"",
+    "            %INCLUDE \"flat-target-z80-slice-after-keywords.asmi\"",
+    "            %INCLUDE \"flat-target-z80-slice-source.asmi\"",
+    "            %INCLUDE \"flat-target-z80-slice-staging.asmi\"",
+    "            %INCLUDE \"flat-target-z80-slice-runtime-begin.asmi\"",
+    "            %INCLUDE \"proof-z80-runtime.asm\"",
+    "            %INCLUDE \"flat-target-z80-slice-runtime-after.asmi\"",
+    "            %INCLUDE \"flat-target-z80-slice-proof-body.asmi\"",
+    "",
+  ].join("\n");
+}
+
 function rewriteTypedExpressionZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
   const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
   const sourceBase = atomSymbol(symbolMap, "SourceBase");
@@ -2749,7 +3052,7 @@ function rewriteStage7Ll1EngineProofPermanentAtomSource(source, { relative, tran
     "",
   ]);
   writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-engine-proof-before-actions.asmi", [
-    `            ${stackLimit} EQU ${stackBase}+${stackCapacity}`,
+    `${stackLimit} EQU ${stackBase}+${stackCapacity}`,
     ...lines.slice(parserIncludeIndex + 1, actionsIncludeIndex).map(rewriteStackLimit),
     "",
   ]);
@@ -2776,7 +3079,7 @@ function rewriteStage7Ll1EngineProofPermanentAtomSource(source, { relative, tran
 
 function atomExpressionAliasLines(symbolMap, aliases) {
   return aliases.map(([alias, expression]) =>
-    `            ${alias} EQU ${expression.map((name) => atomSymbol(symbolMap, name)).join("")}`,
+    `${alias} EQU ${expression.map((name) => atomSymbol(symbolMap, name)).join("")}`,
   );
 }
 
@@ -2876,8 +3179,15 @@ function rewriteAggregateParserPermanentAtomSource(source, { symbolMap }) {
 }
 
 function rewriteAggregateCallZ80PermanentAtomSource(source, { symbolMap }) {
-  const aliases = [
-    ["ACZTOFF", ["TrapOffset", "-", "StateBase"]],
+  const literalAliases = [
+    ["ACZTOFF", "3", ["TrapOffset", "-", "StateBase"]],
+    ["ACZCLMO", "43", ["NucleusRuntimeActivationClaimOffset"]],
+    ["ACZRLSO", "68", ["NucleusRuntimeActivationReleaseOffset"]],
+    ["ACZARRY", "77", ["NucleusRuntimeCheckArrayIndexOffset"]],
+    ["ACZMULW", "182", ["NucleusRuntimeMultiplyU16Offset"]],
+    ["ACZAGGR", "115", ["NucleusRuntimeCheckAggregateRegionOffset"]],
+    ["ACZSLEN", "85", ["NucleusRuntimeCheckStringLengthOffset"]],
+    ["ACZSIDX", "95", ["NucleusRuntimeCheckStringIndexOffset"]],
   ];
   const aliasesMovedToTypedTail = [
     "Stage7IndexToA",
@@ -2892,13 +3202,17 @@ function rewriteAggregateCallZ80PermanentAtomSource(source, { symbolMap }) {
     "Stage8PopErrorBytes",
     "Stage8ErrorCarrierBytes",
   ].map((name) => atomSymbol(symbolMap, name));
-  const rewritten = replaceAtomExpressionAliases(source, symbolMap, aliases)
+  const rewritten = replaceAtomExpressionAliases(
+    source,
+    symbolMap,
+    literalAliases.map(([alias, , expression]) => [alias, expression]),
+  )
     .split("\n")
     .filter((line) => !aliasesMovedToTypedTail.some((label) =>
       new RegExp(`^\\s*${escapeRegExp(label)}\\s+EQU\\b`, "i").test(line)))
     .join("\n");
   return [
-    ...atomExpressionAliasLines(symbolMap, aliases),
+    ...literalAliases.map(([alias, value]) => `${alias} EQU ${value}`),
     "",
     rewritten,
   ].join("\n");
@@ -2957,6 +3271,47 @@ function rewriteLoopZ80SinkPermanentAtomSource(source, { symbolMap }) {
     "%IF TargetStreamingOutput",
     ...atomExpressionAliasLines(symbolMap, targetStateAliases),
     "%ENDIF",
+    "",
+    rewritten,
+  ].join("\n");
+}
+
+function rewriteTargetOutputPermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["TOUTRNL", "70", ["NucleusRuntimeVectorLength", "+", "NucleusRuntimeStateLength"]],
+    ["TOUTRUN", "0", ["RunState", "-", "StateBase"]],
+    ["TOUTTRP", "1", ["TrapNumber", "-", "StateBase"]],
+    ["TOFLGLM", "2", ["TargetDescriptorEstablishStack", "+1"]],
+    ["TOSTK02", "3842", ["TargetStackRequirement", "+2"]],
+    ["TOVEC03", "36", ["NucleusRuntimeVectorLength", "+3"]],
+    ["TOEXL03", "367", ["NucleusRuntimeExpectedLength", "+3"]],
+  ];
+  const indexAliases = [
+    ["TOIXRIH", "1", ["TargetDescriptorRuntimeIdentity", "+1"]],
+    ["TOIXIBH", "3", ["TargetDescriptorImageBase", "+1"]],
+    ["TOIXICH", "5", ["TargetDescriptorImageCapacity", "+1"]],
+    ["TOIXWBH", "7", ["TargetDescriptorWritableBase", "+1"]],
+    ["TOIXWCH", "9", ["TargetDescriptorWritableCapacity", "+1"]],
+    ["TOIXRID", "0", ["TargetDescriptorRuntimeIdentity"]],
+    ["TOIXFLG", "10", ["TargetDescriptorFlags"]],
+    ["TOIXIBS", "2", ["TargetDescriptorImageBase"]],
+    ["TOIXICP", "4", ["TargetDescriptorImageCapacity"]],
+    ["TOIXWBS", "6", ["TargetDescriptorWritableBase"]],
+    ["TOIXWCP", "8", ["TargetDescriptorWritableCapacity"]],
+  ];
+  let rewritten = replaceAtomExpressionAliases(source, symbolMap, aliases.map(([alias, , expression]) => [alias, expression]));
+  for (const [alias, , expression] of indexAliases) {
+    rewritten = rewritten.replaceAll(
+      ["IX", "+", ...expression].map((name) => atomSymbol(symbolMap, name)).join(""),
+      `IX+${alias}`,
+    );
+  }
+  const targetTerminalSelectBytes = atomSymbol(symbolMap, "TargetTerminalSelectBytes");
+  const terminalSelectPattern = new RegExp(`^${escapeRegExp(targetTerminalSelectBytes)}\\s+EQU\\b`, "i");
+  rewritten = rewritten.split("\n").filter((line) => !terminalSelectPattern.test(line)).join("\n");
+  return [
+    ...aliases.map(([alias, value]) => `${alias} EQU ${value}`),
+    ...indexAliases.map(([alias, value]) => `${alias} EQU ${value}`),
     "",
     rewritten,
   ].join("\n");
@@ -3069,6 +3424,8 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
   ]);
   const typedBeginAndBytes = atomSymbol(symbolMap, "TypedBeginAndBytes");
   const typedBeginAndLowTest = "TYPDBG1";
+  const typedBeginAndBranch = "TYPDBG3";
+  const targetTerminalSelectBytes = atomSymbol(symbolMap, "TargetTerminalSelectBytes");
   const typedBeginPattern = new RegExp(`^(${escapeRegExp(typedBeginAndBytes)}:\\s*)DB\\s+\\$E1,\\$7D,`, "i");
   const segmentedCopyBytes = atomSymbol(symbolMap, "SegmentedCopyBytes");
   const stage7Ldir = atomSymbol(symbolMap, "Stage7LDIR");
@@ -3086,6 +3443,8 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
   const stage7LoadIxl = atomSymbol(symbolMap, "Stage7LoadIXL");
   const typedLoadLocalHigh = atomSymbol(symbolMap, "TypedLoadLocalHigh");
   const stage7LoadIxh = atomSymbol(symbolMap, "Stage7LoadIXH");
+  const typedStoreLocalLow = atomSymbol(symbolMap, "TypedStoreLocalLow");
+  const typedStoreLocalHigh = atomSymbol(symbolMap, "TypedStoreLocalHigh");
   const typedPopOperandsBytes = atomSymbol(symbolMap, "TypedPopOperandsBytes");
   const stage7CopyPrepare = atomSymbol(symbolMap, "Stage7CopyPrepare");
   const stage7PopIndexBase = atomSymbol(symbolMap, "Stage7PopIndexBase");
@@ -3109,9 +3468,9 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
     const aliasesForLine = simpleAliasTargets.get(labelMatch[1]);
     if (aliasesForLine === undefined) return [line];
     return [
-      line,
       ...aliasesForLine.map(([alias, original]) =>
-        `${alias} EQU ${labelMatch[1]} ;@NUC-GLOBAL ${original} PERMANENT ${alias}`),
+        `${alias}: ;@NUC-GLOBAL ${original} PERMANENT ${alias}`),
+      line,
     ];
   };
   const typedLoadSpPattern = new RegExp(`^(${escapeRegExp(typedLoadSpPrefix)}:\\s*)DB\\s+\\$ED,\\$7B(.*)$`, "i");
@@ -3123,7 +3482,9 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
       if (match !== null) {
         return [
           `${match[1]}DB $E1`,
-          `${typedBeginAndLowTest}:     DB $7D,${line.slice(match[0].length)}`,
+          `${typedBeginAndLowTest}:     DB $7D,$B7`,
+          `${targetTerminalSelectBytes}: ;@NUC-GLOBAL TargetTerminalSelectBytes PERMANENT ${targetTerminalSelectBytes}`,
+          `${typedBeginAndBranch}:     DB ${line.slice(match[0].length + "$B7,".length)}`,
         ];
       }
       const typedLoadSpMatch = typedLoadSpPattern.exec(line);
@@ -3136,11 +3497,16 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
       const typedParameter16Match = typedParameter16Pattern.exec(line);
       if (typedParameter16Match !== null) {
         return [
+          `${stage7DecSp2}: ;@NUC-GLOBAL Stage7DecSP2 PERMANENT ${stage7DecSp2}`,
           `${typedParameter16Match[1]}DB $3B,$3B${typedParameter16Match[2]}`,
-          `${stage7DecSp2} EQU ${typedParameter16Bytes} ;@NUC-GLOBAL Stage7DecSP2 PERMANENT ${stage7DecSp2}`,
+          `${typedStoreLocalLow}: ;@NUC-GLOBAL TypedStoreLocalLow PERMANENT ${typedStoreLocalLow}`,
           `${stage7StoreIxl}: DB $DD,$75,$FF ;@NUC-GLOBAL Stage7StoreIXL PERMANENT ${stage7StoreIxl}`,
+          `${typedStoreLocalHigh}: ;@NUC-GLOBAL TypedStoreLocalHigh PERMANENT ${typedStoreLocalHigh}`,
           `${stage7StoreIxh}: DB $DD,$74,$FE ;@NUC-GLOBAL Stage7StoreIXH PERMANENT ${stage7StoreIxh}`,
         ];
+      }
+      if (new RegExp(`^\\s*(${escapeRegExp(typedStoreLocalLow)}|${escapeRegExp(typedStoreLocalHigh)})\\s+EQU\\b`, "i").test(line)) {
+        return [];
       }
       return withMovedAliases(line);
     }));
