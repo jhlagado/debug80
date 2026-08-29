@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `7d1a569c`
+Current reusable-transform baseline HEAD: `d1691c2a`
 
 ## Purpose
 
@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 223 |
-| Source lines | 30,052 |
-| Defined assembler symbols detected | 4,138 |
+| Assembly files, `.asm` and `.asmi` | 237 |
+| Source lines | 30,093 |
+| Defined assembler symbols detected | 4,154 |
 | Defined assembler symbols longer than eight characters | 3,910 |
-| Long labels classed as dot-local candidates | 771 |
-| Long symbols still needing global treatment | 3,139 |
+| Long labels classed as dot-local candidates | 787 |
+| Long symbols still needing global treatment | 3,123 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 47 |
+| Include-after-header violations | 38 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 47 |
+| Current permanent-source blockers | 38 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 47 |
+| Permanent blocker: include after header | 38 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -326,14 +326,13 @@ grouping:
 
 | Batch | Files | Late includes | Risk | Recommendation |
 | --- | ---: | ---: | --- | --- |
-| Proof composition files | 6 | 40 | Medium | Source-layout blockers are cleared for several proof rows, including `stage7-ll1-aggregate-call-z80-slice-proof.asm`, `aggregate-z80-slice-proof.asm`, `flat-target-z80-slice-proof.asm`, `stage7-parser-coverage-proof.asmi`, `stage8-failure-z80-slice-proof.asm`, and `stage9-conformance-z80-slice-proof.asm`; remaining proof entries should keep using the same section-owned include layout as they move from preview to permanent Atom source. |
+| Proof composition files | 5 | 31 | Medium | Source-layout blockers are cleared for several proof rows, including `stage7-ll1-aggregate-call-z80-slice-proof.asm`, `aggregate-z80-slice-proof.asm`, `flat-target-z80-slice-proof.asm`, `stage7-parser-coverage-proof.asmi`, `stage8-failure-z80-slice-proof.asm`, `stage9-conformance-z80-slice-proof.asm`, and `structured-control-z80-slice-proof.asm`; remaining proof entries should keep using the same section-owned include layout as they move from preview to permanent Atom source. |
 | Module composition files | 2 | 6 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `typed-expression-z80`). Treat these as real module-boundary work, not mechanical line moves. |
 | Runtime wrapper files | 1 | 1 | Low to medium | The target runtime link entry has a permanent Atom layout and byte-equivalence proof. The raw source still records one wrapper include until the permanent source tree replaces the current source tree. |
 
 The first permanent-source batch should be the proof composition files, because
 they account for most of the count and are structurally repetitive:
 
-- `vertical-slice/structured-control-z80-slice-proof.asm` — 9
 - `vertical-slice/typed-expression-z80-slice-proof.asm` — 9
 - `vertical-slice/loop-z80-slice-proof.asm` — 8
 - `vertical-slice/loop-compiler-slice-proof.asm` — 6
@@ -462,6 +461,14 @@ layout. Its corpus-source fragment owns the Chapter 21 conformance corpus, its
 compiler-code fragment owns the generated read-only-data offset aliases, and
 its proof-body fragment owns the explicit `S9E..` diagnostic-offset aliases
 used by the byte-equivalence proof.
+
+`structured-control-z80-slice-proof.asm` now uses the physical section-owner
+layout. Its source fragment owns the accepted and diagnostic structured-control
+fixtures at `SourceBase`, its spare fragment keeps the control-label capacity
+fixture at `SpareBase`, and its proof-body fragment owns the explicit
+diagnostic-offset aliases used by the permanent Atom proof. The terminal
+`.end` directive lives in a final fragment so the emitted image order remains
+ascending through source, runtime, proof, and spare regions.
 
 The two dispatcher offset measurement artifacts now name their page-local table
 offsets with single-symbol aliases. This closes the
@@ -624,24 +631,24 @@ modules after an `.ORG` and section label:
 
 | Source file | Measured violations | First line |
 | --- | ---: | ---: |
-| `vertical-slice/structured-control-z80-slice-proof.asm` | 9 | 12 |
 | `vertical-slice/typed-expression-z80-slice-proof.asm` | 9 | 16 |
 | `vertical-slice/loop-z80-slice-proof.asm` | 8 | 11 |
 | `vertical-slice/loop-compiler-slice-proof.asm` | 6 | 10 |
 | `vertical-slice/z80-slice-proof.asm` | 6 | 10 |
+| `vertical-slice/loop-parser.asm` | 4 | 1135 |
 
 The largest current target groups show why this is not a safe blind move:
 
 | Target include | Measured uses | Target class |
 | --- | ---: | --- |
-| `vertical-slice/source-adapter.asm` | 5 | code |
-| `vertical-slice/loop-keywords.asmi` | 4 | data |
-| `vertical-slice/loop-parser.asm` | 4 | mixed code/data |
-| `vertical-slice/loop-semantic-sink.asm` | 4 | code |
-| `vertical-slice/loop-symbols.asm` | 4 | code |
-| `vertical-slice/loop-tokenizer.asm` | 4 | mixed code/data |
-| `vertical-slice/loop-z80-sink.asm` | 3 | mixed code/data |
-| `vertical-slice/proof-z80-runtime.asm` | 3 | code |
+| `vertical-slice/source-adapter.asm` | 4 | code |
+| `vertical-slice/loop-keywords.asmi` | 3 | data |
+| `vertical-slice/loop-parser.asm` | 3 | mixed code/data |
+| `vertical-slice/loop-semantic-sink.asm` | 3 | code |
+| `vertical-slice/loop-symbols.asm` | 3 | code |
+| `vertical-slice/loop-tokenizer.asm` | 3 | mixed code/data |
+| `vertical-slice/loop-z80-sink.asm` | 2 | mixed code/data |
+| `vertical-slice/proof-z80-runtime.asm` | 2 | code |
 
 The first cleanup pass moved the state-layout includes into strict headers by
 adding small proof-mode config includes for `SegmentedOutput`. That removed the
@@ -691,14 +698,14 @@ symbols:
 For byte-comparison previews, every long symbol still has a deterministic
 eight-character global name of the form `N0000000`, `N0000001`, and so on. That
 keeps the preview mechanically safe. For permanent source, the tool now
-classifies 771 long labels as dot-local candidates. Those labels are defined
+classifies 787 long labels as dot-local candidates. Those labels are defined
 once, are not proof-public, are not referenced from another file, and all their
 detected uses fall inside one surrounding global-label scope. The scope test
 uses every definition of every surrounding global, including repeated
 conditional definitions, because any emitted global label closes the current
 Atom private-label scope.
 
-The remaining 3,139 long symbols now have deterministic permanent global
+The remaining 3,123 long symbols now have deterministic permanent global
 abbreviations. Manual curation is still useful for public names, proof-facing
 names, and heavily read module entry points, but it is no longer a migration
 blocker by itself.
@@ -787,7 +794,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | `.INCLUDE` | Header-only for permanent source; compatibility-lowered for current proofs | Current emitted-content include-after-header cases are preserved by the lowering bridge |
 | `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
 | `.ROUTINE` | Mapped as proof metadata | Atom source uses `;@ROUTINE`; the generated contract map ties each contract to the target routine label |
-| Long labels | Classified | 771 can become dot-local labels; the rest have generated permanent global abbreviations |
+| Long labels | Classified | 787 can become dot-local labels; the rest have generated permanent global abbreviations |
 | Proof JSON symbol references | Mapped | The dry-run emits a proof-symbol map from existing proof names to preview and permanent Atom names |
 | `$10000` limit constants | Mapped as proof metadata | Atom source lowers these to `EQU 0` plus `;@ATOM-PROOF-LIMIT`, and the proof-limit map carries `65536` |
 | Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |

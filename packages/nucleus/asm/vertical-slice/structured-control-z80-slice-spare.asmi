@@ -1,0 +1,23 @@
+            .org SpareBase
+StructuredLabelCapacitySource:
+            .db "sub main() fails",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    if true",10,"    end",10
+            .db "    "
+StructuredLabelCapacityPoint:
+            .db "if true",10,"    end",10
+            .db "end",10
+StructuredLabelCapacitySourceEnd:

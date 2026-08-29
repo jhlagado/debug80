@@ -1021,6 +1021,34 @@ describe("Nucleus Atom migration dry-run", () => {
         "z80-slice-proof.json",
       ]);
 
+      const structuredControlRoot = await readFile(
+        path.join(translatedRoot, "vertical-slice", "structured-control-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(structuredControlRoot).toContain('%INCLUDE "structured-control-z80-slice-source.asmi"');
+      expect(structuredControlRoot).toContain('%INCLUDE "structured-control-z80-slice-proof-body.asmi"');
+      expect(structuredControlRoot).toContain('%INCLUDE "structured-control-z80-slice-spare.asmi"');
+      expect(structuredControlRoot).toContain('%INCLUDE "structured-control-z80-slice-end.asmi"');
+      expect(structuredControlRoot.indexOf('%INCLUDE "structured-control-z80-slice-source.asmi"')).toBeLessThan(
+        structuredControlRoot.indexOf('%INCLUDE "structured-control-z80-slice-runtime-begin.asmi"'),
+      );
+      expect(structuredControlRoot.indexOf('%INCLUDE "structured-control-z80-slice-runtime-after.asmi"')).toBeLessThan(
+        structuredControlRoot.indexOf('%INCLUDE "structured-control-z80-slice-proof-body.asmi"'),
+      );
+      expect(structuredControlRoot.indexOf('%INCLUDE "structured-control-z80-slice-proof-body.asmi"')).toBeLessThan(
+        structuredControlRoot.indexOf('%INCLUDE "structured-control-z80-slice-spare.asmi"'),
+      );
+      expect(structuredControlRoot.indexOf('%INCLUDE "structured-control-z80-slice-spare.asmi"')).toBeLessThan(
+        structuredControlRoot.indexOf('%INCLUDE "structured-control-z80-slice-end.asmi"'),
+      );
+      const structuredControlProofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "structured-control-z80-slice-proof-body.asmi"),
+        "utf8",
+      );
+      expect(structuredControlProofBody).toContain("SCAREC EQU");
+      expect(structuredControlProofBody).toContain(";@NUC-GLOBAL ProofStart PERMANENT");
+      expect(structuredControlProofBody).not.toContain("%INCLUDE");
+
       for (const { proof, entry } of representativeProofs) {
         const outcome = await runAtomProof(proof, entry);
         if (outcome.symbols.ProofStatus !== undefined) {

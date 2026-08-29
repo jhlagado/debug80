@@ -1,0 +1,165 @@
+            .org SourceBase
+StructuredAcceptedSource:
+            .db "var out as u8 = 0",10
+            .db "var finalI as u8 = 0",10
+            .db "var finalJ as u16 = 0",10
+            .db "forward sub descend(value as u8) as u8",10
+            .db "sub main() fails",10
+            .db "    var i as u8 = 0",10
+            .db "    var j as u16 = 0",10
+            .db "    if false",10
+            .db "        out = 99",10
+            .db "    elseif true",10
+            .db "        out = 1",10
+            .db "    else",10
+            .db "        out = 98",10
+            .db "    end",10
+            .db "    while out < 3",10
+            .db "        out = out + 1",10
+            .db "    end",10
+            .db "    for i = 0 until 4",10
+            .db "        if i = 1",10
+            .db "            continue",10
+            .db "        end",10
+            .db "        if i = 3",10
+            .db "            exit",10
+            .db "        end",10
+            .db "        out = out + i",10
+            .db "    end",10
+            .db "    for j = 3 to 0 step -1",10
+            .db "        out = out + 1",10
+            .db "    end",10
+            .db "    finalI = i",10
+            .db "    finalJ = j",10
+            .db "    out = out + descend(3)",10
+            .db "    writeOutputByte(out) else fail",10
+            .db "end",10
+            .db "sub descend",10
+            .db "    if value = 0",10
+            .db "        return value",10
+            .db "    end",10
+            .db "    return "
+StructuredAcceptedRecursiveCall:
+            .db "descend(value - 1)",10
+            .db "end",10
+StructuredAcceptedSourceEnd:
+
+StructuredRangeSource:
+            .db "var out as u8 = 0",10
+            .db "var snapshot as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    var i as u8 = 0",10
+            .db "    for "
+StructuredRangeCounter:
+            .db "i = 250 to 300 step 10",10
+            .db "        out = out + 1",10
+            .db "        snapshot = i",10
+            .db "    end",10
+            .db "end",10
+StructuredRangeSourceEnd:
+
+StructuredActiveCounterSource:
+            .db "var dummy as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    var i as u8 = 0",10
+            .db "    for i = 0 until 2",10
+            .db "        "
+StructuredActiveCounterName:
+            .db "i = i + 1",10
+            .db "    end",10
+            .db "end",10
+StructuredActiveCounterSourceEnd:
+
+StructuredExitOutsideSource:
+            .db "var dummy as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    "
+StructuredExitOutsidePoint:
+            .db "exit",10
+            .db "end",10
+StructuredExitOutsideSourceEnd:
+
+StructuredZeroStepSource:
+            .db "var dummy as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    var i as u8 = 0",10
+            .db "    for i = 0 until 2 step "
+StructuredZeroStepPoint:
+            .db "0",10
+            .db "    end",10
+            .db "end",10
+StructuredZeroStepSourceEnd:
+
+StructuredBooleanFlowSource:
+            .db "var flag as boolean = false",10
+            .db "forward sub choose(value as boolean) as boolean",10
+            .db "sub main() fails",10
+            .db "    flag = choose(false)",10
+            .db "end",10
+            .db "sub choose",10
+            .db "    if value",10
+            .db "        return false",10
+            .db "    else",10
+            .db "        return true",10
+            .db "    end",10
+            .db "    value = false",10
+            .db "end",10
+StructuredBooleanFlowSourceEnd:
+
+StructuredStrayElseSource:
+            .db "sub main() fails",10
+StructuredStrayElsePoint:
+            .db "else",10
+StructuredStrayElseSourceEnd:
+StructuredStrayElseIfSource:
+            .db "sub main() fails",10
+StructuredStrayElseIfPoint:
+            .db "elseif true",10
+StructuredStrayElseIfSourceEnd:
+
+StructuredSecondForwardSource:
+            .db "forward sub first(value as u8) as u8",10
+            .db "forward sub "
+StructuredSecondForwardPoint:
+            .db "second(value as u8) as u8",10
+StructuredSecondForwardSourceEnd:
+StructuredProgramForwardSource:
+            .db "var clash as u8 = 0",10
+            .db "forward sub "
+StructuredProgramForwardPoint:
+            .db "clash(value as u8) as u8",10
+StructuredProgramForwardSourceEnd:
+StructuredLocalForwardSource:
+            .db "forward sub work(value as u8) as u8",10
+            .db "sub main() fails",10
+            .db "    var "
+StructuredLocalForwardPoint:
+            .db "work as u8 = 0",10
+StructuredLocalForwardSourceEnd:
+StructuredMainForwardSource:
+            .db "forward sub "
+StructuredMainForwardPoint:
+            .db "main(value as u8) as u8",10
+StructuredMainForwardSourceEnd:
+StructuredParameterForwardSource:
+            .db "forward sub same("
+StructuredParameterForwardPoint:
+            .db "same as u8) as u8",10
+StructuredParameterForwardSourceEnd:
+
+StructuredProgramMainSource:
+            .db "var "
+StructuredProgramMainPoint:
+            .db "main as u8 = 0",10
+StructuredProgramMainSourceEnd:
+StructuredLocalMainSource:
+            .db "sub main() fails",10
+            .db "    var "
+StructuredLocalMainPoint:
+            .db "main as u8 = 0",10
+StructuredLocalMainSourceEnd:
+StructuredParameterMainSource:
+            .db "forward sub work("
+StructuredParameterMainPoint:
+            .db "main as u8) as u8",10
+StructuredParameterMainSourceEnd:
