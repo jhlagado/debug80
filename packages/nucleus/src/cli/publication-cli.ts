@@ -21,6 +21,7 @@ export interface NucleusPublicationCliOptions {
   readonly input?: string;
   readonly output?: string;
   readonly outputPaths: readonly string[];
+  readonly assembler?: "azm" | "atom";
   readonly root?: string;
   readonly targetFile?: string;
   readonly compilerProof?: string;
@@ -91,6 +92,12 @@ const parseNumber = (value: string, name: string): number => {
   return parsed;
 };
 
+const parseAssembler = (value: string): "azm" | "atom" => {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "azm" || normalized === "atom") return normalized;
+  throw new Error("--assembler must be azm or atom");
+};
+
 export function parseNucleusPublicationOptions(
   arguments_: readonly string[],
   options: {
@@ -98,6 +105,7 @@ export function parseNucleusPublicationOptions(
   },
 ): NucleusPublicationCliOptions {
   const outputPaths: string[] = [];
+  let assembler: "azm" | "atom" | undefined;
   let root: string | undefined;
   let targetFile: string | undefined;
   let compilerProof: string | undefined;
@@ -119,6 +127,11 @@ export function parseNucleusPublicationOptions(
     }
     if (argument === "-o" || argument === "--output") {
       outputPaths.push(optionValue(arguments_, index, argument));
+      index += 1;
+      continue;
+    }
+    if (argument === "--assembler") {
+      assembler = parseAssembler(optionValue(arguments_, index, argument));
       index += 1;
       continue;
     }
@@ -158,6 +171,7 @@ export function parseNucleusPublicationOptions(
     input: positional[0],
     output: outputPaths[0],
     outputPaths,
+    assembler,
     root,
     targetFile,
     compilerProof,
@@ -177,6 +191,7 @@ export function preparedSourcePublicationOptions(
     entry: options.input,
     targetFile: options.targetFile,
     compilerManifest: options.compilerProof,
+    assembler: options.assembler,
     source:
       options.sourceBase === undefined && options.sourceCapacity === undefined
         ? undefined
@@ -273,10 +288,11 @@ export function publicationJsonSummary(
   return `${JSON.stringify(
     {
       ...("manifest" in publication
-        ? { manifest: publication.manifest }
+        ? { manifest: publication.manifest, assembler: publication.assembler }
         : {
             root: publication.root,
             entry: publication.entry,
+            assembler: publication.assembler,
             compilerManifest: publication.compilerManifest,
             targetFile: publication.targetFile,
             sourceParts: publication.sourceParts,
@@ -312,6 +328,7 @@ export function publicationTextSummary(
           `sourceBytes=${publication.sourceBytes}`,
         ]
       : []),
+    `assembler=${publication.assembler}`,
     `records=${publication.nobj.parsed.commit.recordCount}`,
     `entry=${publication.nobj.parsed.map.entryBank}:${publication.nobj.parsed.map.entryAddress}`,
     ...committedOutputs.map((output) => `output=${output}`),

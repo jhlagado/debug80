@@ -33,6 +33,7 @@ export {
   NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
+  type NucleusCompilerAssemblerFlavour,
   type NucleusPreparedSourceTargetPublication,
   type NucleusPreparedSourceTargetPublicationOptions,
   type NucleusProofTargetPublication,

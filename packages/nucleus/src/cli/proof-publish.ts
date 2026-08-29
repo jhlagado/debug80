@@ -19,6 +19,7 @@ import {
 const usage = `Usage: nucleus proof:publish [options] <proof.json | entry.nu> [output...]
 
 Options:
+  --assembler azm|atom   Assembler for proof images; default azm.
   --root DIR              Project root for entry.nu publication.
   --target FILE           Target publication descriptor for entry.nu publication.
   --compiler-proof FILE   Resident compiler proof image for entry.nu publication.
@@ -65,6 +66,7 @@ export async function runNucleusProofPublishCli(
         })
       : await publishNucleusProofTarget({
           manifest: options.input,
+          assembler: options.assembler,
         });
     const committedOutputs = await writeNucleusPublicationOutputs(
       publication,

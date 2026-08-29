@@ -717,6 +717,31 @@ describe("Nucleus application boundary", () => {
     }
   });
 
+  it("publishes proof targets with Atom-selected proof assembly", async () => {
+    const { stdout, stderr } = await execFileAsync(
+      process.execPath,
+      [
+        tsxBin,
+        "src/cli/proof-publish.ts",
+        "--json",
+        "--assembler",
+        "atom",
+        proof("flat-target-z80-slice-proof"),
+      ],
+      { cwd: packageRoot },
+    );
+
+    const summary = JSON.parse(stdout);
+    expect(stderr).toBe("");
+    expect(summary).toMatchObject({
+      assembler: "atom",
+      bytes: 1396,
+      records: 130,
+      entryBank: 0,
+      entryAddress: 0x8000,
+    });
+  }, 120_000);
+
   it("exposes prepared entry-source NOBJ publication through the development CLI", async () => {
     await withSourceTree(
       {
@@ -863,6 +888,50 @@ describe("Nucleus application boundary", () => {
       },
     );
   }, 30_000);
+
+  it("publishes prepared entry source with Atom-selected resident proof assembly", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const { stdout, stderr } = await execFileAsync(
+          process.execPath,
+          [
+            tsxBin,
+            "src/cli/publish.ts",
+            "--json",
+            "--assembler",
+            "atom",
+            "--root",
+            root,
+            "src/main.nu",
+          ],
+          { cwd: packageRoot },
+        );
+
+        const summary = JSON.parse(stdout);
+        expect(stderr).toBe("");
+        expect(summary).toMatchObject({
+          root,
+          entry: "src/main.nu",
+          assembler: "atom",
+          sourceParts: 1,
+          bytes: 1396,
+          records: 130,
+          entryBank: 0,
+          entryAddress: 0x8000,
+        });
+      },
+    );
+  }, 120_000);
 
   it("publishes selected NOBJ, BIN, HEX, and D8 artifacts through the normal CLI", async () => {
     await withSourceTree(
@@ -1173,6 +1242,25 @@ describe("Nucleus application boundary", () => {
         expect(com).toMatchObject({
           code: 1,
           stderr: expect.stringContaining("Nucleus COM output is not implemented"),
+        });
+
+        const invalidAssembler = await execFileAsync(
+          process.execPath,
+          [
+            tsxBin,
+            "src/cli/nucleus.ts",
+            "publish",
+            "--assembler",
+            "auto",
+            "--root",
+            root,
+            "src/main.nu",
+          ],
+          { cwd: packageRoot },
+        ).catch((error: unknown) => error);
+        expect(invalidAssembler).toMatchObject({
+          code: 1,
+          stderr: expect.stringContaining("--assembler must be azm or atom"),
         });
       },
     );

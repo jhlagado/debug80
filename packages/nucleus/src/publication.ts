@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,7 +7,11 @@ import {
   prepareNucleusCompilation,
   type NucleusResidentSourcePreparationOptions,
 } from "./application.js";
-import { runProofManifest, type NobjExecutionOutcome } from "./proof.js";
+import {
+  runProofManifest,
+  type NobjExecutionOutcome,
+  type NucleusAtomProofMigrationMetadata,
+} from "./proof.js";
 import type { NucleusResidentCompilerEntrySymbols } from "./resident-compiler-entry.js";
 import {
   defineNucleusTargetPublicationDescriptor,
@@ -15,11 +20,30 @@ import {
 } from "./target-publication.js";
 import type { NucleusGeneratedSourceSegment } from "./source-provenance.js";
 
-const defaultFlatCompilerProofManifest = fileURLToPath(
-  new URL("../proofs/flat-target-z80-slice-proof.json", import.meta.url),
+const locatePackageRoot = (moduleUrl: string): string => {
+  let current = path.dirname(fileURLToPath(moduleUrl));
+  while (true) {
+    if (existsSync(path.join(current, "package.json"))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) {
+      throw new Error("cannot locate Nucleus package root");
+    }
+    current = parent;
+  }
+};
+
+const packageRoot = locatePackageRoot(import.meta.url);
+const defaultFlatCompilerProofManifest = path.join(
+  packageRoot,
+  "proofs",
+  "flat-target-z80-slice-proof.json",
 );
+const defaultAsmRoot = path.join(packageRoot, "asm");
+const defaultPermanentAtomRoot = path.join(packageRoot, "atom-asm");
 const NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE = 0x5000;
 const NUCLEUS_DEFAULT_RESIDENT_SOURCE_CAPACITY = 0x0800;
+
+export type NucleusCompilerAssemblerFlavour = "azm" | "atom";
 
 export const NUCLEUS_FLAT_TARGET_COMPILER_ENTRY = Object.freeze({
   executionEntry: "ProofStart",
@@ -97,14 +121,120 @@ export const NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR =
     },
   });
 
+const pathInside = (root: string, target: string): string | undefined => {
+  const relative = path.relative(root, target);
+  if (
+    relative === "" ||
+    relative.startsWith("..") ||
+    path.isAbsolute(relative)
+  ) {
+    return undefined;
+  }
+  return relative;
+};
+
+const listFiles = async (root: string): Promise<readonly string[]> => {
+  const result: string[] = [];
+  const visit = async (directory: string): Promise<void> => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const child = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await visit(child);
+      } else if (entry.isFile()) {
+        result.push(child);
+      }
+    }
+  };
+  await visit(root);
+  return result.sort();
+};
+
+const readPermanentAtomMigrationMetadata =
+  async (): Promise<NucleusAtomProofMigrationMetadata> => {
+    const proofSymbolMap: {
+      original: string;
+      permanentAtom: string;
+    }[] = [];
+    const proofLimitMap: {
+      original: string;
+      permanentAtom: string;
+      value: number;
+      loweredAtomValue: number;
+    }[] = [];
+    for (const file of await listFiles(defaultPermanentAtomRoot)) {
+      const text = await readFile(file, "utf8");
+      for (const line of text.split(/\n/)) {
+        const global =
+          /;@NUC-GLOBAL\s+(\S+)\s+PERMANENT\s+(\S+)/.exec(line);
+        if (global !== null) {
+          proofSymbolMap.push({
+            original: global[1]!,
+            permanentAtom: global[2]!,
+          });
+        }
+        const limit =
+          /;@ATOM-PROOF-LIMIT\s+(\S+)\s+([0-9]+)/.exec(line);
+        if (limit !== null) {
+          proofLimitMap.push({
+            original: limit[1]!,
+            permanentAtom: global?.[2] ?? limit[1]!,
+            value: Number.parseInt(limit[2]!, 10),
+            loweredAtomValue: 0,
+          });
+        }
+      }
+    }
+    return Object.freeze({
+      proofSymbolMap,
+      proofLimitMap,
+    });
+  };
+
+const proofAssemblerOptions = async (
+  manifestPath: string,
+  assembler: NucleusCompilerAssemblerFlavour,
+): Promise<Parameters<typeof runProofManifest>[1]> => {
+  if (assembler === "azm") return {};
+  if (assembler !== "atom") {
+    throw new Error("assembler must be azm or atom");
+  }
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
+    readonly source?: unknown;
+  };
+  if (typeof manifest.source !== "string") {
+    throw new Error("Atom proof assembly requires a manifest source path");
+  }
+  const sourcePath = path.resolve(path.dirname(manifestPath), manifest.source);
+  const entry = pathInside(defaultAsmRoot, sourcePath);
+  if (entry === undefined) {
+    throw new Error(
+      "Atom proof assembly requires a manifest source under the checked-in Nucleus asm tree",
+    );
+  }
+  return Object.freeze({
+    assembler: {
+      flavour: "atom" as const,
+      source: "permanent" as const,
+      root: defaultPermanentAtomRoot,
+      entry,
+      maxInstructions: 700_000_000,
+      maxCycles: 7_000_000_000,
+      legacyOutputOrder: true,
+    },
+    atomMigration: await readPermanentAtomMigrationMetadata(),
+  });
+};
+
 export interface NucleusProofTargetPublicationOptions {
   readonly manifest: string;
   readonly output?: string;
+  readonly assembler?: NucleusCompilerAssemblerFlavour;
 }
 
 export interface NucleusProofTargetPublication {
   readonly manifest: string;
   readonly output?: string;
+  readonly assembler: NucleusCompilerAssemblerFlavour;
   readonly nobj: NobjExecutionOutcome;
   readonly sourceProvenance?: readonly NucleusGeneratedSourceSegment[];
 }
@@ -118,6 +248,7 @@ export interface NucleusPreparedSourceTargetPublicationOptions {
   readonly targetFile?: string;
   readonly source?: NucleusResidentSourcePreparationOptions;
   readonly output?: string;
+  readonly assembler?: NucleusCompilerAssemblerFlavour;
 }
 
 export interface NucleusPreparedSourceTargetPublication {
@@ -126,6 +257,7 @@ export interface NucleusPreparedSourceTargetPublication {
   readonly compilerManifest: string;
   readonly targetFile?: string;
   readonly output?: string;
+  readonly assembler: NucleusCompilerAssemblerFlavour;
   readonly sourceParts: number;
   readonly sourcePartIdentities: readonly string[];
   readonly sourceBytes: number;
@@ -136,9 +268,13 @@ export interface NucleusPreparedSourceTargetPublication {
 export async function publishNucleusProofTarget({
   manifest,
   output,
+  assembler = "azm",
 }: NucleusProofTargetPublicationOptions): Promise<NucleusProofTargetPublication> {
   const manifestPath = path.resolve(manifest);
-  const outcome = await runProofManifest(manifestPath);
+  const outcome = await runProofManifest(
+    manifestPath,
+    await proofAssemblerOptions(manifestPath, assembler),
+  );
   if (outcome.nobj === undefined) {
     throw new Error("proof manifest did not publish NOBJ");
   }
@@ -150,6 +286,7 @@ export async function publishNucleusProofTarget({
   return Object.freeze({
     manifest: manifestPath,
     output: output === undefined ? undefined : path.resolve(output),
+    assembler,
     nobj: outcome.nobj,
     ...(outcome.sourceProvenance === undefined
       ? {}
@@ -175,6 +312,7 @@ export async function publishNucleusPreparedSourceTarget(
     sourceBase: NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE,
   };
   const output = options.output;
+  const assembler = options.assembler ?? "azm";
   const rootPath = path.resolve(root);
   const compilerManifestPath = path.resolve(compilerManifest);
   const sourceBase =
@@ -201,6 +339,7 @@ export async function publishNucleusPreparedSourceTarget(
   }
 
   const outcome = await runProofManifest(compilerManifestPath, {
+    ...(await proofAssemblerOptions(compilerManifestPath, assembler)),
     source: {
       image: prepared.residentSource,
       entry: {
@@ -233,6 +372,7 @@ export async function publishNucleusPreparedSourceTarget(
     compilerManifest: compilerManifestPath,
     targetFile: targetFile === undefined ? undefined : path.resolve(targetFile),
     output: output === undefined ? undefined : path.resolve(output),
+    assembler,
     sourceParts: prepared.sourceParts.length,
     sourcePartIdentities: prepared.project.parts.map(
       (part) => part.logicalIdentity,
