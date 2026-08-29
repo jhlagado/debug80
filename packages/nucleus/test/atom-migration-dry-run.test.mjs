@@ -1257,6 +1257,16 @@ describe("Nucleus Atom migration dry-run", () => {
       );
       expect(root).toContain('%INCLUDE "loop-z80-slice-code-begin.asmi"');
       expect(root).toContain('%INCLUDE "loop-z80-slice-proof-body.asmi"');
+      expect(root).toContain('%INCLUDE "loop-z80-slice-end.asmi"');
+      expect(root.indexOf('%INCLUDE "loop-z80-slice-source.asmi"')).toBeLessThan(
+        root.indexOf('%INCLUDE "loop-z80-slice-runtime-begin.asmi"'),
+      );
+      expect(root.indexOf('%INCLUDE "loop-z80-slice-runtime-after.asmi"')).toBeLessThan(
+        root.indexOf('%INCLUDE "loop-z80-slice-proof-body.asmi"'),
+      );
+      expect(root.indexOf('%INCLUDE "loop-z80-slice-proof-body.asmi"')).toBeLessThan(
+        root.indexOf('%INCLUDE "loop-z80-slice-end.asmi"'),
+      );
 
       const outcome = await runProofManifest(
         path.join(proofRoot, "loop-z80-slice-proof.json"),

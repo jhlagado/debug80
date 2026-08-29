@@ -88,13 +88,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteLoopCompilerSliceProofPermanentAtomSource,
   })],
   ["vertical-slice/loop-z80-slice-proof.asm", Object.freeze({
-    description: "loop z80 proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/loop-z80-slice-proof.asm",
-        code: "include-after-header",
-      }),
-    ]),
+    description: "loop z80 proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteLoopZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/call-z80-slice-proof.asm", Object.freeze({
@@ -2268,66 +2263,7 @@ function rewriteLoopCompilerSliceProofPermanentAtomSource(source, { relative, tr
   ].join("\n");
 }
 
-function rewriteLoopZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const sourceBase = atomSymbol(symbolMap, "SourceBase");
-  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
-  const proofBase = atomSymbol(symbolMap, "ProofBase");
-
-  const lines = source.split("\n");
-  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "loop-z80-slice-proof");
-  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "loop-z80-slice-proof");
-  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "loop-z80-slice-proof");
-  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "loop-z80-slice-proof");
-  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "loop-z80-slice-proof");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "loop-z80-slice-proof");
-  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "loop-z80-slice-proof");
-  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "loop-z80-slice-proof");
-  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "loop-z80-slice-proof");
-  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "loop-z80-slice-proof");
-  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "loop-z80-slice-proof");
-  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "loop-z80-slice-proof");
-
-  const orderedIndexes = [
-    compilerOrgIndex,
-    sourceAdapterIncludeIndex,
-    tokenizerIncludeIndex,
-    semanticSinkIncludeIndex,
-    symbolsIncludeIndex,
-    parserIncludeIndex,
-    loopSinkIncludeIndex,
-    keywordsIncludeIndex,
-    sourceOrgIndex,
-    runtimeOrgIndex,
-    runtimeIncludeIndex,
-    proofOrgIndex,
-  ];
-  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
-    throw new Error("loop-z80-slice proof permanent Atom rewrite found an unexpected section order");
-  }
-
-  const writeSlice = (includeName, start, end) => {
-    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
-      ...lines.slice(start, end).filter((line) =>
-        !/^\s*%DEFINE\s+(TargetStreamingOutput|LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
-      "",
-    ]);
-  };
-  writeSlice("loop-z80-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
-  writeSlice("loop-z80-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
-  writeSlice("loop-z80-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
-  writeSlice("loop-z80-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
-  writeSlice("loop-z80-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
-  writeSlice("loop-z80-slice-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
-  writeSlice("loop-z80-slice-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, keywordsIncludeIndex);
-  writeSlice("loop-z80-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
-  writeSlice("loop-z80-slice-source.asmi", sourceOrgIndex, runtimeOrgIndex);
-  writeSlice("loop-z80-slice-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
-  writeSlice("loop-z80-slice-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
-  writeGeneratedPermanentPart(translatedRoot, relative, "loop-z80-slice-proof-body.asmi", [
-    ...lines.slice(proofOrgIndex),
-  ]);
-
+function rewriteLoopZ80SliceProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the loop z80 proof.",
     "            %DEFINE SegmentedOutput 0",
@@ -2361,6 +2297,7 @@ function rewriteLoopZ80SliceProofPermanentAtomSource(source, { relative, transla
     "            %INCLUDE \"proof-z80-runtime.asm\"",
     "            %INCLUDE \"loop-z80-slice-runtime-after.asmi\"",
     "            %INCLUDE \"loop-z80-slice-proof-body.asmi\"",
+    "            %INCLUDE \"loop-z80-slice-end.asmi\"",
     "",
   ].join("\n");
 }
