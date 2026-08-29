@@ -7,6 +7,20 @@
 
 TargetStreamingOutput .equ 0
 
+AGIMGL  .equ AggregateExpectedImageEnd-AggregateExpectedImage ; expected aggregate static image length
+AGFLD0  .equ AggregateFieldTableBase+AggregateFieldOffset ; first aggregate field offset byte
+AGFLD1  .equ AggregateFieldTableBase+AggregateFieldEntrySize+AggregateFieldOffset ; second aggregate field offset byte
+AGFLD2  .equ AggregateFieldTableBase+AggregateFieldEntrySize*2+AggregateFieldOffset ; third aggregate field offset byte
+AGFLD3  .equ AggregateFieldTableBase+AggregateFieldEntrySize*3+AggregateFieldOffset ; fourth aggregate field offset byte
+AGFLD4  .equ AggregateFieldTableBase+AggregateFieldEntrySize*4+AggregateFieldOffset ; fifth aggregate field offset byte
+AGFLD5  .equ AggregateFieldTableBase+AggregateFieldEntrySize*5+AggregateFieldOffset ; sixth aggregate field offset byte
+AGFLD6  .equ AggregateFieldTableBase+AggregateFieldEntrySize*6+AggregateFieldOffset ; seventh aggregate field offset byte
+AGSYM2I .equ SymbolTableBase+SymbolEntrySize*2+3 ; aggregate program symbol info byte
+AGSYM2V .equ SymbolTableBase+SymbolEntrySize*2+4 ; aggregate program symbol value word
+AGSYM3V .equ SymbolTableBase+SymbolEntrySize*3+4 ; aggregate symbol value word
+AGSYM4V .equ SymbolTableBase+SymbolEntrySize*4+4 ; aggregate symbol value word
+AGSYM1V .equ SymbolTableBase+SymbolEntrySize+4 ; identity proof symbol value byte
+
             .org CompilerCoreBase
 CompilerCodeStart:
 LegacyCompilerSlices .equ 0
@@ -243,33 +257,33 @@ ProofStart:
             CALL CompileAggregateSlice
             JP   C,ProofFailAcceptedCompile
             LD   A,(StaticImageLength)
-            CP   AggregateExpectedImageEnd-AggregateExpectedImage
+            CP   AGIMGL
             JP   NZ,ProofFailStaticLength
             LD   HL,StaticImageBase
             LD   DE,AggregateExpectedImage
-            LD   B,AggregateExpectedImageEnd-AggregateExpectedImage
+            LD   B,AGIMGL
             CALL ProofCompareBytes
             JP   C,ProofFailStaticBytes
             ; Pixel offsets 0,1,2 and Entry offsets 0,2,5,11.
-            LD   A,(AggregateFieldTableBase+AggregateFieldOffset)
+            LD   A,(AGFLD0)
             OR   A
             JP   NZ,ProofFailLayout
-            LD   A,(AggregateFieldTableBase+AggregateFieldEntrySize+AggregateFieldOffset)
+            LD   A,(AGFLD1)
             CP   1
             JP   NZ,ProofFailLayout
-            LD   A,(AggregateFieldTableBase+AggregateFieldEntrySize*2+AggregateFieldOffset)
+            LD   A,(AGFLD2)
             CP   2
             JP   NZ,ProofFailLayout
-            LD   A,(AggregateFieldTableBase+AggregateFieldEntrySize*3+AggregateFieldOffset)
+            LD   A,(AGFLD3)
             OR   A
             JP   NZ,ProofFailLayout
-            LD   A,(AggregateFieldTableBase+AggregateFieldEntrySize*4+AggregateFieldOffset)
+            LD   A,(AGFLD4)
             CP   2
             JP   NZ,ProofFailLayout
-            LD   A,(AggregateFieldTableBase+AggregateFieldEntrySize*5+AggregateFieldOffset)
+            LD   A,(AGFLD5)
             CP   5
             JP   NZ,ProofFailLayout
-            LD   A,(AggregateFieldTableBase+AggregateFieldEntrySize*6+AggregateFieldOffset)
+            LD   A,(AGFLD6)
             CP   11
             JP   NZ,ProofFailLayout
             LD   A,(AggregateTypeCount)
@@ -290,19 +304,19 @@ ProofStart:
             LD   A,(AggregateSymbolTypeBase+4)
             CP   8
             JP   NZ,ProofFailLayout
-            LD   A,(SymbolTableBase+SymbolEntrySize*2+3)
+            LD   A,(AGSYM2I)
             CP   SymbolInfoAggregateProgram
             JP   NZ,ProofFailLayout
-            LD   HL,(SymbolTableBase+SymbolEntrySize*2+4)
+            LD   HL,(AGSYM2V)
             LD   A,H
             OR   L
             JP   NZ,ProofFailLayout
-            LD   HL,(SymbolTableBase+SymbolEntrySize*3+4)
+            LD   HL,(AGSYM3V)
             LD   DE,14
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailLayout
-            LD   HL,(SymbolTableBase+SymbolEntrySize*4+4)
+            LD   HL,(AGSYM4V)
             LD   DE,28
             OR   A
             SBC  HL,DE
@@ -311,7 +325,7 @@ ProofStart:
             JP   C,ProofFailAcceptedEncode
             LD   HL,GeneratedBase+3
             LD   DE,AggregateExpectedImage
-            LD   B,AggregateExpectedImageEnd-AggregateExpectedImage
+            LD   B,AGIMGL
             CALL ProofCompareBytes
             JP   C,ProofFailPublishedBytes
             CALL Reset
@@ -376,7 +390,7 @@ AggregateAtomicFailedAsExpected:
             LD   A,(SymbolTableBase+4)
             CP   4
             JP   NZ,ProofFailIdentity
-            LD   A,(SymbolTableBase+SymbolEntrySize+4)
+            LD   A,(AGSYM1V)
             CP   5
             JP   NZ,ProofFailIdentity
             LD   A,(AggregateSymbolTypeBase+2)
@@ -393,7 +407,7 @@ AggregateAtomicFailedAsExpected:
             JP   NZ,ProofFailIdentity
             LD   HL,GeneratedBase+3
             LD   DE,AggregateExpectedImage
-            LD   B,AggregateExpectedImageEnd-AggregateExpectedImage
+            LD   B,AGIMGL
             CALL ProofCompareBytes
             JP   C,ProofFailAtomicBytes
 

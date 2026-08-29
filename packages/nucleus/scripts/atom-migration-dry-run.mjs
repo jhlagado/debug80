@@ -3024,7 +3024,8 @@ function rewriteTypedExpressionZ80SliceProofPermanentAtomSource(source, { relati
     ["TEPU8MT", ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
   ];
 
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
+  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
   const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "typed-expression-z80-slice-proof");
   const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "typed-expression-z80-slice-proof");
   const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "typed-expression-z80-slice-proof");
@@ -3411,7 +3412,8 @@ function rewriteAggregateZ80SliceProofPermanentAtomSource(source, { relative, tr
     ["AGDACOF", ["AggregateDataCapacityPoint", "-", "AggregateDataCapacitySource"]],
   ];
 
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
+  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
   const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "aggregate-z80-slice-proof");
   const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "aggregate-z80-slice-proof");
   const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "aggregate-z80-slice-proof");
