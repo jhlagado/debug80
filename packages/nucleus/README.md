@@ -73,7 +73,6 @@ exceptions or stack unwinding.
 npm run cli -w nucleus -- prepare --root path/to/project src/main.nu
 npm run cli -w nucleus -- publish --root path/to/project src/main.nu build/program.nobj build/program.bin build/program.hex build/program.d8.json
 npm run source:prepare -w nucleus -- --root path/to/project src/main.nu
-npm run package:nucleus
 npm run proof -w nucleus
 npm run measure -w nucleus
 npm test -w nucleus
@@ -85,7 +84,9 @@ prints the ordered compiler input.
 
 `nucleus publish` prepares an entry source file, runs it through the current
 resident compiler proof image, and publishes selected output paths by suffix.
-The implemented desktop formats are `.nobj`, `.bin`, `.hex`, and `.d8.json`.
+Name the output files you want after the input file; each suffix selects one
+format. The implemented desktop formats are `.nobj`, `.bin`, `.hex`, and
+`.d8.json`.
 The current D8 map records the loaded range, input identity, and entry address;
 it does not yet claim source-line mappings or symbols. Listing and CP/M `.com`
 output are intentionally rejected until those artifact policies are specified
