@@ -1083,13 +1083,11 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
-  it("compares one permanent Atom proof image byte-identically from the CLI", () => {
+  it("compares one permanent Atom proof image byte-identically from the default CLI mode", () => {
     const result = spawnSync(
       process.execPath,
       [
         proofCompareScript,
-        "--mode",
-        "permanent",
         "--entry",
         "memory-map-proof.json",
       ],
@@ -1102,6 +1100,28 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Nucleus Atom-permanent proof comparison");
     expect(result.stdout).toContain("byte-identical: 1");
+    expect(result.stdout).toContain("memory-map-proof.json");
+  });
+
+  it("runs one permanent Atom proof image from the default proof-run CLI mode", () => {
+    const result = spawnSync(
+      "npm",
+      [
+        "run",
+        "atom:migration:proof-run",
+        "--",
+        "--entry",
+        "memory-map-proof.json",
+      ],
+      {
+        cwd: packageRoot,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Nucleus Atom permanent-ready proof execution");
+    expect(result.stdout).toContain("passed: 1");
     expect(result.stdout).toContain("memory-map-proof.json");
   });
 

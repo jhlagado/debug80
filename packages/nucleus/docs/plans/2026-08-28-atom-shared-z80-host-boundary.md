@@ -338,8 +338,8 @@ Deliverables:
 - this document;
 - tests proving Nucleus still resolves source through the shared resolver;
 - tests proving the flat manifest adapter remains compatible; and
-- the Atom-preview proof matrix at 26 byte-identical proof images and 3 skipped
-  measurement artifacts.
+- the permanent Atom proof matrix at 26 byte-identical proof images and 3
+  skipped measurement artifacts.
 
 Completion evidence:
 

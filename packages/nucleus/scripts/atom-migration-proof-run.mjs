@@ -31,7 +31,7 @@ function parseArgs(argv) {
     maxInstructions: defaultMaxInstructions,
     maxCycles: defaultMaxCycles,
     budgetFile: defaultBudgetFile,
-    mode: "preview",
+    mode: "permanent-ready",
     permanentRoot: defaultPermanentRoot,
     regeneratePermanentRoot: false,
     json: false,
@@ -103,15 +103,15 @@ Options:
   --entry NAME         Run one proof manifest basename or asm-root-relative entry.
   --max-part-bytes N   Maximum generated Atom-preview bytes per source part.
                        Defaults to 65535.
-  --max-instructions N Maximum native Atom instructions per preview assembly.
+  --max-instructions N Maximum native Atom instructions per assembly.
                        Defaults to ${defaultMaxInstructions}.
-  --max-cycles N       Maximum native Atom cycles per preview assembly.
+  --max-cycles N       Maximum native Atom cycles per assembly.
                        Defaults to ${defaultMaxCycles}.
   --budget-file FILE   Per-manifest budget JSON. Defaults to
                        packages/nucleus/proofs/atom-migration-preview-budgets.json
                        when present.
   --no-budget-file     Ignore the default per-manifest budget file.
-  --mode MODE          preview or permanent-ready. Defaults to preview.
+  --mode MODE          permanent-ready or preview. Defaults to permanent-ready.
   --permanent-root DIR Source-controlled Atom tree for permanent-ready mode.
                        Defaults to packages/nucleus/atom-asm.
   --regenerate-permanent-root

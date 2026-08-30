@@ -301,23 +301,28 @@ npm run atom:migration:census -w nucleus -- \
   --flatten-out build/nucleus-atom-preview/compiler-slice-proof.atom.asm
 ```
 
-The proof-image byte comparison can be rerun with:
+The permanent Atom proof-image byte comparison can be rerun with:
 
 ```bash
 npm run atom:migration:proof-compare -w nucleus
 ```
 
-To compare the source-controlled permanent Atom tree rather than the generated
-preview source, run:
+To compare generated preview source for migration diagnostics, run:
 
 ```bash
-npm run atom:migration:proof-compare:permanent -w nucleus
+npm run atom:migration:proof-compare:preview -w nucleus
 ```
 
-Run the executable Atom-preview proof gate with:
+Run the executable permanent Atom proof gate with:
 
 ```bash
 npm run atom:migration:proof-run -w nucleus
+```
+
+To execute generated preview source for migration diagnostics, run:
+
+```bash
+npm run atom:migration:proof-run:preview -w nucleus
 ```
 
 The dry-run intentionally reports two readiness states:
@@ -1037,9 +1042,10 @@ The Nucleus assembly source is structurally ready for permanent Atom source
 translation. The current census has no include-after-header blockers, no
 forward-dependent emitted-statement symbol arithmetic blockers, no feature
 definition placement blockers, and no compatibility-lowering requirement. The
-compatibility-lowered Atom path remains useful for proof comparison and for
-guarding older preview workflows, but it is no longer required to hide source
-structure that permanent Atom source cannot express.
+default proof comparison and proof execution commands now use the checked-in
+permanent Atom source. The compatibility-lowered Atom path remains available as
+an explicit preview diagnostic, but it is no longer the default migration path
+and no longer hides source structure that permanent Atom source cannot express.
 
 The proof harness now runs every non-measurement proof manifest that has a
 permanent Atom layout, and Nucleus publication selects that Atom route by
