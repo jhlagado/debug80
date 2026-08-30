@@ -4,6 +4,10 @@ import {
   GenerationLifecycle,
   AtomicGenerationStore,
   MemoryGenerationSpool,
+  Z80_BYTE_MAX,
+  Z80_WORD_MAX,
+  isUnsignedIntegerUpTo,
+  z80AddressEnd,
   type GenerationSpool,
   type GenerationSpoolFactory,
 } from "@jhlagado/z80-tool-services";
@@ -162,22 +166,22 @@ const fail = (message: string): never => {
 };
 
 const requireInteger = (name: string, value: number, maximum: number): void => {
-  if (!Number.isInteger(value) || value < 0 || value > maximum) {
+  if (!isUnsignedIntegerUpTo(value, maximum)) {
     fail(`${name} is outside 0..${maximum}`);
   }
 };
 
 const requireU8 = (name: string, value: number): void =>
-  requireInteger(name, value, 0xff);
+  requireInteger(name, value, Z80_BYTE_MAX);
 const requireU16 = (name: string, value: number): void =>
-  requireInteger(name, value, 0xffff);
+  requireInteger(name, value, Z80_WORD_MAX);
 
 const checkedEnd = (name: string, base: number, length: number): number => {
   requireU16(`${name} base`, base);
   requireU16(`${name} length`, length);
-  const end = base + length;
-  if (end > 0x10000) fail(`${name} wraps the Z80 address space`);
-  return end;
+  const end = z80AddressEnd(base, length);
+  if (end !== undefined) return end;
+  return fail(`${name} wraps the Z80 address space`);
 };
 
 const requireRegion = (
