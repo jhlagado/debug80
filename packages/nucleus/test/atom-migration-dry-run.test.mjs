@@ -1216,7 +1216,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(memoryMap.symbols.AddressSpaceLimit).toBe(0x10000);
       expect(memoryMap.regions.reduce((total, region) => total + region.bytes, 0)).toBe(65_536);
 
-      const legacyMemoryMap = await runProofManifest(
+      const permanentMemoryMap = await runProofManifest(
         path.join(proofRoot, "memory-map-proof.json"),
         {
           assembler: {
@@ -1231,8 +1231,8 @@ describe("Nucleus Atom migration dry-run", () => {
           },
         },
       );
-      expect(legacyMemoryMap.instructions).toBe(4);
-      expect(legacyMemoryMap.cycles).toBe(34);
+      expect(permanentMemoryMap.instructions).toBe(4);
+      expect(permanentMemoryMap.cycles).toBe(34);
 
       const nobjRunner = await runSmallAtomProof("nobj-runner-proof.json");
       expect(nobjRunner.nobj).toBeDefined();
