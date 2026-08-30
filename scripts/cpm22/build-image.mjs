@@ -8,10 +8,11 @@ import { fileURLToPath } from "node:url";
 import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
 import { installCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
 import {
-  assembleAtomProject,
-  materializeAtomGeneration,
-  translateAzmSourceToAtom,
-} from "../../packages/atom/src/host/index.mjs";
+  assembleConvertedWithAtom,
+  assembleProjectOwnedWithAtom,
+  converted8080Candidates,
+  projectOwnedCandidates,
+} from "./atom-projection.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..");
@@ -73,266 +74,6 @@ async function assemble(
     bytes: binary.bytes,
     debugMap: debugMap?.kind === "d8m" ? debugMap.json : undefined,
   };
-}
-
-function parseFixedNumber(text) {
-  const value = text.trim();
-  if (/^\$[0-9a-f]+$/i.test(value)) return Number.parseInt(value.slice(1), 16);
-  if (/^[0-9a-f]+h$/i.test(value)) return Number.parseInt(value.slice(0, -1), 16);
-  if (/^[0-9]+$/.test(value)) return Number.parseInt(value, 10);
-  fail(`unsupported fixed numeric value ${text}`);
-}
-
-function hexWord(value) {
-  return `$${value.toString(16).toUpperCase().padStart(4, "0")}`;
-}
-
-function rewriteCodeOutsideText(line, rewrite) {
-  let output = "";
-  let segment = "";
-  let quote = "";
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index];
-    if (quote !== "") {
-      output += character;
-      if (character === quote) quote = "";
-      continue;
-    }
-    if (character === ";") return `${output}${rewrite(segment)}${line.slice(index)}`;
-    if (character === '"' || character === "'") {
-      output += rewrite(segment);
-      segment = "";
-      quote = character;
-      output += character;
-      continue;
-    }
-    segment += character;
-  }
-  return `${output}${rewrite(segment)}`;
-}
-
-function codeIdentifierWords(source) {
-  const words = new Set();
-  for (const line of source.split(/\r\n|\n|\r/)) {
-    rewriteCodeOutsideText(line, (code) => {
-      for (const match of code.matchAll(/\b[A-Za-z_][A-Za-z0-9_]*\b/g)) {
-        words.add(match[0]);
-      }
-      return code;
-    });
-  }
-  return [...words];
-}
-
-function shortSymbolCandidate(word, index) {
-  const compact = word.replace(/_/g, "").toUpperCase();
-  if (index === 0 && compact.length <= 8) return compact;
-  if (index === 0) return compact.slice(0, 8);
-  const suffix = index.toString(36).toUpperCase();
-  return `${compact.slice(0, 8 - suffix.length)}${suffix}`;
-}
-
-function projectShortSymbols(source, label) {
-  const words = codeIdentifierWords(source);
-  const occupied = new Set(
-    words.filter((word) => word.length <= 8).map((word) => word.toUpperCase()),
-  );
-  const replacements = new Map();
-  for (const word of words
-    .filter((candidate) => candidate.length > 8)
-    .sort((left, right) => left.localeCompare(right))) {
-    let replacement = "";
-    for (let index = 0; index < 256; index += 1) {
-      const candidate = shortSymbolCandidate(word, index);
-      if (/^[A-Z_][A-Z0-9_]*$/.test(candidate) && !occupied.has(candidate)) {
-        replacement = candidate;
-        break;
-      }
-    }
-    if (replacement === "") fail(`${label}: could not shorten symbol ${word}`);
-    occupied.add(replacement);
-    replacements.set(word, replacement);
-  }
-  return source
-    .split(/\r\n|\n|\r/)
-    .map((line) =>
-      rewriteCodeOutsideText(line, (code) =>
-        code.replace(/\b[A-Za-z_][A-Za-z0-9_]*\b/g, (word) => {
-          const direct = replacements.get(word);
-          if (direct !== undefined) return direct;
-          const folded = [...replacements.entries()].find(
-            ([original]) => original.toUpperCase() === word.toUpperCase(),
-          );
-          return folded?.[1] ?? word;
-        }),
-      ),
-    )
-    .join("\n");
-}
-
-function projectConvertedStorageAliases(source) {
-  return source
-    .split(/\r\n|\n|\r/)
-    .map((line) =>
-      rewriteCodeOutsideText(line, (code) =>
-        code
-          .replace(/\bDS\s+byte\b/gi, "DS 1")
-          .replace(/\bDS\s+word\b/gi, "DS 2")
-          .replace(/\(~fwfmsk\)&0ffh/gi, "$7F"),
-      ),
-    )
-    .join("\n");
-}
-
-function projectBdosBiosEqu(source, originText, azmBytes) {
-  const finalCursor = parseFixedNumber(originText) + azmBytes.length;
-  const biosAddress = (finalCursor & 0xff00) + 0x100;
-  let inserted = false;
-  let removed = false;
-  const projected = source
-    .split(/\r\n|\n|\r/)
-    .map((line) => {
-      if (!inserted && /^\s*bootf\s+EQU\s+bios\+3\*0\b/i.test(line)) {
-        inserted = true;
-        return `bios EQU ${hexWord(biosAddress)}; projected from final BDOS extent\n${line}`;
-      }
-      if (/^\s*bios\s+EQU\s+\(\$\s*&\s*0ff00h\)\+100h\b/i.test(line)) {
-        removed = true;
-        return `; projected ${line.trim()}`;
-      }
-      return line;
-    })
-    .join("\n");
-  if (!inserted || !removed) fail("BDOS BIOS extent projection failed");
-  return projected;
-}
-
-function assembleRange(generation, start, end) {
-  const bytes = new Uint8Array(end - start + 1);
-  for (const operation of [...generation.images, ...generation.patches]) {
-    operation.bytes.forEach((byte, index) => {
-      const address = operation.address + index;
-      if (address >= start && address <= end) bytes[address - start] = byte;
-    });
-  }
-  return bytes;
-}
-
-async function assembleAtomSource(root, entry, { start, length } = {}) {
-  const result = await assembleAtomProject({
-    root,
-    entry,
-    target: { start: 0, capacity: 0xffff },
-    maxInstructions: 50_000_000,
-    maxCycles: 500_000_000,
-  });
-  if (start !== undefined && length !== undefined) {
-    return assembleRange(result.generation, start, start + length - 1);
-  }
-  const base = result.generation.images.reduce(
-    (minimum, image) => Math.min(minimum, image.address),
-    0xffff,
-  );
-  return materializeAtomGeneration(result.generation, { base }).bytes;
-}
-
-function requireByteIdentity(label, expected, actual) {
-  if (
-    expected.length !== actual.length ||
-    expected.some((byte, index) => byte !== actual[index])
-  ) {
-    fail(`${label}: Atom output differs from AZM output`);
-  }
-}
-
-async function expandProjectTextualIncludes(name, includeStack = []) {
-  const source = await readFile(join(outputDirectory, name), "utf8");
-  const lines = [];
-  for (const line of source.split(/\r\n|\n|\r/)) {
-    const include = /^\s*\.include\s+"([^"]+)"\s*(?:;.*)?$/i.exec(line);
-    if (include === null) {
-      lines.push(line);
-      continue;
-    }
-    if (includeStack.includes(include[1])) {
-      fail(`${name}: textual include cycle ${[...includeStack, include[1]].join(" -> ")}`);
-    }
-    lines.push(await expandProjectTextualIncludes(include[1], [...includeStack, include[1]]));
-  }
-  return lines.join("\n");
-}
-
-function projectOutputRangeDirective(source) {
-  return source
-    .split(/\r\n|\n|\r/)
-    .map((line) =>
-      rewriteCodeOutsideText(line, (code) =>
-        code.replace(
-          /^(\s*)\.binto\s+(.+?)\s*$/i,
-          (_match, indent, end) => `${indent};@AZM-BINTO ${end.trim()}`,
-        ),
-      ),
-    )
-    .join("\n");
-}
-
-function bintoEnd(source) {
-  const match = /^\s*\.binto\s+(\$[0-9A-Fa-f]+|[0-9]+[Hh]|[0-9]+)\s*$/im.exec(source);
-  return match === null ? undefined : parseFixedNumber(match[1]);
-}
-
-function orgStart(source) {
-  const match = /^\s*\.org\s+(\$[0-9A-Fa-f]+|[0-9]+[Hh]|[0-9]+)\s*$/im.exec(source);
-  return match === null ? undefined : parseFixedNumber(match[1]);
-}
-
-async function assembleProjectOwnedWithAtom(temporaryDirectory, name, azmResult) {
-  const original = await readFile(join(outputDirectory, name), "utf8");
-  const expanded = name === "editor.asm"
-    ? await expandProjectTextualIncludes(name, [name])
-    : original;
-  const projected = projectShortSymbols(projectOutputRangeDirective(expanded), name);
-  const atomSource = translateAzmSourceToAtom(projected, { sourceName: name });
-  await writeFile(join(temporaryDirectory, name), atomSource, "utf8");
-  const start = orgStart(original);
-  const end = bintoEnd(original);
-  const atomBytes = start === undefined || end === undefined
-    ? await assembleAtomSource(temporaryDirectory, name)
-    : await assembleAtomSource(temporaryDirectory, name, {
-        start,
-        length: end - start + 1,
-      });
-  requireByteIdentity(name, azmResult.bytes, atomBytes);
-  return { bytes: atomBytes, debugMap: azmResult.debugMap };
-}
-
-async function assembleConvertedWithAtom(
-  temporaryDirectory,
-  name,
-  input,
-  origin,
-  azmResult,
-) {
-  const atomSource = join(temporaryDirectory, `${name}.atom.asm`);
-  const converted = spawnSync(
-    process.execPath,
-    [converter, join(thirdPartyDirectory, input), atomSource, origin, "atom"],
-    { cwd: repositoryRoot, encoding: "utf8" },
-  );
-  if (converted.status !== 0) {
-    fail(converted.stderr || converted.stdout || `Atom conversion failed for ${input}`);
-  }
-  let projected = await readFile(atomSource, "utf8");
-  if (name === "bdos") projected = projectBdosBiosEqu(projected, origin, azmResult.bytes);
-  projected = projectShortSymbols(projectConvertedStorageAliases(projected), name);
-  await writeFile(atomSource, projected, "utf8");
-  const start = parseFixedNumber(origin);
-  const atomBytes = await assembleAtomSource(temporaryDirectory, `${name}.atom.asm`, {
-    start,
-    length: azmResult.bytes.length,
-  });
-  requireByteIdentity(name, azmResult.bytes, atomBytes);
-  return { bytes: atomBytes, debugMap: azmResult.debugMap };
 }
 
 function copyExact(destination, offset, source, maximum, label) {
@@ -470,25 +211,57 @@ async function main() {
         join(outputDirectory, "editor-bdos.asmi"),
       ]),
     ]);
+    const convertedByName = new Map(
+      converted8080Candidates.map((candidate) => [candidate.name, candidate]),
+    );
+    const projectOwnedByName = new Map(
+      projectOwnedCandidates.map((candidate) => [candidate.name, candidate]),
+    );
+    const withDebugMap = (assembled, debugSource) => ({
+      bytes: assembled,
+      debugMap: debugSource.debugMap,
+    });
     const [bootstrap, ccp, bdos, bios, smoke, editor] = await Promise.all([
-      assembleProjectOwnedWithAtom(temporaryDirectory, "bootstrap.asm", bootstrapAzm),
-      assembleConvertedWithAtom(
+      assembleProjectOwnedWithAtom({
+        outputDirectory,
         temporaryDirectory,
-        "ccp",
-        "ccp.asm",
-        "$E400",
-        ccpAzm,
-      ),
-      assembleConvertedWithAtom(
+        candidate: projectOwnedByName.get("bootstrap.asm"),
+        azmBytes: bootstrapAzm.bytes,
+      }).then((bytes) => withDebugMap(bytes, bootstrapAzm)),
+      assembleConvertedWithAtom({
+        repositoryRoot,
+        thirdPartyDirectory,
+        converter,
         temporaryDirectory,
-        "bdos",
-        "bdos.asm",
-        "$EC00",
-        bdosAzm,
-      ),
-      assembleProjectOwnedWithAtom(temporaryDirectory, "bios.asm", biosAzm),
-      assembleProjectOwnedWithAtom(temporaryDirectory, "smoke.asm", smokeAzm),
-      assembleProjectOwnedWithAtom(temporaryDirectory, "editor.asm", editorAzm),
+        candidate: convertedByName.get("ccp"),
+        azmBytes: ccpAzm.bytes,
+      }).then((bytes) => withDebugMap(bytes, ccpAzm)),
+      assembleConvertedWithAtom({
+        repositoryRoot,
+        thirdPartyDirectory,
+        converter,
+        temporaryDirectory,
+        candidate: convertedByName.get("bdos"),
+        azmBytes: bdosAzm.bytes,
+      }).then((bytes) => withDebugMap(bytes, bdosAzm)),
+      assembleProjectOwnedWithAtom({
+        outputDirectory,
+        temporaryDirectory,
+        candidate: projectOwnedByName.get("bios.asm"),
+        azmBytes: biosAzm.bytes,
+      }).then((bytes) => withDebugMap(bytes, biosAzm)),
+      assembleProjectOwnedWithAtom({
+        outputDirectory,
+        temporaryDirectory,
+        candidate: projectOwnedByName.get("smoke.asm"),
+        azmBytes: smokeAzm.bytes,
+      }).then((bytes) => withDebugMap(bytes, smokeAzm)),
+      assembleProjectOwnedWithAtom({
+        outputDirectory,
+        temporaryDirectory,
+        candidate: projectOwnedByName.get("editor.asm"),
+        azmBytes: editorAzm.bytes,
+      }).then((bytes) => withDebugMap(bytes, editorAzm)),
     ]);
 
     if (bootstrap.bytes.length !== 256)
