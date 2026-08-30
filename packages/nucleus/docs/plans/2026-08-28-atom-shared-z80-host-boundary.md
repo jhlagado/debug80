@@ -808,6 +808,16 @@ Atom, but neutral Debug80-style project loaders should require
 assembler. The dispatcher owns only this policy decision; the Atom and AZM
 handler implementations stay in their assembler packages.
 
+Debug80 now applies that policy at its own command boundary. New assembly
+projects write `assembler: "atom"` for `.asm` and `.z80` sources. Project
+configuration updates canonicalize assembly targets to Atom unless the project
+explicitly selects the AZM compatibility path. The launch backend selects Atom
+for `.asm`, `.inc`, and `.z80` when no assembler is named; it selects AZM only
+from an explicit `azm` or `ASM80` request. The configure-target command's
+default option clears the stored assembler value and lets this Debug80 policy
+apply. The remaining Phase 8 work is therefore command-surface and artifact
+policy cleanup, not ordinary `.asm` assembler selection.
+
 The package now follows the AZM/Glimmer build model for installed commands:
 TypeScript source is emitted to `dist/src`, and the npm `bin` entry exposes
 `dist/src/cli/nucleus.js` as `nucleus`. The development dispatcher still runs
