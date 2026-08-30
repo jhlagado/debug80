@@ -1,6 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
-import { isAbsolute, join, normalize } from "node:path";
+import {
+  dirname,
+  isAbsolute,
+  join,
+  normalize,
+  relative,
+  resolve,
+} from "node:path";
 
 import {
   assembleAtomProject,
@@ -294,6 +301,150 @@ export function projectOutputRangeDirective(source) {
     .join("\n");
 }
 
+export function projectAzmConditionDirectives(source) {
+  return source
+    .split(/\r\n|\n|\r/)
+    .map((line) =>
+      rewriteCodeOutsideText(line, (code) =>
+        code.replace(
+          /^(\s*)\.(if|else|endif)\b/gi,
+          (_match, indent, directive) => `${indent}%${directive.toUpperCase()}`,
+        ),
+      ),
+    )
+    .join("\n");
+}
+
+function fixtureEquate(line) {
+  const match =
+    /^\s*([A-Za-z_][A-Za-z0-9_]*):?\s+(?:\.equ|equ)\s+([^;\s]+)\s*(?:;.*)?$/i.exec(
+      line,
+    );
+  if (match === null) return undefined;
+  try {
+    return Object.freeze({
+      name: match[1].toUpperCase(),
+      value: parseFixedNumber(match[2]),
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+function fixtureConditionValue(text, definitions) {
+  const terms = text
+    .replace(/;.*/, "")
+    .split("|")
+    .map((term) => term.trim())
+    .filter((term) => term.length > 0);
+  if (terms.length === 0) fail(`invalid fixture condition ${text}`);
+  let value = 0;
+  for (const term of terms) {
+    const definition = /^[A-Za-z_][A-Za-z0-9_]*$/.test(term)
+      ? definitions.get(term.toUpperCase())
+      : undefined;
+    value |= definition ?? parseFixedNumber(term);
+  }
+  return value !== 0;
+}
+
+function fixtureConditional(line, definitions, stack) {
+  const match = /^\s*\.(if|else|endif)\b(.*)$/i.exec(line);
+  if (match === null) return false;
+  const directive = match[1].toLowerCase();
+  if (directive === "if") {
+    const parentActive = stack.every((frame) => frame.active);
+    const conditionTrue = parentActive
+      ? fixtureConditionValue(match[2], definitions)
+      : false;
+    stack.push({
+      parentActive,
+      conditionTrue,
+      active: parentActive && conditionTrue,
+      elseSeen: false,
+    });
+    return true;
+  }
+  const frame = stack.at(-1);
+  if (frame === undefined) fail(`unmatched fixture .${directive}`);
+  if (directive === "else") {
+    if (frame.elseSeen) fail("duplicate fixture .else");
+    frame.elseSeen = true;
+    frame.active = frame.parentActive && !frame.conditionTrue;
+    return true;
+  }
+  stack.pop();
+  return true;
+}
+
+function fixtureActive(stack) {
+  return stack.every((frame) => frame.active);
+}
+
+function projectAzmFixtureDirective(line) {
+  return rewriteCodeOutsideText(line, (code) => {
+    const labelEquate =
+      /^(\s*)([A-Za-z_][A-Za-z0-9_]*)(:?)(\s+|\s*)(?:\.equ|equ)\b(.*)$/i.exec(
+        code,
+      );
+    if (labelEquate !== null) {
+      return `${labelEquate[1]}${labelEquate[2]}${labelEquate[3]} EQU${labelEquate[5]}`;
+    }
+
+    return code
+      .replace(/^(\s*)\.(if|else|endif)\b/gi, (_match, indent, directive) => {
+        return `${indent}%${directive.toUpperCase()}`;
+      })
+      .replace(
+        /^(\s*)\.(routine|expectout)\b(.*)$/i,
+        (_match, indent, directive, operand) =>
+          `${indent};@${directive.toUpperCase()}${operand}`,
+      )
+      .replace(/^(\s*)\.end\s*$/i, "")
+      .replace(
+        /(^|\s)\.(align|cstr|db|ds|dw|istr|org|pstr)\b/gi,
+        (_match, prefix, directive) => `${prefix}${directive.toUpperCase()}`,
+      );
+  });
+}
+
+function fixtureDeclaredNames(source) {
+  const names = new Set();
+  for (const line of source.split(/\r\n|\n|\r/)) {
+    rewriteCodeOutsideText(line, (code) => {
+      const label = /^\s*([A-Za-z_][A-Za-z0-9_]*):/.exec(code);
+      if (label !== null) names.add(label[1].toUpperCase());
+      const equate = /^\s*([A-Za-z_][A-Za-z0-9_]*):?\s+EQU\b/i.exec(code);
+      if (equate !== null) names.add(equate[1].toUpperCase());
+      return code;
+    });
+  }
+  return names;
+}
+
+function withMissingExternEquates(source, externalSymbols) {
+  if (externalSymbols.length === 0) return source;
+  const declared = fixtureDeclaredNames(source);
+  const missing = externalSymbols
+    .filter((symbol) => !declared.has(symbol.toUpperCase()))
+    .map((symbol) => `${symbol} EQU $0000`);
+  return missing.length === 0 ? source : `${missing.join("\n")}\n${source}`;
+}
+
+export function projectAzmFixtureSyntaxToAtom(source) {
+  const definitions = new Map();
+  const stack = [];
+  const lines = source.split(/\r\n|\n|\r/).map((line) => {
+    if (fixtureConditional(line, definitions, stack)) return "";
+    if (!fixtureActive(stack)) return "";
+    const equate = fixtureEquate(line);
+    if (equate !== undefined) definitions.set(equate.name, equate.value);
+    return projectAzmFixtureDirective(line);
+  });
+  if (stack.length !== 0) fail("unterminated fixture .if");
+  return lines.join("\n");
+}
+
 export function bintoEnd(source) {
   const match = /^\s*\.binto\s+(\$[0-9A-Fa-f]+|[0-9]+[Hh]|[0-9]+)\s*$/im.exec(
     source,
@@ -308,12 +459,21 @@ export function orgStart(source) {
   return match === null ? undefined : parseFixedNumber(match[1]);
 }
 
-export async function expandProjectTextualIncludes(
-  outputDirectory,
+export async function expandTextualIncludesFromSource(
+  source,
+  sourceDirectory,
   name,
-  includeStack = [],
+  includeStack = [name],
+  allowedRoots = [sourceDirectory],
 ) {
-  const source = await readFile(join(outputDirectory, name), "utf8");
+  const isAllowed = (file) =>
+    allowedRoots.some((root) => {
+      const relativePath = relative(resolve(root), file);
+      return (
+        relativePath === "" ||
+        (!relativePath.startsWith("../") && !isAbsolute(relativePath))
+      );
+    });
   const lines = [];
   for (const line of source.split(/\r\n|\n|\r/)) {
     const include = /^\s*\.include\s+"([^"]+)"\s*(?:;.*)?$/i.exec(line);
@@ -322,7 +482,11 @@ export async function expandProjectTextualIncludes(
       continue;
     }
     const includeName = normalize(include[1]).replaceAll("\\", "/");
-    if (isAbsolute(includeName) || includeName.startsWith("../")) {
+    if (isAbsolute(includeName)) {
+      fail(`${name}: invalid textual include ${include[1]}`);
+    }
+    const includePath = resolve(sourceDirectory, includeName);
+    if (!isAllowed(includePath)) {
       fail(`${name}: invalid textual include ${include[1]}`);
     }
     if (includeStack.includes(includeName)) {
@@ -330,14 +494,32 @@ export async function expandProjectTextualIncludes(
         `${name}: textual include cycle ${[...includeStack, includeName].join(" -> ")}`,
       );
     }
+    const includeSource = await readFile(includePath, "utf8");
     lines.push(
-      await expandProjectTextualIncludes(outputDirectory, includeName, [
-        ...includeStack,
+      await expandTextualIncludesFromSource(
+        includeSource,
+        dirname(includePath),
         includeName,
-      ]),
+        [...includeStack, includeName],
+        allowedRoots,
+      ),
     );
   }
   return lines.join("\n");
+}
+
+export async function expandProjectTextualIncludes(
+  outputDirectory,
+  name,
+  includeStack = [],
+) {
+  return expandTextualIncludesFromSource(
+    await readFile(join(outputDirectory, name), "utf8"),
+    outputDirectory,
+    name,
+    includeStack,
+    [outputDirectory],
+  );
 }
 
 async function projectOwnedAtomProjectionWithMap(
@@ -589,6 +771,57 @@ export async function assembleProjectOwnedAtomArtifacts({
         }).bytes
       : assembleRange(result.generation, start, end);
   requireByteIdentity(name, azmBytes, atomBytes);
+  const artifacts = renderAtomArtifacts(result, { base, entryAddress });
+  return Object.freeze({
+    bytes: atomBytes,
+    debugMap: restoreProjectedSymbolNames(
+      name,
+      artifacts.d8,
+      projected.replacements,
+    ),
+  });
+}
+
+export async function assembleAzmSourceWithAtomArtifacts({
+  temporaryDirectory,
+  sourceDirectory,
+  name,
+  source,
+  azmBytes,
+  base,
+  entryAddress = base,
+  includeRoots = [sourceDirectory],
+  externalSymbols = [],
+}) {
+  const expanded = await expandTextualIncludesFromSource(
+    source,
+    sourceDirectory,
+    name,
+    [name],
+    includeRoots,
+  );
+  const fixtureSource = withMissingExternEquates(
+    projectAzmFixtureSyntaxToAtom(projectOutputRangeDirective(expanded)),
+    externalSymbols,
+  );
+  const projected = projectShortSymbolsWithMap(fixtureSource, name);
+  await writeFile(join(temporaryDirectory, name), projected.source, "utf8");
+  const result = await assembleAtomProject({
+    root: temporaryDirectory,
+    entry: name,
+    target: { start: 0, capacity: 0xffff },
+    maxInstructions: 50_000_000,
+    maxCycles: 500_000_000,
+  });
+  const atomBytes = materializeAtomGeneration(result.generation, {
+    base: result.generation.images.reduce(
+      (minimum, image) => Math.min(minimum, image.address),
+      0xffff,
+    ),
+  }).bytes;
+  if (azmBytes.length !== 0) {
+    requireByteIdentity(name, azmBytes, atomBytes);
+  }
   const artifacts = renderAtomArtifacts(result, { base, entryAddress });
   return Object.freeze({
     bytes: atomBytes,

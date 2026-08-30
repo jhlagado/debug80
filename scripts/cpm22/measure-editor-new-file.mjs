@@ -2,14 +2,19 @@ import assert from "node:assert/strict";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime/z80/runtime";
+import { assembleEditorCandidate } from "./editor-candidate-assembly.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const candidateDirectory = join(scriptDirectory, "editor-new-file-candidates");
+const repositoryRoot = resolve(scriptDirectory, "../..");
 const interfaceSource = resolve(
   scriptDirectory,
   "../../apps/debug80-vscode/roms/cpm22/editor-bdos.asmi",
+);
+const replaceInterfaceSource = resolve(
+  scriptDirectory,
+  "../../apps/debug80-vscode/roms/cpm22/editor-replace.asmi",
 );
 const RETURN_ADDRESS = 0x0040;
 const CALLER_SP = 0xe300;
@@ -42,43 +47,12 @@ function logicalFile(physical) {
 }
 
 async function assemble(name, source) {
-  const result = await compile(
+  return assembleEditorCandidate({
+    name,
     source,
-    {
-      emitBin: true,
-      emitD8m: true,
-      emitHex: false,
-      emitLst: false,
-      emitAsm80: false,
-      registerContracts: "strict",
-      registerContractsInterfaces: [interfaceSource],
-    },
-    { formats: defaultFormatWriters },
-  );
-  const errors = result.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === "error",
-  );
-  assert.deepEqual(
-    errors,
-    [],
-    errors
-      .map(
-        (diagnostic) =>
-          `${diagnostic.sourceName}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}`,
-      )
-      .join("\n"),
-  );
-  const binary = result.artifacts.find((artifact) => artifact.kind === "bin");
-  const map = result.artifacts.find((artifact) => artifact.kind === "d8m");
-  assert.equal(binary?.kind, "bin", `${name}: missing binary`);
-  assert.equal(map?.kind, "d8m", `${name}: missing debug map`);
-  const symbols = Object.fromEntries(
-    map.json.symbols.flatMap((entry) => {
-      const value = entry.address ?? entry.value;
-      return value === undefined ? [] : [[entry.name, value]];
-    }),
-  );
-  return { bytes: binary.bytes, name, symbols };
+    interfaceSources: [interfaceSource, replaceInterfaceSource],
+    includeRoots: [candidateDirectory, repositoryRoot],
+  });
 }
 
 function symbol(candidate, name) {

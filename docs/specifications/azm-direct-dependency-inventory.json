@@ -132,7 +132,7 @@
       "file": "scripts/cpm22/build-image.mjs",
       "classification": "cpm22-development-tooling",
       "owner": "CP/M 2.2 disk image build",
-      "retirement": "Convert the CP/M build pipeline to Atom once bootstrap, BIOS, smoke, and editor sources assemble byte-identically with Atom or have explicit blockers recorded."
+      "retirement": "Remove after AZM strict-contract sidecars and byte-identity checks are no longer required for CP/M development builds; Atom already supplies the packaged bytes and active D8 maps."
     },
     {
       "file": "scripts/cpm22/check-atom-assembly-candidates.mjs",
@@ -141,40 +141,22 @@
       "retirement": "Remove after the CP/M build pipeline has been converted to Atom or all remaining CP/M assembly blockers are tracked by a stronger migration gate."
     },
     {
+      "file": "scripts/cpm22/editor-candidate-assembly.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M editor measurement candidate strict-contract sidecar",
+      "retirement": "Remove after editor measurement candidates no longer need AZM strict-contract validation before Atom supplies executable bytes and D8 symbols."
+    },
+    {
       "file": "scripts/cpm22/import-nucleus.mjs",
       "classification": "cpm22-development-tooling",
       "owner": "CP/M 2.2 Nucleus import utility",
       "retirement": "Convert when the imported native Nucleus compiler image is built from Atom source."
     },
     {
-      "file": "scripts/cpm22/measure-editor-buffers.mjs",
-      "classification": "cpm22-development-tooling",
-      "owner": "CP/M editor buffer measurement",
-      "retirement": "Convert after the editor candidate fixtures assemble and expose equivalent symbols through Atom D8 output."
-    },
-    {
-      "file": "scripts/cpm22/measure-editor-new-file.mjs",
-      "classification": "cpm22-development-tooling",
-      "owner": "CP/M editor new-file measurement",
-      "retirement": "Convert after the editor candidate fixtures assemble and expose equivalent symbols through Atom D8 output."
-    },
-    {
-      "file": "scripts/cpm22/measure-editor-replace.mjs",
-      "classification": "cpm22-development-tooling",
-      "owner": "CP/M editor replace measurement",
-      "retirement": "Convert after the editor candidate fixtures assemble and expose equivalent symbols through Atom D8 output."
-    },
-    {
-      "file": "scripts/cpm22/measure-editor-search.mjs",
-      "classification": "cpm22-development-tooling",
-      "owner": "CP/M editor search measurement",
-      "retirement": "Convert after the editor candidate fixtures assemble and expose equivalent symbols through Atom D8 output."
-    },
-    {
       "file": "scripts/cpm22/prove-editor.mjs",
       "classification": "cpm22-development-tooling",
       "owner": "CP/M editor proof",
-      "retirement": "Convert after the editor build and D8 symbol path no longer depend on AZM register-contract output."
+      "retirement": "Remove after the editor proof no longer needs AZM strict-contract validation; Atom already supplies the proof bytes and D8 symbols."
     }
   ]
 }

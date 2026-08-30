@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime/z80/runtime";
+import { assembleEditorCandidate } from "./editor-candidate-assembly.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = resolve(scriptDirectory, "../..");
 const candidateDirectory = resolve(
   scriptDirectory,
   "editor-replace-candidates",
@@ -33,43 +34,12 @@ function bytes(text) {
 }
 
 async function assemble(name) {
-  const result = await compile(
-    resolve(candidateDirectory, `${name}.asm`),
-    {
-      emitBin: true,
-      emitD8m: true,
-      emitHex: false,
-      emitLst: false,
-      emitAsm80: false,
-      registerContracts: "strict",
-      registerContractsInterfaces: [interfaceSource],
-    },
-    { formats: defaultFormatWriters },
-  );
-  const errors = result.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === "error",
-  );
-  assert.deepEqual(
-    errors,
-    [],
-    errors
-      .map(
-        (diagnostic) =>
-          `${diagnostic.sourceName}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}`,
-      )
-      .join("\n"),
-  );
-  const binary = result.artifacts.find((artifact) => artifact.kind === "bin");
-  const map = result.artifacts.find((artifact) => artifact.kind === "d8m");
-  assert.equal(binary?.kind, "bin", `${name}: missing binary`);
-  assert.equal(map?.kind, "d8m", `${name}: missing debug map`);
-  const symbols = Object.fromEntries(
-    map.json.symbols.flatMap((entry) => {
-      const value = entry.address ?? entry.value;
-      return value === undefined ? [] : [[entry.name, value]];
-    }),
-  );
-  return { bytes: binary.bytes, name, symbols };
+  return assembleEditorCandidate({
+    name,
+    source: resolve(candidateDirectory, `${name}.asm`),
+    interfaceSource,
+    includeRoots: [candidateDirectory, repositoryRoot],
+  });
 }
 
 function symbol(candidate, name) {

@@ -1,0 +1,10 @@
+extern EditorReplaceBegin
+out A,carry,zero
+clobbers sign,parity,halfCarry,BC,DE,HL,IXH,IXL,IYH,IYL
+end
+
+extern EditorReplaceMatchAt
+in C,HL
+out A,carry,zero
+clobbers sign,parity,halfCarry,B,DE,HL
+end

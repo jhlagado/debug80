@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime/z80/runtime";
+import { assembleEditorCandidate } from "./editor-candidate-assembly.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const candidateDirectory = join(scriptDirectory, "editor-buffer-candidates");
@@ -23,43 +23,10 @@ function setWord(memory, address, value) {
 }
 
 async function assemble(name) {
-  const source = resolve(candidateDirectory, `${name}.asm`);
-  const result = await compile(
-    source,
-    {
-      emitBin: true,
-      emitD8m: true,
-      emitHex: false,
-      emitLst: false,
-      emitAsm80: false,
-      registerContracts: "strict",
-    },
-    { formats: defaultFormatWriters },
-  );
-  const errors = result.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === "error",
-  );
-  assert.deepEqual(
-    errors,
-    [],
-    errors
-      .map(
-        (diagnostic) =>
-          `${diagnostic.sourceName}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}`,
-      )
-      .join("\n"),
-  );
-  const binary = result.artifacts.find((artifact) => artifact.kind === "bin");
-  const map = result.artifacts.find((artifact) => artifact.kind === "d8m");
-  assert.equal(binary?.kind, "bin", `${name}: missing binary`);
-  assert.equal(map?.kind, "d8m", `${name}: missing debug map`);
-  const symbols = Object.fromEntries(
-    map.json.symbols.flatMap((symbol) => {
-      const value = symbol.address ?? symbol.value;
-      return value === undefined ? [] : [[symbol.name, value]];
-    }),
-  );
-  return { bytes: binary.bytes, name, symbols };
+  return assembleEditorCandidate({
+    name,
+    source: resolve(candidateDirectory, `${name}.asm`),
+  });
 }
 
 function createMemory(candidate) {
