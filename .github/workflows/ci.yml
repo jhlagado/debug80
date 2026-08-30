@@ -30,6 +30,7 @@ jobs:
       azm-headless: ${{ steps.filter.outputs.azm-headless }}
       glimmer-headless: ${{ steps.filter.outputs.glimmer-headless }}
       extension: ${{ steps.filter.outputs.extension }}
+      nucleus: ${{ steps.filter.outputs.nucleus }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v7
@@ -53,6 +54,12 @@ jobs:
               - 'integration/.eslintrc.json'
             extension:
               - 'apps/debug80-vscode/**'
+            nucleus:
+              - 'packages/nucleus/**'
+              - 'packages/atom/**'
+              - 'packages/azm/**'
+              - 'packages/debug80-runtime/**'
+              - 'packages/z80-tool-services/**'
             infra:
               - 'package.json'
               - 'package-lock.json'
@@ -217,6 +224,28 @@ jobs:
       - run: xvfb-run -a npm run test:vscode -w debug80
       - run: npm run package:debug80
 
+  nucleus:
+    needs: changes
+    if: >-
+      needs.changes.outputs.nucleus == 'true' ||
+      needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build -w @jhlagado/azm
+      - run: npm run build -w @jhlagado/debug80-runtime
+      - run: npm run build -w @jhlagado/z80-tool-services
+      - run: npm run build -w atom-z80
+      - run: npm run typecheck -w nucleus
+      - run: npm run test -w nucleus
+      - run: npm run package:nucleus
+
   # Single required status; fails if any triggered job failed.
   ci-ok:
     needs:
@@ -229,6 +258,7 @@ jobs:
         azm-headless,
         glimmer-headless,
         extension,
+        nucleus,
       ]
     if: always()
     runs-on: ubuntu-latest

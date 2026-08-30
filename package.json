@@ -38,7 +38,7 @@
     "package:runtime": "npm run test:package -w @jhlagado/debug80-runtime",
     "package:z80-tool-services": "npm run test:package -w @jhlagado/z80-tool-services",
     "package:atom": "npm run test:package -w atom-z80",
-    "package:nucleus": "npm run test:package -w nucleus",
+    "package:nucleus": "npm run test:package -w nucleus && npm run check:atom -w nucleus",
     "package:debug80": "npm run package:check -w debug80"
   },
   "engines": {

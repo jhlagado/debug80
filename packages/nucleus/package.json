@@ -40,6 +40,7 @@
     "publish:nobj": "tsx src/cli/publish.ts",
     "proof:publish": "tsx src/cli/proof-publish.ts",
     "prepack": "npm run build",
+    "check:atom": "npm run atom:migration:proof:permanent-gate",
     "atom:migration:dry-run": "node scripts/atom-migration-dry-run.mjs",
     "atom:migration:census": "node scripts/atom-migration-dry-run.mjs --report-only",
     "atom:migration:materialize": "node scripts/atom-migration-materialize.mjs --write",
