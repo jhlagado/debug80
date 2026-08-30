@@ -523,7 +523,7 @@ describe("Nucleus application boundary", () => {
     }
   }, 180_000);
 
-  it("normalizes direct publication API assembler aliases", async () => {
+  it("keeps the explicit ASM80 publication alias as AZM compatibility", async () => {
     const publication = await publishNucleusProofTarget({
       manifest: proof("flat-target-z80-slice-proof"),
       assembler: "ASM80",

@@ -39,6 +39,7 @@ describe("Nucleus publication CLI contract", () => {
       expect(result.status).toBe(0);
       expect(result.stdout).toContain("[output...]");
       expect(result.stdout).toContain("Name output paths after the input");
+      expect(result.stdout).toContain("default atom");
       expect(result.stdout).toContain("Legacy -o/--output forms are still accepted");
       expect(result.stdout).not.toContain("-o, --output FILE");
     }
@@ -90,6 +91,10 @@ describe("Nucleus publication CLI contract", () => {
   });
 
   it("normalizes proof-image assembler aliases through the shared Z80 selector", () => {
+    expect(parseNucleusPublicationOptions(
+      ["src/main.nu"],
+      { positionalName: "entry source" },
+    ).assembler).toBeUndefined();
     expect(parseNucleusPublicationOptions(
       ["--assembler", "ATOM-Z80", "src/main.nu"],
       { positionalName: "entry source" },
