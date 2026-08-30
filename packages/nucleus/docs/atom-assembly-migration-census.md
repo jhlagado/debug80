@@ -314,7 +314,7 @@ npm run atom:migration:proof-compare -w nucleus
 To compare generated preview source for migration diagnostics, run:
 
 ```bash
-npm run atom:migration:proof-compare:preview -w nucleus
+npm run atom:migration:diagnose-preview -w nucleus
 ```
 
 Run the executable permanent Atom proof gate with:
@@ -326,7 +326,7 @@ npm run atom:migration:proof-run -w nucleus
 To execute generated preview source for migration diagnostics, run:
 
 ```bash
-npm run atom:migration:proof-run:preview -w nucleus
+npm run atom:migration:diagnose-preview-run -w nucleus
 ```
 
 The dry-run intentionally reports two readiness states:

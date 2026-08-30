@@ -139,6 +139,8 @@ Options:
   --proof-root DIR     Proof manifest tree. Defaults to packages/nucleus/proofs.
   --entry NAME         Compare one proof manifest basename or asm-root-relative entry.
   --mode MODE          permanent or preview. Defaults to permanent.
+                       Preview is a migration diagnostic mode, not a
+                       production proof source.
   --permanent-root DIR Source-controlled Atom tree for permanent mode.
                        Defaults to packages/nucleus/atom-asm.
   --max-part-bytes N   Maximum generated Atom-preview bytes per source part.

@@ -144,7 +144,9 @@ Options:
                        when present.
   --no-budget-file     Ignore the default per-manifest budget file.
   --mode MODE          permanent or preview. Defaults to permanent.
-                       permanent-ready is accepted as a compatibility alias.
+                       Preview is a migration diagnostic mode and uses
+                       diagnosticOnly proof execution. permanent-ready is
+                       accepted as a compatibility alias.
   --permanent-root DIR Source-controlled Atom tree for permanent mode.
                        Defaults to packages/nucleus/atom-asm.
   --regenerate-permanent-root
