@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { nucleusPermanentAtomProofOptions } from "../dist/src/atom-proof-options.js";
 import { runProofManifest } from "../dist/src/proof.js";
 
 import { scanAssembly, writeTranslatedTree } from "./atom-migration-dry-run.mjs";
@@ -236,21 +237,16 @@ async function runOne({
       });
     }
     try {
-      const outcome = await runProofManifest(proof.file, {
-        assembler: {
-          flavour: "atom",
-          source: "permanent",
-          root: permanentRoot,
-          entry,
+      const outcome = await runProofManifest(
+        proof.file,
+        await nucleusPermanentAtomProofOptions(proof.file, {
+          asmRoot,
+          atomRoot: permanentRoot,
           maxInstructions: budget.maxInstructions,
           maxCycles: budget.maxCycles,
           legacyOutputOrder: true,
-        },
-        atomMigration: {
-          proofSymbolMap: report.proofSymbolMap,
-          proofLimitMap: report.proofLimitMap,
-        },
-      });
+        }),
+      );
       return Object.freeze({
         manifest: proof.name,
         entry,

@@ -68,6 +68,13 @@ export {
   type NucleusSourceSegmentKind,
 } from "./source-provenance.js";
 export {
+  NUCLEUS_DEFAULT_ASM_ROOT,
+  NUCLEUS_DEFAULT_PERMANENT_ATOM_ROOT,
+  nucleusPermanentAtomProofOptions,
+  readNucleusPermanentAtomMigrationMetadata,
+  type NucleusPermanentAtomProofOptions,
+} from "./atom-proof-options.js";
+export {
   buildSourceParts,
   parseSourceManifest,
 } from "./source-manifest.js";

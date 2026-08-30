@@ -272,6 +272,13 @@ or `source: "preview"`. The Atom source policy remains explicit because
 permanent source requires strict leading includes and permanent symbol names.
 It is not inferred from a `.asm` filename.
 
+The production helper `nucleusPermanentAtomProofOptions(manifestPath)` is the
+shared boundary for callers that want to run a proof manifest through the
+checked-in permanent Atom tree. It derives the Atom entry from the manifest's
+current `asm/` source path, attaches the `;@NUC-GLOBAL` migration metadata, and
+uses the same output-order compatibility sink as publication. New host tools
+should call that helper rather than constructing Atom proof options by hand.
+
 For integration work, prefer one consolidated bundle instead of several loose
 files:
 

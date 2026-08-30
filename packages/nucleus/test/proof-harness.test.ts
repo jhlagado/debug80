@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 
 import { prepareNucleusCompilation } from "../src/application.js";
+import { nucleusPermanentAtomProofOptions } from "../src/atom-proof-options.js";
 import {
   createProofSymbolView,
   NUCLEUS_LEGACY_PROOF_ASSEMBLER,
@@ -662,6 +663,18 @@ describe("source-prepared AZM and Debug80 proofs", () => {
       },
     });
 
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.symbols.AddressSpaceLimit).toBe(0x10000);
+  });
+
+  it("runs a proof through the reusable permanent Atom proof options", async () => {
+    const outcome = await runProofManifest(
+      proof("memory-map-proof"),
+      await nucleusPermanentAtomProofOptions(proof("memory-map-proof")),
+    );
+
+    expect(outcome.instructions).toBe(4);
+    expect(outcome.cycles).toBe(34);
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.symbols.AddressSpaceLimit).toBe(0x10000);
   });
