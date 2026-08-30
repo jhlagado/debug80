@@ -1,10 +1,16 @@
 import { existsSync } from "node:fs";
-import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compile } from "@jhlagado/azm/compile";
 import { parseIntelHex } from "@jhlagado/debug80-runtime";
 import {
   selectConcreteZ80AssemblerFlavour,
@@ -18,6 +24,7 @@ import type {
   RuntimeServiceAddresses,
 } from "./nobj.js";
 import { NobjError } from "./nobj.js";
+import { assembleLegacyAzmRuntimeImage } from "./legacy-runtime-assembler.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const runtimeSourceDirectoryCandidates = [
@@ -32,8 +39,9 @@ const runtimeAtomSourceDirectoryCandidates = [
   path.resolve(moduleDirectory, "../../atom-asm/vertical-slice"),
 ];
 const runtimeAtomSourceDirectory =
-  runtimeAtomSourceDirectoryCandidates.find((candidate) => existsSync(candidate)) ??
-  runtimeAtomSourceDirectoryCandidates[0]!;
+  runtimeAtomSourceDirectoryCandidates.find((candidate) =>
+    existsSync(candidate),
+  ) ?? runtimeAtomSourceDirectoryCandidates[0]!;
 
 const helperIdentitySymbols = {
   ActivationPush: "NucleusRuntimeActivationPushOffset",
@@ -165,50 +173,6 @@ const contentBase = (generation: {
     (minimum, image) => Math.min(minimum, image.address),
     0xffff,
   );
-
-const contextAssembly = (context: RuntimeLinkContext): string => `
-RuntimeLinkBase             .equ ${hexWord(context.runtimeBase)}
-RuntimeWritableStateBase    .equ ${hexWord(context.writableStateBase)}
-RuntimeProgramDataBase      .equ ${hexWord(context.programDataBase)}
-RuntimeProgramDataCapacity  .equ ${hexWord(context.programDataCapacity)}
-RuntimeReadOnlyBase         .equ ${hexWord(context.readOnlyBase)}
-RuntimeReadOnlyCapacity     .equ ${hexWord(context.readOnlyCapacity)}
-
-StateBase          .equ RuntimeWritableStateBase
-RunState           .equ StateBase+$00
-TrapNumber         .equ StateBase+$01
-TrapRoutine        .equ StateBase+$02
-TrapOffset         .equ StateBase+$03
-TrapError          .equ StateBase+$05
-ActivationDepth    .equ StateBase+$06
-ActivationLimit    .equ StateBase+$07
-ScalarSlot         .equ StateBase+$08
-CurrentBank        .equ ScalarSlot
-ActivationArena    .equ StateBase+$09
-ActivationCapacity .equ 8
-RootSP             .equ ActivationArena+ActivationCapacity
-RootIX             .equ RootSP+2
-FarReturnArena     .equ RootIX+2
-FarReturnCapacity  .equ ActivationCapacity*2
-StateEnd           .equ FarReturnArena+FarReturnCapacity
-
-RunReady           .equ 1
-RunSucceeded       .equ 2
-RunTrapped         .equ 3
-
-ProgramDataBase           .equ RuntimeProgramDataBase
-ProgramDataRegionCapacity .equ RuntimeProgramDataCapacity
-GeneratedRoDataBase       .equ RuntimeReadOnlyBase
-GeneratedRoDataCapacity   .equ RuntimeReadOnlyCapacity
-
-AggregateCallSlices .equ 1
-ComparisonEqual        .equ 0
-ComparisonNotEqual     .equ 1
-ComparisonLess         .equ 2
-ComparisonLessEqual    .equ 3
-ComparisonGreater      .equ 4
-ComparisonGreaterEqual .equ 5
-`;
 
 const atomContextAssembly = (context: RuntimeLinkContext): string => `
 ; Generated context-specific Atom runtime link context.
@@ -403,11 +367,8 @@ export async function loadCanonicalRuntimeImage(
     let rawSymbols: Readonly<Record<string, number>>;
     let atomAliases: ReadonlyMap<string, string> = new Map();
     if (assembler === "atom") {
-      const {
-        assembleAtomProject,
-        materializeAtomGeneration,
-        writeIntelHex,
-      } = await import("atom-z80");
+      const { assembleAtomProject, materializeAtomGeneration, writeIntelHex } =
+        await import("atom-z80");
       await cp(runtimeAtomSourceDirectory, temporaryDirectory, {
         recursive: true,
       });
@@ -436,50 +397,12 @@ export async function loadCanonicalRuntimeImage(
         ),
       );
     } else {
-      const contextPath = path.join(
+      ({ hexText, rawSymbols } = await assembleLegacyAzmRuntimeImage({
         temporaryDirectory,
-        "nucleus-runtime-link-context.asmi",
-      );
-      const entryPath = path.join(temporaryDirectory, "runtime-link.asm");
-      await writeFile(contextPath, contextAssembly(context), "utf8");
-      await writeFile(
-        entryPath,
-        `.include "nucleus-runtime-link-context.asmi"\n` +
-          `.org RuntimeLinkBase\nRuntimeCodeStart:\n` +
-          `.include "target-z80-runtime.asm"\nRuntimeCodeEnd:\n`,
-        "utf8",
-      );
-      const assembled = await compile(entryPath, {
-        includeDirs: [temporaryDirectory, runtimeSourceDirectory],
-        emitBin: false,
-        emitHex: true,
-        emitD8m: true,
-        registerContracts: "strict",
-      });
-      const errors = assembled.diagnostics.filter(
-        (diagnostic) => diagnostic.severity === "error",
-      );
-      if (errors.length > 0) {
-        throw new NobjError(
-          `canonical runtime link failed: ${errors
-            .map((diagnostic) => diagnostic.message)
-            .join("; ")}`,
-        );
-      }
-      const hex = assembled.artifacts.find((artifact) => artifact.kind === "hex");
-      const debugMap = assembled.artifacts.find(
-        (artifact) => artifact.kind === "d8m",
-      );
-      if (hex?.kind !== "hex" || debugMap?.kind !== "d8m") {
-        throw new NobjError("canonical runtime link omitted HEX or D8M output");
-      }
-      hexText = hex.text;
-      rawSymbols = Object.fromEntries(
-        debugMap.json.symbols.flatMap((entry) => {
-          const value = entry.address ?? entry.value;
-          return value === undefined ? [] : [[entry.name, value] as const];
-        }),
-      );
+        runtimeSourceDirectory,
+        context,
+        failure: (message) => new NobjError(message),
+      }));
     }
     const symbol = (name: string): number => {
       const wanted = name.toLowerCase();

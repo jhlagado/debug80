@@ -111,9 +111,9 @@
       "retirement": "Remove after the Atom-built proof images become authoritative and old AZM-built comparison images are no longer needed."
     },
     {
-      "file": "packages/nucleus/src/nucleus-runtime.ts",
+      "file": "packages/nucleus/src/legacy-runtime-assembler.ts",
       "classification": "nucleus-runtime-fallback",
-      "owner": "Nucleus canonical runtime image explicit AZM fallback",
+      "owner": "Nucleus named legacy AZM canonical-runtime compatibility boundary",
       "retirement": "Remove after the Atom runtime route is the only supported runtime provider and downstream callers no longer request the AZM fallback."
     },
     {
