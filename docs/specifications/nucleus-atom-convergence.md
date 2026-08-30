@@ -20,15 +20,31 @@ Atom already uses the shared architecture:
 - The Atom host API exposes project assembly, resolved project assembly, artifact rendering, named-object providers, translation helpers, and self-host helpers.
 - Atom has Node, Debug80, CP/M, and TEC-oriented platform documentation, with the native profiles kept free of JSON.
 
-Nucleus has not yet moved onto that boundary:
+Nucleus has now started moving onto that boundary:
 
-- `packages/nucleus/src/source-manifest.ts` still accepts a flat source list and turns it into ordered source parts.
-- Nucleus tests still describe and verify the flat source-manifest path.
-- Nucleus proof harnesses assemble handwritten Z80 through AZM and run through Debug80.
-- Nucleus depends on `@jhlagado/azm` and `@jhlagado/debug80-runtime`; it does not currently depend on `@jhlagado/z80-tool-services`.
-- Nucleus documents still describe external packaging as a supplied ordered source stream, with no import or include syntax in the language.
+- `packages/nucleus/src/source-preparation.ts` uses
+  `@jhlagado/z80-tool-services/source-preparation` through a Nucleus-specific
+  leading-import source profile.
+- `prepareNucleusSourceParts()` and `resolveNucleusProject()` are exported from
+  the package root.
+- The source profile recognizes only leading `//% import "path.nu"` directives
+  and passes compiler bytes through unchanged.
+- The permanent Atom translation under `packages/nucleus/atom-asm` has no
+  compatibility-lowering issues, no late includes, and no source drift.
+- The proof harness routes the ordinary permanent Atom-ready proof path through
+  Atom-built images while retaining explicit AZM routes for compatibility and
+  measurement artifacts.
+- Nucleus depends on `@jhlagado/z80-tool-services`, `atom-z80`,
+  `@jhlagado/azm`, and `@jhlagado/debug80-runtime` while the migration is
+  incomplete.
+- `packages/nucleus/src/source-manifest.ts` still exists as a low-level
+  compatibility helper. It is not the desired user-facing or package-root
+  project model.
 
-That state is acceptable as the starting point. It should not be treated as the final shape.
+That state is useful migration progress. It should not be treated as the final
+shape: the remaining work is to make the shared preparation, service, CLI, and
+Debug80 boundaries normal production surfaces, then retire compatibility-only
+paths after their replacements are proved.
 
 ## Shared layer model
 
@@ -66,7 +82,11 @@ Because `//% import` is already a Nucleus comment, the compiler reads the origin
 
 Atom differs deliberately. Atom uses `%` host directives and masks preprocessor-only ranges with spaces while preserving byte offsets. Nucleus should not pay for Atom's conditional source-elision machinery unless a later Nucleus design explicitly admits host conditions.
 
-The current flat source-manifest implementation should remain available until the new profile proves equivalent on the existing proof corpus. After that, the old path can become a compatibility adapter or be removed in a separate checkpoint.
+The old flat source-manifest implementation should remain available only while
+existing proof and package callers still need it. It should not reappear as a
+native command format. Nucleus source composition should be expressed by the
+entry source file's leading imports, resolved by the host or native harness
+before the resident compiler starts.
 
 ## Harness and service convergence
 
@@ -104,6 +124,12 @@ NUCLEUS MAIN.NU PROGRAM.NOBJ
 The Node command may support richer output selection, diagnostics, maps, and project JSON. Native Z80 commands should remain positional and small. A native system should not parse JSON; if it needs configuration, use a deliberately small native format or explicit command arguments.
 
 Output switches should request outputs rather than suppress defaults. That keeps the common command easy to type and avoids carrying Node-specific Debug80 options into CP/M or TEC-style environments.
+
+For native Nucleus, `MAIN.NU` is the entry source. Its leading `//% import`
+header drives dependency discovery. There is no public `PLAN` command and no
+serialized source-plan file in the native CLI contract. If a small system later
+needs a cached dependency product for performance, that product is an internal
+harness cache, not a source-language or command-line interface.
 
 ## Rewriting Nucleus assembly in Atom
 
@@ -149,15 +175,21 @@ Until then, moving Nucleus out would add release and dependency friction without
 
 ## Implementation sequence
 
-1. Record this convergence specification.
-2. Add a Nucleus source-preparation profile using `@jhlagado/z80-tool-services/source-preparation`.
-3. Keep the existing flat source-list path and add a dual-run proof that both paths produce the same ordered source parts for the current corpus.
-4. Move Nucleus source and output access behind a shared-service adapter while preserving the compiler vector.
-5. Define the Nucleus Node API and CLI v1 on top of the new preparation path.
-6. Census Nucleus AZM source for Atom compatibility.
-7. Implement the Atom naming ledger and contract-comment translation.
-8. Build a Nucleus compiler image from Atom source and prove byte identity with the current image.
-9. Revisit the repository-location decision with measured evidence.
+1. Keep this convergence specification current as the migration authority.
+2. Keep the Nucleus source-preparation profile on
+   `@jhlagado/z80-tool-services/source-preparation` and remove production
+   dependence on the old flat source-manifest helper.
+3. Move Nucleus source and output access behind shared-service adapters while
+   preserving the compiler vector.
+4. Define the Nucleus Node API and CLI v1 on top of leading-import source
+   preparation and positive output selection.
+5. Keep the Atom migration census green while converting additional Nucleus
+   assembly to permanent Atom source.
+6. Retire compatibility-only proof paths after every non-measurement proof image
+   has a permanent Atom route.
+7. Build the Nucleus compiler image from permanent Atom source and prove byte
+   identity with the current image.
+8. Revisit the repository-location decision with measured evidence.
 
 ## Explicit stop points
 

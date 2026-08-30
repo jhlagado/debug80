@@ -199,11 +199,15 @@ addresses, temporary names, and backup names remain inside the adapter.
 
 `NUCLEUS.COM` runs the standalone 16 KiB Nucleus compiler core as a CP/M
 transient. With no arguments it reads `INPUT.NU` and publishes `OUTPUT.COM`.
-`NUCLEUS SOURCE OUTPUT.COM` selects one source and output pair, while
-`NUCLEUS PLAN OUTPUT.COM @` compiles a plan containing from one through eight
-source names. Filenames are current-drive CP/M 8.3 names, the output extension
-must be `.COM`, and preflight rejects a source/output name conflict. Each source
-part may contain at most 65,535 logical bytes.
+`NUCLEUS SOURCE OUTPUT.COM` selects one entry source and output pair. The entry
+source may declare leading `//% import "NAME.NU"` dependencies. The native
+harness resolves those dependencies before compiler execution, includes each
+source identity once, rejects cycles and malformed or late imports during
+preflight, and compiles dependencies before their importer. Filenames are
+current-drive CP/M 8.3 names, the output extension must be `.COM`, and preflight
+rejects a source/output name conflict. Each source part may contain at most
+65,535 logical bytes. Native Nucleus does not parse JSON and does not expose a
+separate source-plan command.
 
 The compiler uses Nucleus's ordinary forward-patch stream without serializing
 NOBJ. Its CP/M output adapter places generated image bytes in a 23,808-byte TPA
