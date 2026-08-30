@@ -6,14 +6,13 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compile } from "@jhlagado/azm/compile";
-
 import {
   assembleConvertedWithAtom,
   assembleProjectOwnedWithAtom,
   converted8080Candidates,
   projectOwnedCandidates,
 } from "./atom-projection.mjs";
+import { compileAzmStrictSidecar } from "./azm-strict-sidecar.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..");
@@ -34,29 +33,14 @@ function fail(message) {
 }
 
 async function assembleAzm(source) {
-  const result = await compile(source, {
-    emitBin: true,
-    emitHex: false,
+  const sidecar = await compileAzmStrictSidecar({
+    label: source,
+    source,
     emitD8m: false,
     emitLst: false,
     registerContracts: "off",
   });
-  const errors = result.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === "error",
-  );
-  if (errors.length !== 0) {
-    fail(
-      errors
-        .map(
-          (diagnostic) =>
-            `${diagnostic.sourceName}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}`,
-        )
-        .join("\n"),
-    );
-  }
-  const binary = result.artifacts.find((artifact) => artifact.kind === "bin");
-  if (binary?.kind !== "bin") fail(`AZM omitted binary for ${source}`);
-  return binary.bytes;
+  return sidecar.bytes;
 }
 
 async function checkConverted8080Candidate(temporaryDirectory, candidate) {
@@ -136,7 +120,9 @@ const temporaryDirectory = await mkdtemp(
 try {
   const results = [];
   for (const candidate of converted8080Candidates) {
-    results.push(await checkConverted8080Candidate(temporaryDirectory, candidate));
+    results.push(
+      await checkConverted8080Candidate(temporaryDirectory, candidate),
+    );
   }
 
   for (const candidate of projectOwnedCandidates) {
@@ -149,15 +135,21 @@ try {
       fail(`${result.name}: expected ready or blocked, got ${result.status}`);
     }
     if (result.code !== expectedBlockers[result.name]) {
-      fail(`${result.name}: expected ${expectedBlockers[result.name]}, got ${result.code}`);
+      fail(
+        `${result.name}: expected ${expectedBlockers[result.name]}, got ${result.code}`,
+      );
     }
   }
 
   process.stdout.write("CP/M Atom assembly candidates\n");
   for (const result of results.filter((result) => result.status === "ready")) {
-    process.stdout.write(`ready\t${result.name}\t${result.bytes} bytes byte-identical\n`);
+    process.stdout.write(
+      `ready\t${result.name}\t${result.bytes} bytes byte-identical\n`,
+    );
   }
-  for (const result of results.filter((result) => result.status === "blocked")) {
+  for (const result of results.filter(
+    (result) => result.status === "blocked",
+  )) {
     process.stdout.write(
       `blocked\t${result.name}\t${result.code}\t${result.line}:${result.column}\t${result.message}\n`,
     );
