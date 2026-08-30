@@ -27,8 +27,18 @@ const thirdPartyDirectory = join(repositoryRoot, "third_party", "cpm22");
 const converter = join(scriptDirectory, "convert-8080-to-z80.mjs");
 
 const converted8080Candidates = Object.freeze([
-  { name: "ccp", input: "ccp.asm", origin: "$E400" },
-  { name: "bdos", input: "bdos.asm", origin: "$EC00" },
+  {
+    name: "ccp",
+    input: "ccp.asm",
+    origin: "$E400",
+    projection: "short-symbols",
+  },
+  {
+    name: "bdos",
+    input: "bdos.asm",
+    origin: "$EC00",
+    projection: "short-symbols",
+  },
 ]);
 
 const projectOwnedCandidates = Object.freeze([
@@ -39,8 +49,6 @@ const projectOwnedCandidates = Object.freeze([
 ]);
 
 const expectedBlockers = Object.freeze({
-  "bdos": "forward-equate",
-  "ccp": "symbol-length",
   "editor.asm": "unsupported-directive",
 });
 
@@ -139,6 +147,24 @@ function fail(message) {
   throw new Error(message);
 }
 
+function parseFixedNumber(text) {
+  const value = text.trim();
+  if (/^\$[0-9a-f]+$/i.test(value)) {
+    return Number.parseInt(value.slice(1), 16);
+  }
+  if (/^[0-9a-f]+h$/i.test(value)) {
+    return Number.parseInt(value.slice(0, -1), 16);
+  }
+  if (/^[0-9]+$/.test(value)) {
+    return Number.parseInt(value, 10);
+  }
+  fail(`unsupported fixed numeric value ${text}`);
+}
+
+function hexWord(value) {
+  return `$${value.toString(16).toUpperCase().padStart(4, "0")}`;
+}
+
 async function assembleAzm(source) {
   const result = await compile(source, {
     emitBin: true,
@@ -163,6 +189,124 @@ async function assembleAzm(source) {
   const binary = result.artifacts.find((artifact) => artifact.kind === "bin");
   if (binary?.kind !== "bin") fail(`AZM omitted binary for ${source}`);
   return binary.bytes;
+}
+
+function projectConvertedAtomSource(candidate, source, azmBytes) {
+  let projected = source;
+  if (candidate.name === "bdos") {
+    projected = projectBdosBiosEqu(candidate, projected, azmBytes);
+  }
+  projected = projectConvertedStorageAliases(projected);
+  if (candidate.projection === "short-symbols") {
+    projected = projectShortSymbols(candidate.name, projected);
+  }
+  return projected;
+}
+
+function projectConvertedStorageAliases(source) {
+  return source
+    .split(/\r\n|\n|\r/)
+    .map((line) =>
+      rewriteCodeOutsideText(line, (code) =>
+        code
+          .replace(/\bDS\s+byte\b/gi, "DS 1")
+          .replace(/\bDS\s+word\b/gi, "DS 2")
+          .replace(/\(~fwfmsk\)&0ffh/gi, "$7F"),
+      ),
+    )
+    .join("\n");
+}
+
+function projectBdosBiosEqu(candidate, source, azmBytes) {
+  const origin = parseFixedNumber(candidate.origin);
+  const finalCursor = origin + azmBytes.length;
+  const biosAddress = (finalCursor & 0xff00) + 0x100;
+  let inserted = false;
+  let removedDerivedDefinition = false;
+  const projected = source
+    .split(/\r\n|\n|\r/)
+    .map((line) => {
+      if (!inserted && /^\s*bootf\s+EQU\s+bios\+3\*0\b/i.test(line)) {
+        inserted = true;
+        return `bios EQU ${hexWord(biosAddress)}; projected from final BDOS extent\n${line}`;
+      }
+      if (/^\s*bios\s+EQU\s+\(\$\s*&\s*0ff00h\)\+100h\b/i.test(line)) {
+        removedDerivedDefinition = true;
+        return `; projected ${line.trim()}`;
+      }
+      return line;
+    })
+    .join("\n");
+  if (!inserted) fail(`${candidate.name}: could not insert projected bios EQU`);
+  if (!removedDerivedDefinition) {
+    fail(`${candidate.name}: could not remove derived bios EQU`);
+  }
+  return projected;
+}
+
+function codeIdentifierWords(source) {
+  const words = new Set();
+  for (const line of source.split(/\r\n|\n|\r/)) {
+    rewriteCodeOutsideText(line, (code) => {
+      for (const match of code.matchAll(/\b[A-Za-z_][A-Za-z0-9_]*\b/g)) {
+        words.add(match[0]);
+      }
+      return code;
+    });
+  }
+  return [...words];
+}
+
+function shortSymbolCandidate(word, index) {
+  const compact = word.replace(/_/g, "").toUpperCase();
+  if (index === 0 && compact.length <= 8) return compact;
+  if (index === 0) return compact.slice(0, 8);
+  const suffix = index.toString(36).toUpperCase();
+  return `${compact.slice(0, 8 - suffix.length)}${suffix}`;
+}
+
+function projectShortSymbols(name, source) {
+  const words = codeIdentifierWords(source);
+  const occupied = new Set(
+    words.filter((word) => word.length <= 8).map((word) => word.toUpperCase()),
+  );
+  const longWords = words
+    .filter((word) => word.length > 8)
+    .sort((left, right) => left.localeCompare(right));
+  const replacements = new Map();
+  for (const word of longWords) {
+    let replacement = "";
+    for (let index = 0; index < 256; index += 1) {
+      const candidate = shortSymbolCandidate(word, index);
+      if (!/^[A-Z_][A-Z0-9_]*$/.test(candidate) || candidate.length > 8) {
+        continue;
+      }
+      if (!occupied.has(candidate)) {
+        replacement = candidate;
+        break;
+      }
+    }
+    if (replacement === "") {
+      fail(`${name}: could not shorten symbol ${word}`);
+    }
+    occupied.add(replacement);
+    replacements.set(word, replacement);
+  }
+  return source
+    .split(/\r\n|\n|\r/)
+    .map((line) =>
+      rewriteCodeOutsideText(line, (code) =>
+        code.replace(/\b[A-Za-z_][A-Za-z0-9_]*\b/g, (word) => {
+          const direct = replacements.get(word);
+          if (direct !== undefined) return direct;
+          const folded = [...replacements.entries()].find(
+            ([original]) => original.toUpperCase() === word.toUpperCase(),
+          );
+          return folded?.[1] ?? word;
+        }),
+      ),
+    )
+    .join("\n");
 }
 
 async function assembleAtom(root, entry) {
@@ -291,8 +435,15 @@ async function checkConverted8080Candidate(temporaryDirectory, candidate) {
       );
     }
   }
+  const azmBytes = await assembleAzm(azmSource);
+  const projectedAtomSource = projectConvertedAtomSource(
+    candidate,
+    await readFile(atomSource, "utf8"),
+    azmBytes,
+  );
+  await writeFile(atomSource, projectedAtomSource, "utf8");
   try {
-    translateAzmSourceToAtom(await readFile(atomSource, "utf8"), {
+    translateAzmSourceToAtom(projectedAtomSource, {
       sourceName: `${candidate.name}.atom.asm`,
     });
   } catch (error) {
@@ -305,10 +456,13 @@ async function checkConverted8080Candidate(temporaryDirectory, candidate) {
       column: error.diagnostic?.column,
     };
   }
-  const [azmBytes, atomBytes] = await Promise.all([
-    assembleAzm(azmSource),
-    assembleAtom(temporaryDirectory, `${candidate.name}.atom.asm`),
-  ]);
+  const origin = parseFixedNumber(candidate.origin);
+  const atomBytes = await assembleAtomRange(
+    temporaryDirectory,
+    `${candidate.name}.atom.asm`,
+    origin,
+    origin + azmBytes.length - 1,
+  );
   if (
     azmBytes.length !== atomBytes.length ||
     azmBytes.some((byte, index) => byte !== atomBytes[index])
