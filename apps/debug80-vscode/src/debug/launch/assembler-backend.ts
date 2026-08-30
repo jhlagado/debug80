@@ -25,6 +25,10 @@ export interface AssembleOptions {
   asmPath: string;
   hexPath: string;
   sourceRoot?: string;
+  binaryRange?: {
+    binFrom: number;
+    binTo: number;
+  };
   azm?: AzmLaunchOptions;
   glimmer?: GlimmerLaunchOptions;
   nucleus?: NucleusLaunchOptions;
@@ -43,6 +47,7 @@ export interface AssembleBinOptions {
 
 export interface AssemblerBackend {
   readonly id: string;
+  readonly supportsRangedBinary?: boolean;
   assemble(options: AssembleOptions): Promise<AssembleResult>;
   assembleBin?(options: AssembleBinOptions): Promise<AssembleResult>;
   compileMappingInProcess?(sourcePath: string, baseDir: string): MappingParseResult | undefined;

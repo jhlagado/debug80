@@ -171,6 +171,47 @@ describe('azm-backend', () => {
     expect([...fs.readFileSync(binPath)]).toEqual([1, 2, 3]);
   });
 
+  it('uses binaryRange as the primary Debug80 build binary bounds', async () => {
+    const backend = new AzmBackend();
+    const { asmPath, hexPath, binPath } = createAssemblyFixture(tmpDir, 'ORG 4000h\nDB 1,3,4\n');
+
+    compile.mockImplementation(async (_asmPath, _options, deps) => ({
+      diagnostics: [],
+      artifacts: [
+        hexArtifact(),
+        deps.formats.writeBin({
+          bytes: new Map([
+            [0x3fff, 0xee],
+            [0x4000, 1],
+            [0x4002, 3],
+            [0x4004, 4],
+            [0x4005, 0xdd],
+          ]),
+        }),
+        d8Artifact(),
+      ],
+    }));
+
+    const result = await backend.assemble({
+      asmPath,
+      hexPath,
+      binaryRange: { binFrom: 0x4000, binTo: 0x4004 },
+    });
+
+    expect(result.success).toBe(true);
+    expect(compile).toHaveBeenCalledWith(
+      asmPath,
+      expect.objectContaining({
+        outputType: 'hex',
+        emitBin: true,
+        emitHex: true,
+        emitD8m: true,
+      }),
+      expect.objectContaining({ formats: expect.objectContaining({ writeBin: expect.any(Function) }) })
+    );
+    expect([...fs.readFileSync(binPath)]).toEqual([1, 0, 3, 0, 4]);
+  });
+
   it('returns compile diagnostics as Debug80 assembly failures', async () => {
     const backend = new AzmBackend();
     const { asmPath, hexPath } = createAssemblyFixture(

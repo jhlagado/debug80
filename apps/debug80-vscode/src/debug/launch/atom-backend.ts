@@ -76,7 +76,10 @@ function binPathFromHexPath(hexPath: string): string {
   return path.join(path.dirname(hexPath), `${path.basename(hexPath, path.extname(hexPath))}.bin`);
 }
 
-function renderBinaryRange(result: AtomBuildResult, options: AssembleBinOptions): Uint8Array {
+function renderBinaryRange(
+  result: AtomBuildResult,
+  options: { binFrom: number; binTo: number }
+): Uint8Array {
   const length = options.binTo - options.binFrom + 1;
   if (length < 1) {
     throw new RangeError('Atom binary range must contain at least one byte');
@@ -147,6 +150,7 @@ function failure(error: unknown, root: string): AssembleResult {
 
 export class AtomBackend implements AssemblerBackend {
   public readonly id = 'atom';
+  public readonly supportsRangedBinary = true;
 
   public constructor(private readonly compiler?: AtomCompilerApi) {}
 
@@ -166,6 +170,10 @@ export class AtomBackend implements AssemblerBackend {
       });
       const base = contentBase(result.generation);
       const artifacts = compiler.renderAtomArtifacts(result, { base, entryAddress: base });
+      const binBytes =
+        options.binaryRange === undefined
+          ? artifacts.bin
+          : renderBinaryRange(result, options.binaryRange);
       const parsed = parseD8DebugMap(artifacts.d8Text);
       if (parsed.map === undefined) {
         return {
@@ -175,7 +183,7 @@ export class AtomBackend implements AssemblerBackend {
       }
       const published = await compiler.publishAtomOutputFiles([
         { path: options.hexPath, bytes: artifacts.hex },
-        { path: `${artifactBase}.bin`, bytes: artifacts.bin },
+        { path: `${artifactBase}.bin`, bytes: binBytes },
         { path: `${artifactBase}.d8.json`, bytes: artifacts.d8Text },
         { path: `${artifactBase}.lst`, bytes: artifacts.listing },
       ]);

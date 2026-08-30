@@ -93,6 +93,43 @@ describe('Atom backend', () => {
     expect(result.stdout).toContain('4 build artifacts');
   });
 
+  it('publishes a ranged binary from the primary Debug80 artifact build', async () => {
+    const project = workspace();
+    const compiler = fakeCompiler({
+      assembleAtomProject: vi.fn(() =>
+        Promise.resolve({
+          project: {},
+          generation: {
+            finalCursor: 0x4004,
+            images: [
+              { address: 0x3fff, bytes: Uint8Array.of(0xee, 0x01, 0x02) },
+              { address: 0x4004, bytes: Uint8Array.of(0x04) },
+            ],
+            patches: [{ address: 0x4002, bytes: Uint8Array.of(0xaa) }],
+          },
+        })
+      ),
+    });
+
+    const result = await new AtomBackend(compiler).assemble({
+      asmPath: project.source,
+      hexPath: project.hex,
+      sourceRoot: project.root,
+      binaryRange: { binFrom: 0x4000, binTo: 0x4004 },
+    });
+
+    expect(result.success).toBe(true);
+    expect(compiler.renderAtomArtifacts).toHaveBeenCalled();
+    expect(compiler.publishAtomOutputFiles).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        {
+          path: path.join(project.root, 'build', 'main.bin'),
+          bytes: Uint8Array.of(0x01, 0x02, 0xaa, 0x00, 0x04),
+        },
+      ])
+    );
+  });
+
   it('executes Atom on the Z80 emulator and retains included-source provenance', async () => {
     const project = workspace();
     fs.writeFileSync(path.join(project.root, 'library.asm'), 'VALUE EQU 42\n');

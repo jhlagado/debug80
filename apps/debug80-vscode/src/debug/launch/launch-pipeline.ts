@@ -55,7 +55,7 @@ export async function assembleIfRequested(options: {
   }
 
   const binaryRange = platform === 'simple' ? resolveSimpleBinaryRange(simpleConfig) : undefined;
-  if (binaryRange !== undefined && backend.assembleBin === undefined) {
+  if (binaryRange !== undefined && backend.supportsRangedBinary !== true) {
     throw new AssembleFailureError({
       success: false,
       error: `${backend.id} does not support simple.binFrom/simple.binTo; choose an assembler backend with ranged binary output.`,
@@ -65,6 +65,7 @@ export async function assembleIfRequested(options: {
   const result = await backend.assemble({
     asmPath,
     hexPath,
+    ...(binaryRange !== undefined ? { binaryRange } : {}),
     ...(sourceRoot !== undefined ? { sourceRoot } : {}),
     ...(args.azm !== undefined ? { azm: args.azm } : {}),
     ...(args.glimmer !== undefined ? { glimmer: args.glimmer } : {}),
@@ -84,29 +85,6 @@ export async function assembleIfRequested(options: {
   }
 
   const contractUpdates = result.contractUpdates;
-
-  if (binaryRange !== undefined && backend.assembleBin !== undefined) {
-    const binResult = await backend.assembleBin({
-      asmPath,
-      hexPath,
-      binFrom: binaryRange.binFrom,
-      binTo: binaryRange.binTo,
-      ...(sourceRoot !== undefined ? { sourceRoot } : {}),
-      ...(args.azm !== undefined ? { azm: args.azm } : {}),
-      onOutput: (message) => {
-        onOutput?.(message);
-        if (sendEvent !== undefined) {
-          emitConsoleOutput(sendEvent, message, { newline: false });
-        }
-      },
-    });
-    if (!binResult.success) {
-      throw new AssembleFailureError({
-        ...binResult,
-        error: binResult.error ?? `${backend.id} failed to build binary`,
-      });
-    }
-  }
 
   return contractUpdates !== undefined ? { contractUpdates } : {};
 }

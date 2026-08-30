@@ -20,6 +20,7 @@ describe('launch-pipeline', () => {
   beforeEach(() => {
     backend = {
       id: 'mock-asm',
+      supportsRangedBinary: true,
       assemble: vi.fn(() => Promise.resolve({ success: true })),
       assembleBin: vi.fn(() => Promise.resolve({ success: true })),
     };
@@ -57,7 +58,7 @@ describe('launch-pipeline', () => {
     expect(onOutput).toHaveBeenCalledWith('assembler output\n');
   });
 
-  it('invokes binary assembly for simple platform', async () => {
+  it('requests ranged binary output in the primary simple-platform assembly', async () => {
     await expect(
       assemble({
         sourceRoot: '/project',
@@ -65,16 +66,16 @@ describe('launch-pipeline', () => {
       })
     ).resolves.toEqual({});
     expect(backend.assemble).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceRoot: '/project' })
+      expect.objectContaining({
+        sourceRoot: '/project',
+        binaryRange: { binFrom: 0x900, binTo: 0xffff },
+      })
     );
-    expect(backend.assembleBin).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceRoot: '/project' })
-    );
+    expect(backend.assembleBin).not.toHaveBeenCalled();
   });
 
-  it('throws when binary assembly fails', async () => {
-    backend.assemble.mockResolvedValue({ success: true });
-    backend.assembleBin.mockResolvedValue({
+  it('throws when ranged binary assembly fails', async () => {
+    backend.assemble.mockResolvedValue({
       success: false,
       error: 'bad bin',
     });

@@ -214,12 +214,13 @@ The backend conforms to the `AssemblerBackend` interface:
 ```typescript
 interface AssemblerBackend {
   id: string;
+  supportsRangedBinary?: boolean;
   assemble(options: AssembleOptions): AssembleResult;
   assembleBin?(options: AssembleBinOptions): AssembleResult;
 }
 ```
 
-`assemble()` produces the primary build artifacts, normally HEX plus native D8 source map. AZM-backed assembly also emits an asm80-style `.lst` listing by default. `assembleBin()` is optional — the simple platform uses it to produce raw binary output for custom memory regions (configured via `binFrom`/`binTo`), and the TEC-1G ROM-artifact path uses it to materialize monitor or expansion `.bin` images with fixed address windows.
+`assemble()` produces the primary build artifacts, normally HEX plus native D8 source map. AZM-backed assembly also emits an asm80-style `.lst` listing by default. When the simple platform configures `binFrom`/`binTo`, Debug80 passes that range to `assemble()` so the primary build also publishes the requested raw binary. `assembleBin()` remains optional for the TEC-1G ROM-artifact path, which materializes monitor or expansion `.bin` images with fixed address windows.
 
 ### The Atom invocation
 
@@ -247,7 +248,7 @@ backend maps that location into `AssemblyDiagnostic`, reads the original source
 line when available, and sends the result through Debug80's ordinary build
 failure path. Included-file errors continue to name the included file.
 
-For the simple platform, ranged binary output is validated as a pair: `simple.binFrom` and `simple.binTo` must both be present or both be absent, and `binFrom` must be less than or equal to `binTo`. This is enforced during launch validation and again immediately before assembly. If a ranged simple build is requested through a backend without `assembleBin()` support, Debug80 fails the launch with a direct build error instead of pretending the range was applied. Atom and AZM support ranged binary output; Glimmer and Nucleus do not expose that backend method.
+For the simple platform, ranged binary output is validated as a pair: `simple.binFrom` and `simple.binTo` must both be present or both be absent, and `binFrom` must be less than or equal to `binTo`. This is enforced during launch validation and again immediately before assembly. If a ranged simple build is requested through a backend without ranged-binary support, Debug80 fails the launch with a direct build error instead of pretending the range was applied. Atom and AZM support ranged binary output; Glimmer and Nucleus do not expose that backend capability.
 
 ### The AZM invocation
 

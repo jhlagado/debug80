@@ -10,7 +10,7 @@ nav_order: 1
 
 # Chapter 9 — The Simple Platform
 
-The simple platform is the default when no `platform` field is specified in the project configuration. It provides a plain Z80 environment — configurable memory regions, an entry point, and optional terminal I/O — without emulating any specific hardware. It is the right platform for programs that communicate via text or that target a generic Z80 system.
+The simple platform is the default when no `platform` field is specified in the project configuration. It provides a plain Z80 environment with configurable memory regions, an entry point, and optional terminal I/O, without emulating any specific hardware. It is the right platform for programs that communicate via text or that target a generic Z80 system.
 
 The platform lives in `src/platforms/simple/`.
 
@@ -38,10 +38,10 @@ The ROM ranges derived from the region configuration are passed to `createZ80Run
 
 ### Binary output regions
 
-The simple platform has an optional `binFrom`/`binTo` pair. When both are specified, the assembler is invoked a second time to produce a raw binary file covering that address range:
+The simple platform has an optional `binFrom`/`binTo` pair. When both are specified, Debug80 asks the selected assembler backend to publish a raw binary file covering that address range as part of the primary build:
 
 ```
-assemblerBackend.assembleBin({ asmPath, hexPath, binFrom, binTo })
+assemblerBackend.assemble({ asmPath, hexPath, binaryRange: { binFrom, binTo } })
 ```
 
 This is used when the target hardware loads a raw binary at a specific address rather than parsing an Intel HEX file. The binary and HEX outputs are produced from the same source file in the same build step.
@@ -79,7 +79,7 @@ The `payload` sent to the extension host via `debug80/platform` identifies the p
 
 ---
 
-## What simple is for
+## Suitable projects
 
 The simple platform is appropriate for:
 
@@ -88,7 +88,7 @@ The simple platform is appropriate for:
 - Learning and experimentation with Z80 assembly
 - Programs that define their own I/O mapping through custom regions
 
-If you need to simulate a TEC-1 or TEC-1G — including display output, key input, and timing-accurate hardware — use those platforms instead.
+If you need to simulate a TEC-1 or TEC-1G with display output, key input, and timing-accurate hardware, use those platforms instead.
 
 ---
 

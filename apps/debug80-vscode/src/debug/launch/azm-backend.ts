@@ -439,6 +439,7 @@ async function runAzmCompile(
 
 export class AzmBackend implements AssemblerBackend {
   public readonly id = 'azm';
+  public readonly supportsRangedBinary = true;
 
   public async assemble(options: AssembleOptions): Promise<AssembleResult> {
     const outDir = path.dirname(options.hexPath);
@@ -451,6 +452,15 @@ export class AzmBackend implements AssemblerBackend {
       return loaded.result;
     }
     const { modules } = loaded;
+
+    const formats =
+      options.binaryRange === undefined
+        ? modules.defaultFormatWriters
+        : withRangedBinaryWriter(
+            modules.defaultFormatWriters,
+            options.binaryRange.binFrom,
+            options.binaryRange.binTo
+          );
 
     const result = await runAzmCompile(
       () =>
@@ -469,7 +479,7 @@ export class AzmBackend implements AssemblerBackend {
               bin: binPath,
             },
           },
-          { formats: modules.defaultFormatWriters }
+          { formats }
         ),
       sourceRoot,
       options.onOutput,
