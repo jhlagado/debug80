@@ -108,3 +108,5 @@ progress.
 `npm run atom:migration:proof-run:permanent-ready -w nucleus` reads the
 checked-in `atom-asm/` tree by default. Pass `--regenerate-permanent-root` only
 when testing the generator itself rather than the source-controlled Atom tree.
+The current measured set has 26 permanent-ready proof manifests and 3
+measurement artifacts; no proof manifest depends on compatibility lowering.

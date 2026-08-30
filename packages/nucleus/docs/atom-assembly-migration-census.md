@@ -115,8 +115,8 @@ the Nucleus compiler and proof runner explicitly select Atom by default.
 
 Generated permanent Atom source hoists top-level feature definitions into the
 entry definition header before `%INCLUDE`, `%IF`, `ORG`, labels, code, data, and
-contract comments. The raw Nucleus source still reports those placements as
-permanent-source blockers until the source files themselves are reorganized.
+contract comments. The current Nucleus source tree has no remaining
+feature-definition placement blockers.
 Proof-entry feature settings now live in explicit `*-config.asmi` files included
 at the start of each proof source. `loop-parser.asm` now receives
 `HybridLL1Full` from the including context instead of deriving it internally, and
@@ -127,8 +127,8 @@ The proof and target runtime wrappers now use the same config-header pattern for
 `RuntimeProofServices`, removing their wrapper late includes while preserving
 the existing permanent Atom runtime transforms.
 The Stage 7 LL(1) parser coverage entry wrapper now carries its feature settings
-in a config header as well, leaving only emitted-content section includes in the
-remaining blocker set.
+in a config header as well. The later section-owner passes removed the
+emitted-content late-include blocker class from the current source set.
 The Stage 7 LL(1) parser now owns its generated-table boundary explicitly:
 `stage7-ll1-parser.asm` includes a core part, the generated grammar table, and a
 table-end marker from its header. That removes the parser module's own late
@@ -557,8 +557,8 @@ ascending through source, runtime, proof, and spare regions.
 The two dispatcher offset measurement artifacts now name their page-local table
 offsets with single-symbol aliases. This closes the
 forward-dependent emitted-statement symbol arithmetic class across the measured
-source set. Permanent source is still blocked by include/header placement, not
-by emitted two-symbol operands.
+source set. Permanent source is no longer blocked by emitted two-symbol
+operands or include/header placement in the current measured tree.
 
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a
@@ -719,16 +719,10 @@ adding small proof-mode config includes for `SegmentedOutput`. That removed the
 34 layout-only late includes without changing emitted bytes. The later
 permanent-layout passes proved the large proof-composition entries and the
 target runtime link entry by giving each inserted code or data section an
-explicit generated owner. Remaining late includes that emit code or data need
-the same section-ownership decision: either the module owns its own
-`ORG`/section placement, or the compatibility lowering stage remains
-responsible for preserving the current textual insertion point.
-
-The long-term migration still needs one of these implementation paths before
-the source tree itself can become Atom-native:
-
-1. move Nucleus assembly includes into leading dependency headers where the order is semantically equivalent;
-2. keep a Nucleus-specific compatibility lowering stage for the existing proof assembly while new source uses header-only includes.
+explicit generated owner. The current include-after-header report is empty.
+Future Nucleus assembly should keep that invariant: dependencies belong in the
+leading header, and any source that needs inserted code or data should make the
+owning source part explicit rather than relying on late textual inclusion.
 
 ## Symbol-length problem
 
@@ -905,8 +899,8 @@ lowering:
 That pilot exercises the intended permanent-source path: generated Atom source
 files remain separate, the normal Atom host resolver follows the leading
 `%INCLUDE`, and Atom assembles the entry byte-identically to the current
-assembler path. It is deliberately small; emitted-content late includes remain
-on the compatibility-lowered path until those proof sources are reorganized.
+assembler path. It was deliberately small; the later permanent-ready proof gate
+now exercises the same model across every non-measurement proof image.
 
 The same entry now also runs through the Nucleus proof harness with Atom selected
 as the assembler. The proof harness executes the Atom-built HEX image and uses
