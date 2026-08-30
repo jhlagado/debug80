@@ -232,7 +232,7 @@ const selectNucleusCompilerAssembler = (
 ): NucleusCompilerAssemblerFlavour =>
   selectConcreteZ80AssemblerFlavour({
     requested: assembler,
-    defaultFlavour: "azm",
+    defaultFlavour: "atom",
     sourcePath: "Nucleus compiler proof image",
   });
 

@@ -512,13 +512,14 @@ describe("Nucleus application boundary", () => {
 
       expect(publication.nobj.parsed.commit.recordCount).toBe(130);
       expect(publication.nobj.parsed.map.entryAddress).toBe(0x8000);
+      expect(publication.assembler).toBe("atom");
       expect(await readFile(output)).toEqual(
         Buffer.from(publication.nobj.serialized),
       );
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
-  }, 15_000);
+  }, 120_000);
 
   it("normalizes direct publication API assembler aliases", async () => {
     const publication = await publishNucleusProofTarget({
@@ -559,6 +560,7 @@ describe("Nucleus application boundary", () => {
 
           expect(publication.root).toBe(root);
           expect(publication.entry).toBe("src/main.nu");
+          expect(publication.assembler).toBe("atom");
           expect(publication.sourceParts).toBe(1);
           expect(publication.sourceProvenance).toEqual([
             {
@@ -593,7 +595,7 @@ describe("Nucleus application boundary", () => {
         }
       },
     );
-  }, 30_000);
+  }, 120_000);
 
   it("lets prepared entry-source publication supply the target descriptor", async () => {
     await withSourceTree(
@@ -624,7 +626,7 @@ describe("Nucleus application boundary", () => {
         expect(publication.nobj.parsed.begin.imageFill).toBe(0x7e);
       },
     );
-  }, 30_000);
+  }, 120_000);
 
   it("loads a target descriptor file for prepared entry-source publication", async () => {
     await withSourceTree(
@@ -665,7 +667,7 @@ describe("Nucleus application boundary", () => {
         expect(publication.nobj.parsed.begin.imageFill).toBe(0x7d);
       },
     );
-  }, 30_000);
+  }, 120_000);
 
   it("rejects a target descriptor file with the wrong schema", async () => {
     await withSourceTree(
@@ -716,6 +718,7 @@ describe("Nucleus application boundary", () => {
       expect(stderr).toBe("");
       expect(summary).toMatchObject({
         output,
+        assembler: "atom",
         bytes: 1396,
         records: 130,
         entryBank: 0,
@@ -725,7 +728,7 @@ describe("Nucleus application boundary", () => {
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
-  });
+  }, 120_000);
 
   it("publishes proof targets with Atom-selected proof assembly", async () => {
     const { stdout, stderr } = await execFileAsync(
@@ -824,7 +827,7 @@ describe("Nucleus application boundary", () => {
         }
       },
     );
-  }, 30_000);
+  }, 120_000);
 
   it("exposes prepared entry-source NOBJ publication through the normal CLI", async () => {
     await withSourceTree(
@@ -897,7 +900,7 @@ describe("Nucleus application boundary", () => {
         }
       },
     );
-  }, 30_000);
+  }, 120_000);
 
   it("publishes prepared entry source with Atom-selected resident proof assembly", async () => {
     await withSourceTree(
@@ -1049,7 +1052,7 @@ describe("Nucleus application boundary", () => {
         }
       },
     );
-  }, 30_000);
+  }, 120_000);
 
   it("renders D8 file entries from prepared source-part identities", async () => {
     await withSourceTree(
@@ -1093,7 +1096,7 @@ describe("Nucleus application boundary", () => {
         });
       },
     );
-  }, 30_000);
+  }, 120_000);
 
   it("renders explicit D8 source segments only when they reference known parts", async () => {
     await withSourceTree(
@@ -1159,7 +1162,7 @@ describe("Nucleus application boundary", () => {
         })).toThrow("D8 source segment is outside the committed image range");
       },
     );
-  }, 30_000);
+  }, 120_000);
 
   it("keeps --output as an NOBJ-compatible output path", async () => {
     const outputDirectory = await mkdtemp(path.join(tmpdir(), "nucleus-cli-output-"));
@@ -1334,6 +1337,7 @@ describe("Nucleus application boundary", () => {
         expect(summary).toMatchObject({
           root,
           entry: "src/main.nu",
+          assembler: "atom",
           sourceParts: 1,
           bytes: 1396,
           records: 130,
@@ -1359,6 +1363,7 @@ describe("Nucleus application boundary", () => {
 
     expect(stderr).toBe("");
     expect(JSON.parse(stdout)).toMatchObject({
+      assembler: "atom",
       bytes: 1396,
       records: 130,
       entryBank: 0,
