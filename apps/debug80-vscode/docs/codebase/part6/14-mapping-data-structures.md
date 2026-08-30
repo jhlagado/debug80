@@ -27,7 +27,7 @@ interface MappingParseResult {
 }
 ```
 
-`MappingParseResult` is now an internal runtime shape, not evidence that Debug80 still parses `.lst` files. AZM emits the native D8 map, `buildMappingFromD8DebugMap()` converts that D8 map into `segments` and `anchors`, and `src/debug/mapping/source-manager.ts` builds the indexed runtime state from it.
+`MappingParseResult` is now an internal runtime shape, not evidence that Debug80 still parses `.lst` files. Atom and AZM emit native D8 maps, `buildMappingFromD8DebugMap()` converts those maps into `segments` and `anchors`, and `src/debug/mapping/source-manager.ts` builds the indexed runtime state from them.
 
 ---
 

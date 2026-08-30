@@ -31,13 +31,13 @@ Debug80 no longer reconstructs source maps from `.lst` files. The selected assem
 <outputDir>/<artifactBase>.d8.json
 ```
 
-It then parses and validates the file with `parseD8DebugMap()` and `validateD8Segments()`. Invalid, missing or non-native maps do not trigger a listing or cache fallback. Debug80 logs a source-map diagnostic that names the relative target map when possible, tells the user to build the selected target with its configured assembler, and returns an empty mapping.
+`buildMappingFromDebugMap()` then parses and validates the file with `parseD8DebugMap()` and `validateD8Segments()`. Invalid, missing or non-native maps do not trigger a listing or cache fallback. Debug80 logs a source-map diagnostic that names the relative target map when possible, includes the required build action for the selected target and assembler, and returns an empty mapping.
 
 `validateD8Segments()` performs quality checks and logs warnings as `D8 quality warning` messages. Warnings do not abort mapping.
 
 The same loader also accepts explicit auxiliary platform ROM maps through `auxiliaryDebugMaps`. For those auxiliary maps, `resolveAuxiliaryDebugMapFiles()` first asks the mapping service to resolve each project-relative file key through the workspace root, then falls back to the map file's own directory. This matters for generated TEC-1G monitor maps whose `.d8.json` lives under `build/` while the source file key still points at `roms/...` under the project root.
 
-When launch args also carry `debugMapAddressSpaces` and `debugMapAddressTransforms`, `buildMappingFromDebugMap()` tags every imported segment and anchor from the matching auxiliary map with that address-space identity and rebases any artifact-relative addresses into the live CPU window. The current user of this path is TEC-1G multibank expansion ROM support, where several D8 maps can describe bank-local `0x0000-0x3FFF` code while the runtime still sees those banks through the shared `0x8000-0xBFFF` window.
+When launch args also carry `debugMapAddressSpaces` and `debugMapAddressTransforms`, `buildMappingFromDebugMap()` tags every imported segment and anchor from the matching auxiliary map with that address-space identity and rebases any artifact-relative addresses into the live CPU window. The current user of this path is TEC-1G multibank expansion ROM support, where several D8 maps can describe bank-local `0x0000-0x3FFF` code while the CPU accesses those banks through the shared `0x8000-0xBFFF` window.
 
 ---
 
@@ -120,9 +120,11 @@ Breakpoint handling calls source-to-address lookup during `setBreakpoints`. Addr
 
 Stack-frame resolution calls `findSegmentForAddress()` for the program counter. On TEC-1G, the current runtime bank is supplied so the top frame and nearest-symbol label come from the active expansion ROM bank instead of an unrelated bank that happens to share the same address. Debug80 also reads up to eight words from the current `SP` and treats mapped words as best-effort return-address frames. If mapping is missing, the stack display falls back to the raw address or marks stack words as likely data.
 
-Editor features also consume the same source map. F12 / Go to Definition, hover details, workspace symbol search, the Variables panel, Watch expressions and conditional breakpoint expressions all use symbols from the active D8 map. `readSourceMapSymbols()` rebases auxiliary symbol addresses through the same launch metadata used for segments and anchors, so editor features see the visible CPU address for TEC-1G expansion-bank symbols.
+Editor features also consume the same source map. F12 / Go to Definition, hover details, workspace symbol search, the Variables panel, Watch expressions and conditional breakpoint expressions all use symbols from the active D8 map. `readSourceMapSymbols()` rebases auxiliary symbol addresses through the same launch metadata used for segments and anchors, so editor lookups use the visible CPU address for TEC-1G expansion-bank symbols.
 
-`buildD8SymbolIndex()` keeps more than a flat name-to-definition map. It also records each symbol's `sourceUnit`, `visibility`, and AZM declaration `identity`, then synthesizes contextual aliases for owner-local names (`Routine._done` → `_done`) and source-private names (`src/file.asm::Helper` → `Helper`). `lookupD8Definition()` uses the current file and line to choose among those aliases: same-source-unit matches win first, owner-local declarations are filtered through their owning routine, and only truly exported definitions remain as the global fallback. This is what lets Debug80 navigate correctly inside include-heavy AZM projects and Glimmer-generated assembly where several declarations may share a short name.
+`buildD8SymbolIndex()` stores more than a flat name-to-definition map. Each indexed symbol carries its `sourceUnit`, `visibility`, and declaration `identity`. The index also contains contextual aliases for owner-local names (`Routine._done` → `_done`) and source-private names (`src/file.asm::Helper` → `Helper`).
+
+`lookupD8Definition()` resolves those aliases from the current file and line. Same-source-unit matches take precedence. Owner-local declarations are filtered through their owning routine. Only exported definitions remain as the global fallback. Those aliases support definition navigation inside include-heavy Atom, AZM, and generated-assembly projects where several declarations may share a short name.
 
 User-facing messages should say "source map" or "build the target" rather than exposing internal D8 details.
 

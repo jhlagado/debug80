@@ -95,7 +95,7 @@ The snapshot payload structure mirrors the TEC-1 and TEC-1G snapshot formats: a 
 
 ## Building a sidebar UI panel
 
-A sidebar panel is optional. Platforms without one (like `simple`) show only the project header and session status. If your hardware has visible state — a display, LEDs, a keyboard — you will want a panel.
+A sidebar panel is optional. Platforms without one (like `simple`) show only the project header and session status. If your hardware has visible state such as a display, LEDs, or a keyboard, add a panel.
 
 ### Overview
 
@@ -252,7 +252,7 @@ The `acquireVsCodeApi()` bridge, session status controller, and project header r
 
 ## Extending the source mapper
 
-Most platforms can use the existing mapper without modification. Current Debug80 projects use AZM's native D8 JSON output; platform work should normally focus on correct ROM loading, source roots, and bundled source-map assets rather than parser variants.
+Most platforms can use the existing mapper without modification. Current Debug80 projects use native D8 JSON output from the selected assembler; platform work should normally focus on correct ROM loading, source roots, and bundled source-map assets rather than parser variants.
 
 ### Providing a custom D8 map
 

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Source-map data structures used by Debug80 and AZM D8 maps.
+ * @fileoverview Source-map data structures used by Debug80 and D8 maps.
  */
 
 /**
@@ -33,7 +33,7 @@ export type SourceAddressTransform = {
 };
 
 /**
- * Optional assembler context carried by AZM D8 segments.
+ * Optional assembler context carried by D8 segments.
  */
 export interface SegmentSourceText {
   /** Assembler-provided source context line number */
@@ -77,7 +77,7 @@ export interface SourceMapAnchor {
 }
 
 /**
- * Debug80 source-map representation after loading an AZM D8 map.
+ * Debug80 source-map representation after loading a D8 map.
  */
 export interface MappingParseResult {
   /** Memory segments with source mappings */
