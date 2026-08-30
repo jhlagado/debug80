@@ -6,6 +6,12 @@
  * in four bytes without excluding arrays of records or bounded strings.
  */
 
+import {
+  Z80_WORD_MAX,
+  isOneByteUnsigned,
+  isUnsignedIntegerUpTo,
+} from "@jhlagado/z80-tool-services";
+
 export const TYPE_DESCRIPTOR_SIZE = 4;
 
 export const TypeTag = {
@@ -121,14 +127,14 @@ function capacity(value: number): number {
 }
 
 function byte(value: number, label: string): number {
-  if (!Number.isInteger(value) || value < 0 || value > 0xff) {
+  if (!isOneByteUnsigned(value)) {
     throw new Error(`${label} must lie in 0..255`);
   }
   return value;
 }
 
 function positiveWord(value: number, label: string): number {
-  if (!Number.isInteger(value) || value < 1 || value > 0xffff) {
+  if (!isUnsignedIntegerUpTo(value, Z80_WORD_MAX) || value < 1) {
     throw new Error(`${label} must lie in 1..65,535`);
   }
   return value;
