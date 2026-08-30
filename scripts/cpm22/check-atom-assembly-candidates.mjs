@@ -3,7 +3,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { compile } from "@jhlagado/azm/compile";
@@ -45,12 +45,13 @@ const projectOwnedCandidates = Object.freeze([
   { name: "bootstrap.asm", projection: "small-symbols" },
   { name: "bios.asm", projection: "small-symbols" },
   { name: "smoke.asm", projection: "small-symbols" },
-  "editor.asm",
+  {
+    name: "editor.asm",
+    projection: "inline-includes-and-short-symbols",
+  },
 ]);
 
-const expectedBlockers = Object.freeze({
-  "editor.asm": "unsupported-directive",
-});
+const expectedBlockers = Object.freeze({});
 
 const smallSourceSymbolMaps = Object.freeze({
   "bootstrap.asm": Object.freeze({
@@ -372,9 +373,40 @@ function rewriteCodeOutsideText(line, rewrite) {
   return `${output}${rewrite(segment)}`;
 }
 
-function projectOwnedAtomProjection(name, source) {
+async function expandProjectOwnedTextualIncludes(name, source, includeStack = []) {
+  const lines = [];
+  for (const line of source.split(/\r\n|\n|\r/)) {
+    const include = /^\s*\.include\s+"([^"]+)"\s*(?:;.*)?$/i.exec(line);
+    if (include === null) {
+      lines.push(line);
+      continue;
+    }
+    const includeName = normalize(include[1]).replaceAll("\\", "/");
+    if (isAbsolute(includeName) || includeName.startsWith("../")) {
+      fail(`${name}: invalid textual include ${include[1]}`);
+    }
+    if (includeStack.includes(includeName)) {
+      fail(`${name}: textual include cycle ${[...includeStack, includeName].join(" -> ")}`);
+    }
+    const includeSource = await readFile(join(outputDirectory, includeName), "utf8");
+    lines.push(
+      await expandProjectOwnedTextualIncludes(
+        includeName,
+        includeSource,
+        [...includeStack, includeName],
+      ),
+    );
+  }
+  return lines.join("\n");
+}
+
+async function projectOwnedAtomProjection(name, source, projection) {
+  let projected = source;
+  if (projection === "inline-includes-and-short-symbols") {
+    projected = await expandProjectOwnedTextualIncludes(name, projected, [name]);
+  }
   const symbolMap = smallSourceSymbolMaps[name] ?? {};
-  return source
+  projected = projected
     .split(/\r\n|\n|\r/)
     .map((line) =>
       rewriteCodeOutsideText(line, (code) => {
@@ -389,6 +421,10 @@ function projectOwnedAtomProjection(name, source) {
       }),
     )
     .join("\n");
+  if (projection === "inline-includes-and-short-symbols") {
+    projected = projectShortSymbols(name, projected);
+  }
+  return projected;
 }
 
 function bintoEnd(source) {
@@ -476,8 +512,8 @@ async function classifyProjectOwnedCandidate(candidate) {
   const name = typeof candidate === "string" ? candidate : candidate.name;
   const source = await readFile(join(outputDirectory, name), "utf8");
   const projected =
-    typeof candidate === "object" && candidate.projection === "small-symbols"
-      ? projectOwnedAtomProjection(name, source)
+    typeof candidate === "object"
+      ? await projectOwnedAtomProjection(name, source, candidate.projection)
       : source;
   try {
     const atomSource = translateAzmSourceToAtom(projected, { sourceName: name });
