@@ -31,6 +31,26 @@ source-composition interface.
 The migration keeps one working production path at every checkpoint. A
 replacement is proved before the path it replaces is deleted.
 
+## Expression and patch invariant
+
+Atom remains a single-pass assembler. A later integration step must not require
+Atom to retain expression trees, perform a second symbol pass, or patch from a
+serialized relocation expression. The resident assembler may keep only the
+compact pending form it can resolve while streaming: one unresolved symbol, one
+constant addend, and a fixed patch kind.
+
+This policy applies to Nucleus and Debug80 integration as well as ordinary Atom
+assembly. Host source preparation may select files, evaluate host conditions,
+and mask inactive text before assembly starts. It must not depend on
+assembler-level forward `EQU`, unresolved `ORG`, late textual inclusion, or
+multi-symbol expression fixups. Code that needs a value before assembly should
+put that value in an earlier included constants file or pass it through the
+host profile before the Z80 core starts.
+
+Broader expression support requires a separate design decision because it
+changes the pending-record ABI, memory account, and native-host proof surface.
+It is not an incidental compatibility cleanup.
+
 ## Frozen baseline
 
 Repositories at the start of the migration:
