@@ -2730,6 +2730,7 @@ describe("Nucleus Atom migration dry-run", () => {
         assembler: {
           flavour: "atom",
           source: "preview",
+          diagnosticOnly: true,
           asmRoot,
           proofRoot,
           entry: "vertical-slice/compiler-slice-proof.asm",
@@ -2750,6 +2751,20 @@ describe("Nucleus Atom migration dry-run", () => {
       { name: "compiler-workspace", bytes: 55 },
       { name: "proof-code-and-data", bytes: 191 },
     ]);
+  });
+
+  it("requires Atom-preview proof execution to be explicitly diagnostic-only", async () => {
+    await expect(
+      runProofManifest(path.join(proofRoot, "compiler-slice-proof.json"), {
+        assembler: {
+          flavour: "atom",
+          source: "preview",
+          asmRoot,
+          proofRoot,
+          entry: "vertical-slice/compiler-slice-proof.asm",
+        },
+      }),
+    ).rejects.toThrow(/diagnostic-only/);
   });
 
   it("flattens AZM textual includes for one Atom-preview entry", async () => {

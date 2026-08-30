@@ -22,34 +22,34 @@ The migration target is:
 
 Measured files:
 
-| Item | Measured value |
-| --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 291 |
-| Source lines | 30,400 |
-| Defined assembler symbols detected | 4,164 |
-| Defined assembler symbols longer than eight characters | 3,916 |
-| Long labels classed as dot-local candidates | 792 |
-| Long symbols still needing global treatment | 3,124 |
-| Preprocessor-only feature symbols | 8 |
-| Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 0 |
-| Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 0 |
-| Permanent Atom source readiness | Ready |
-| Compatibility-lowered Atom readiness | Ready |
-| Compatibility-blocking issues | 0 |
-| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 0 |
-| Permanent blocker: feature definition after Atom entry header | 0 |
-| Proof-manifest symbol mappings | 146 |
-| One-past-address-space proof-limit mappings | 4 |
-| Routine contract metadata mappings | 714 |
-| Proof manifests classified | 29 |
-| Atom permanent-ready proof manifests | 26 |
-| Atom-preview-only proof manifests | 0 |
-| Proof manifests blocked by overlapping proof memory | 0 |
-| Proof manifests blocked by late emitted-content includes | 0 |
-| Measurement-artifact proof manifests | 3 |
+| Item                                                                     | Measured value |
+| ------------------------------------------------------------------------ | -------------: |
+| Assembly files, `.asm` and `.asmi`                                       |            291 |
+| Source lines                                                             |         30,400 |
+| Defined assembler symbols detected                                       |          4,164 |
+| Defined assembler symbols longer than eight characters                   |          3,916 |
+| Long labels classed as dot-local candidates                              |            792 |
+| Long symbols still needing global treatment                              |          3,124 |
+| Preprocessor-only feature symbols                                        |              8 |
+| Proof-limit symbols using `$10000`                                       |              4 |
+| Include-after-header violations                                          |              0 |
+| Forward-dependent emitted-statement symbol arithmetic sites              |              0 |
+| Current permanent-source blockers                                        |              0 |
+| Permanent Atom source readiness                                          |          Ready |
+| Compatibility-lowered Atom readiness                                     |          Ready |
+| Compatibility-blocking issues                                            |              0 |
+| Permanent blocker: forward-dependent emitted-statement symbol arithmetic |              0 |
+| Permanent blocker: include after header                                  |              0 |
+| Permanent blocker: feature definition after Atom entry header            |              0 |
+| Proof-manifest symbol mappings                                           |            146 |
+| One-past-address-space proof-limit mappings                              |              4 |
+| Routine contract metadata mappings                                       |            714 |
+| Proof manifests classified                                               |             29 |
+| Atom permanent-ready proof manifests                                     |             26 |
+| Atom-preview-only proof manifests                                        |              0 |
+| Proof manifests blocked by overlapping proof memory                      |              0 |
+| Proof manifests blocked by late emitted-content includes                 |              0 |
+| Measurement-artifact proof manifests                                     |              3 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 Dot-local candidates are restricted to labels whose references stay within the
@@ -273,11 +273,15 @@ permanent source requires strict leading includes and permanent symbol names.
 It is not inferred from a `.asm` filename.
 
 The production helper `nucleusPermanentAtomProofOptions(manifestPath)` is the
-shared boundary for callers that want to run a proof manifest through the
-checked-in permanent Atom tree. It derives the Atom entry from the manifest's
-current `asm/` source path, attaches the `;@NUC-GLOBAL` migration metadata, and
-uses the same output-order compatibility sink as publication. New host tools
-should call that helper rather than constructing Atom proof options by hand.
+shared boundary for proof-manifest execution through the checked-in permanent
+Atom tree. It derives the Atom entry from the manifest's current `asm/` source
+path, attaches the `;@NUC-GLOBAL` migration metadata, and uses the same
+output-order compatibility sink as publication. New host tools should call that
+helper rather than constructing Atom proof options by hand.
+Generated preview execution is now an explicit diagnostic bridge. A
+`runProofManifest()` caller that selects `source: "preview"` must also set
+`diagnosticOnly: true`; otherwise the proof harness rejects the request before
+source lowering starts.
 
 For integration work, prefer one consolidated bundle instead of several loose
 files:
@@ -374,24 +378,22 @@ spans that were formerly written inline. They are AZM-compatible `EQU` aliases,
 produce no bytes, and keep the permanent Atom transform from relying on hidden
 rewrites for those repeated expressions.
 
-The proof harness also has an explicit `atom-preview` assembler mode. That mode
-uses the compatibility-lowered source produced by the migration tools, assembles
-it with Atom, maps generated Atom symbols back to proof-manifest names, and then
-runs the normal Debug80 proof observations and extent checks. This proves that
-Atom can execute an existing proof image before the underlying source has become
-permanent Atom source. It is deliberately separate from `atom-permanent`, which
-only accepts a real translated Atom source tree and does not flatten late textual
-includes.
+The proof harness also has an explicit diagnostic-only `atom-preview` assembler
+mode. That mode uses the compatibility-lowered source produced by the migration
+tools, assembles it with Atom, maps generated Atom symbols back to proof-manifest
+names, and then runs the normal Debug80 proof observations and extent checks. It
+is deliberately separate from `atom-permanent`, which only accepts a real
+translated Atom source tree and does not flatten late textual includes.
 
 ## Include-after-header conversion status
 
 The late emitted-content include batch is now clear. Current measured grouping:
 
-| Batch | Files | Late includes | Risk | Recommendation |
-| --- | ---: | ---: | --- | --- |
-| Proof composition files | 0 | 0 | Cleared | The proof-composition batch now uses section-owned layouts for the converted permanent entries, including `stage7-ll1-engine-proof.asm`. |
-| Module composition files | 0 | 0 | Cleared | Parser and backend extension modules now use explicit physical module-boundary layouts. |
-| Runtime wrapper files | 0 | 0 | Cleared | The target runtime link entry now uses a physical section-owner layout in source. |
+| Batch                    | Files | Late includes | Risk    | Recommendation                                                                                                                           |
+| ------------------------ | ----: | ------------: | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Proof composition files  |     0 |             0 | Cleared | The proof-composition batch now uses section-owned layouts for the converted permanent entries, including `stage7-ll1-engine-proof.asm`. |
+| Module composition files |     0 |             0 | Cleared | Parser and backend extension modules now use explicit physical module-boundary layouts.                                                  |
+| Runtime wrapper files    |     0 |             0 | Cleared | The target runtime link entry now uses a physical section-owner layout in source.                                                        |
 
 `loop-compiler-slice-proof.asm` now uses the physical section-owner layout. Its
 source fragment owns the loop compiler source fixtures. Its proof-body fragment
@@ -596,19 +598,19 @@ preview lowering can still prove their bytes from the comparison symbol table.
 
 ## Directive census
 
-| AZM directive | Measured count | Atom migration treatment |
-| --- | ---: | --- |
-| `.DB` | 2,797 | Mechanical: `DB` |
-| `.DS` | 10 | Mechanical: `DS` |
-| `.DW` | 358 | Mechanical: `DW` |
-| `.EQU` | 1,246 | Mechanical: `EQU` |
-| `.ORG` | 79 | Mechanical: `ORG` |
-| `.END` | 13 | Preview translation omits terminal instances as `;@AZM-END`; every current instance has no source after it |
-| `.INCLUDE` | 215 | Mechanical to Atom host include syntax; keep included files as source parts where possible |
-| `.IF` | 233 | Mechanical to host conditional assembly syntax |
-| `.ELSE` | 138 | Mechanical to host conditional assembly syntax |
-| `.ENDIF` | 233 | Mechanical to host conditional assembly syntax |
-| `.ROUTINE` | 714 | Contract-only; translate to comment-form contract metadata for the proof runner |
+| AZM directive | Measured count | Atom migration treatment                                                                                   |
+| ------------- | -------------: | ---------------------------------------------------------------------------------------------------------- |
+| `.DB`         |          2,797 | Mechanical: `DB`                                                                                           |
+| `.DS`         |             10 | Mechanical: `DS`                                                                                           |
+| `.DW`         |            358 | Mechanical: `DW`                                                                                           |
+| `.EQU`        |          1,246 | Mechanical: `EQU`                                                                                          |
+| `.ORG`        |             79 | Mechanical: `ORG`                                                                                          |
+| `.END`        |             13 | Preview translation omits terminal instances as `;@AZM-END`; every current instance has no source after it |
+| `.INCLUDE`    |            215 | Mechanical to Atom host include syntax; keep included files as source parts where possible                 |
+| `.IF`         |            233 | Mechanical to host conditional assembly syntax                                                             |
+| `.ELSE`       |            138 | Mechanical to host conditional assembly syntax                                                             |
+| `.ENDIF`      |            233 | Mechanical to host conditional assembly syntax                                                             |
+| `.ROUTINE`    |            714 | Contract-only; translate to comment-form contract metadata for the proof runner                            |
 
 The ordinary data and origin directives are low risk. The migration blockers are contract metadata, symbol length, and include placement.
 
@@ -616,16 +618,16 @@ The ordinary data and origin directives are low risk. The migration blockers are
 
 All detected `.IF` expressions are simple feature flags:
 
-| Expression | Measured count |
-| --- | ---: |
-| `TargetStreamingOutput` | 100 |
-| `AggregateCallSlices` | 68 |
-| `HybridLL1Full` | 22 |
-| `LegacyCompilerSlices` | 18 |
-| `LegacyEncoders` | 10 |
-| `SegmentedOutput` | 7 |
-| `Stage7LL1` | 5 |
-| `RuntimeProofServices` | 3 |
+| Expression              | Measured count |
+| ----------------------- | -------------: |
+| `TargetStreamingOutput` |            100 |
+| `AggregateCallSlices`   |             68 |
+| `HybridLL1Full`         |             22 |
+| `LegacyCompilerSlices`  |             18 |
+| `LegacyEncoders`        |             10 |
+| `SegmentedOutput`       |              7 |
+| `Stage7LL1`             |              5 |
+| `RuntimeProofServices`  |              3 |
 
 This is a good fit for Atom's host-level conditional assembly. The converter does not need a general expression evaluator for this source set. It needs exact handling for defined feature flags, `.ELSE`, and `.ENDIF`.
 
@@ -636,13 +638,13 @@ generated preview.
 
 ## Literal and expression forms
 
-| Form | Measured count | Atom migration treatment |
-| --- | ---: | --- |
-| `$FFFF`-style hexadecimal | 909 | Supported by Atom; direct |
-| `$10000` hexadecimal limit constants | 4 | Blocked until represented without exceeding Atom's 16-bit expression range |
-| `%01010101`-style binary | 3 | Supported by Atom with line-start directive disambiguation |
-| Intel `1010B`-style binary-looking suffix tokens | 20 | Audit before translation; some may be identifiers or generated-source text |
-| Character literals | 102 | Supported by Atom if the literal form matches Atom's accepted character syntax |
+| Form                                             | Measured count | Atom migration treatment                                                       |
+| ------------------------------------------------ | -------------: | ------------------------------------------------------------------------------ |
+| `$FFFF`-style hexadecimal                        |            909 | Supported by Atom; direct                                                      |
+| `$10000` hexadecimal limit constants             |              4 | Blocked until represented without exceeding Atom's 16-bit expression range     |
+| `%01010101`-style binary                         |              3 | Supported by Atom with line-start directive disambiguation                     |
+| Intel `1010B`-style binary-looking suffix tokens |             20 | Audit before translation; some may be identifiers or generated-source text     |
+| Character literals                               |            102 | Supported by Atom if the literal form matches Atom's accepted character syntax |
 
 The `%` binary form is not a problem if Atom treats `%` as a directive marker only at directive position. Inside expressions it remains a numeric literal prefix.
 
@@ -750,19 +752,19 @@ Atom's eight-character symbol limit is the dominant migration risk.
 
 Longest examples:
 
-| Symbol | Length |
-| --- | ---: |
-| `ParserParseScalarProgramDeclarationAfterPrepare` | 47 |
-| `ParserParseScalarProgramDeclarationAfterU8` | 42 |
-| `Stage7AggregateConstantIncompleteSourceEnd` | 42 |
-| `Stage7AggregateConstantScalarTypeSourceEnd` | 42 |
-| `AggregateElementCapacityAcceptedSourceEnd` | 41 |
-| `AggregateElementCapacityRejectedSourceEnd` | 41 |
-| `Stage7AggregateConstantWrongTypeSourceEnd` | 41 |
-| `NucleusRuntimeCheckAggregateRegionOffset` | 40 |
-| `Stage7ParameterRoutineCollisionSourceEnd` | 40 |
-| `Stage8AggregateArgumentFailableSourceEnd` | 40 |
-| `TargetSinkSourceProvenanceSinglePartCode` | 40 |
+| Symbol                                            | Length |
+| ------------------------------------------------- | -----: |
+| `ParserParseScalarProgramDeclarationAfterPrepare` |     47 |
+| `ParserParseScalarProgramDeclarationAfterU8`      |     42 |
+| `Stage7AggregateConstantIncompleteSourceEnd`      |     42 |
+| `Stage7AggregateConstantScalarTypeSourceEnd`      |     42 |
+| `AggregateElementCapacityAcceptedSourceEnd`       |     41 |
+| `AggregateElementCapacityRejectedSourceEnd`       |     41 |
+| `Stage7AggregateConstantWrongTypeSourceEnd`       |     41 |
+| `NucleusRuntimeCheckAggregateRegionOffset`        |     40 |
+| `Stage7ParameterRoutineCollisionSourceEnd`        |     40 |
+| `Stage8AggregateArgumentFailableSourceEnd`        |     40 |
+| `TargetSinkSourceProvenanceSinglePartCode`        |     40 |
 
 The migration needs a generated naming ledger before any permanent source
 rewrite. The current dry-run ledger now has two separate Atom names for long
@@ -788,12 +790,12 @@ abbreviations. Manual curation is still useful for public names, proof-facing
 names, and heavily read module entry points, but it is no longer a migration
 blocker by itself.
 
-| Kind | Measured count | Required treatment |
-| --- | ---: | --- |
-| Proof-public symbols | 142 | Generated abbreviation now; curate where proof manifests or public diagnostics should remain readable |
-| Cross-file labels | 1,039 | Generated global abbreviation, because callers may be outside the local scope |
-| `EQU` constants | 169 | Generated global abbreviation; constants do not change Atom private-label scope |
-| Other generated/proof globals | 1,419 | Generated global abbreviation unless promoted to a clearer human name |
+| Kind                          | Measured count | Required treatment                                                                                    |
+| ----------------------------- | -------------: | ----------------------------------------------------------------------------------------------------- |
+| Proof-public symbols          |            142 | Generated abbreviation now; curate where proof manifests or public diagnostics should remain readable |
+| Cross-file labels             |          1,039 | Generated global abbreviation, because callers may be outside the local scope                         |
+| `EQU` constants               |            169 | Generated global abbreviation; constants do not change Atom private-label scope                       |
+| Other generated/proof globals |          1,419 | Generated global abbreviation unless promoted to a clearer human name                                 |
 
 Translated preview source now documents renamed global declarations with
 structured comments:
@@ -821,17 +823,17 @@ names.
 
 Recommended ledger fields:
 
-| Field | Meaning |
-| --- | --- |
-| Original symbol | Full AZM symbol |
-| Atom symbol | Generated eight-character preview symbol |
-| Permanent Atom symbol | Proposed permanent-source symbol, including dot-local names where safe |
-| Migration kind | Local label, proof-public abbreviation, cross-file abbreviation, `EQU` abbreviation, or generated global |
-| Scope class | Global, private/local, proof-only, generated fixture, or exported proof symbol |
-| Owning file | Logical source identity |
-| Public obligation | Whether tests, proof JSON, D8 maps, or external scripts refer to the name |
-| Local scope | Surrounding global label when the permanent source can use a dot-local label |
-| Collision group | Other original names that would collide under the selected shortening rule |
+| Field                 | Meaning                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| Original symbol       | Full AZM symbol                                                                                          |
+| Atom symbol           | Generated eight-character preview symbol                                                                 |
+| Permanent Atom symbol | Proposed permanent-source symbol, including dot-local names where safe                                   |
+| Migration kind        | Local label, proof-public abbreviation, cross-file abbreviation, `EQU` abbreviation, or generated global |
+| Scope class           | Global, private/local, proof-only, generated fixture, or exported proof symbol                           |
+| Owning file           | Logical source identity                                                                                  |
+| Public obligation     | Whether tests, proof JSON, D8 maps, or external scripts refer to the name                                |
+| Local scope           | Surrounding global label when the permanent source can use a dot-local label                             |
+| Collision group       | Other original names that would collide under the selected shortening rule                               |
 
 Recommended shortening policy:
 
@@ -864,19 +866,19 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 
 ## Migration classification
 
-| Area | Classification | Reason |
-| --- | --- | --- |
-| Ordinary Z80 instructions | Direct or near-direct | Atom already targets byte-identical Z80 encoding |
-| `.DB`, `.DS`, `.DW`, `.ORG` | Mechanical | Atom has equivalent directive forms |
-| `.END` | Terminal metadata | Current instances can be omitted in preview source after recording `;@AZM-END` |
-| `.INCLUDE` | Header-only for permanent source; compatibility-lowered for current proofs | Current emitted-content include-after-header cases are preserved by the lowering bridge |
-| `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
-| `.ROUTINE` | Mapped as proof metadata | Atom source uses `;@ROUTINE`; the generated contract map ties each contract to the target routine label |
-| Long labels | Classified | 787 can become dot-local labels; the rest have generated permanent global abbreviations |
-| Proof JSON symbol references | Mapped | The dry-run emits a proof-symbol map from existing proof names to preview and permanent Atom names |
-| `$10000` limit constants | Mapped as proof metadata | Atom source lowers these to `EQU 0` plus `;@ATOM-PROOF-LIMIT`, and the proof-limit map carries `65536` |
-| Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |
-| Resolved preview aliases and differences | Preview-only bridge | The proof comparer lowers `EQU` aliases and `SYMBOL-SYMBOL` terms only when the current assembler's resolved symbols prove the value |
+| Area                                     | Classification                                                             | Reason                                                                                                                               |
+| ---------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Ordinary Z80 instructions                | Direct or near-direct                                                      | Atom already targets byte-identical Z80 encoding                                                                                     |
+| `.DB`, `.DS`, `.DW`, `.ORG`              | Mechanical                                                                 | Atom has equivalent directive forms                                                                                                  |
+| `.END`                                   | Terminal metadata                                                          | Current instances can be omitted in preview source after recording `;@AZM-END`                                                       |
+| `.INCLUDE`                               | Header-only for permanent source; compatibility-lowered for current proofs | Current emitted-content include-after-header cases are preserved by the lowering bridge                                              |
+| `.IF`, `.ELSE`, `.ENDIF`                 | Mechanical for current source set                                          | Current expressions are simple flags                                                                                                 |
+| `.ROUTINE`                               | Mapped as proof metadata                                                   | Atom source uses `;@ROUTINE`; the generated contract map ties each contract to the target routine label                              |
+| Long labels                              | Classified                                                                 | 787 can become dot-local labels; the rest have generated permanent global abbreviations                                              |
+| Proof JSON symbol references             | Mapped                                                                     | The dry-run emits a proof-symbol map from existing proof names to preview and permanent Atom names                                   |
+| `$10000` limit constants                 | Mapped as proof metadata                                                   | Atom source lowers these to `EQU 0` plus `;@ATOM-PROOF-LIMIT`, and the proof-limit map carries `65536`                               |
+| Leading grouped immediates               | Mechanical                                                                 | Current `LD rr,(A<<8)                                                                                                                | B`forms translate safely to`LD rr,A<<8 | B` for Atom |
+| Resolved preview aliases and differences | Preview-only bridge                                                        | The proof comparer lowers `EQU` aliases and `SYMBOL-SYMBOL` terms only when the current assembler's resolved symbols prove the value |
 
 ## Required next implementation checks
 
@@ -898,9 +900,9 @@ The generated preview tree can assemble `vertical-slice/dispatcher-offset-direct
 
 The first real proof-image pilot now succeeds through the flattened preview path:
 
-| Entry | Atom bytes | Current assembler bytes | Result |
-| --- | ---: | ---: | --- |
-| `vertical-slice/compiler-slice-proof.asm` | 37,055 | 37,055 | Byte-identical |
+| Entry                                     | Atom bytes | Current assembler bytes | Result         |
+| ----------------------------------------- | ---------: | ----------------------: | -------------- |
+| `vertical-slice/compiler-slice-proof.asm` |     37,055 |                  37,055 | Byte-identical |
 
 This is a measured proof-image compatibility result, not a full migration. It
 shows that the current line translator, symbol ledger substitutions,
@@ -912,8 +914,8 @@ metadata translation, or proof-manifest symbol remapping.
 The first permanent-source pilot also succeeds without flattened include
 lowering:
 
-| Entry | Include shape | Symbol mode | Result |
-| --- | --- | --- | --- |
+| Entry                                 | Include shape                  | Symbol mode          | Result         |
+| ------------------------------------- | ------------------------------ | -------------------- | -------------- |
 | `vertical-slice/memory-map-proof.asm` | Header `%INCLUDE` source parts | Permanent Atom names | Byte-identical |
 
 That pilot exercises the intended permanent-source path: generated Atom source
@@ -932,12 +934,12 @@ source, so no generated part exceeded Atom's 16-bit source-offset range. The
 current permanent-ready proof gate now runs the checked-in Atom source tree for
 every non-measurement proof image:
 
-| Status | Count |
-| --- | ---: |
-| Byte-identical proof images | 26 |
-| Skipped known budget blockers | 0 |
-| Skipped measurement artifacts | 3 |
-| Atom errors | 0 |
+| Status                        | Count |
+| ----------------------------- | ----: |
+| Byte-identical proof images   |    26 |
+| Skipped known budget blockers |     0 |
+| Skipped measurement artifacts |     3 |
+| Atom errors                   |     0 |
 
 Byte-identical proof images:
 
@@ -993,11 +995,11 @@ expression rather than as an unsafe pairwise symbol rewrite.
 The Nucleus preview comparer uses a Node-only native Atom memory layout with a
 larger symbol arena:
 
-| Arena | Range |
-| --- | --- |
-| Symbol records | `$4100..$BFFF` |
-| Pending records | `$C000..$DFFF` |
-| Source-part descriptors | `$E000..` |
+| Arena                   | Range          |
+| ----------------------- | -------------- |
+| Symbol records          | `$4100..$BFFF` |
+| Pending records         | `$C000..$DFFF` |
+| Source-part descriptors | `$E000..`      |
 
 This is not a native CP/M or TEC memory claim. It is a desktop migration-runner
 configuration that lets the current Atom core process Nucleus-sized proof images
@@ -1012,18 +1014,18 @@ streaming output.
 
 Focused follow-up measurement after that change:
 
-| Entry | Result | Native Atom instructions | Native Atom cycles |
-| --- | --- | ---: | ---: |
-| `aggregate-z80-slice-proof.json` | Byte-identical | 214,828,050 | 2,067,715,176 |
-| `expression-z80-slice-proof.json` | Byte-identical | 242,417,549 | 2,334,786,804 |
-| `stage7-ll1-engine-proof.json` | Byte-identical | 37,695,198 | 361,752,509 |
-| `stage7-ll1-aggregate-call-z80-slice-proof.json` | Byte-identical | 493,133,150 | 4,735,667,554 |
-| `stage7-ll1-parser-coverage-proof.json` | Byte-identical | 358,854,958 | 3,449,529,065 |
-| `stage8-failure-z80-slice-proof.json` | Byte-identical | 535,185,080 | 5,142,343,705 |
-| `stage9-conformance-z80-slice-proof.json` | Byte-identical | 437,446,853 | 4,200,990,412 |
-| `flat-target-z80-slice-proof.json` | Byte-identical | 553,400,734 | 5,303,254,267 |
-| `structured-control-z80-slice-proof.json` | Byte-identical | 236,696,029 | 2,278,272,577 |
-| `typed-expression-z80-slice-proof.json` | Byte-identical | 257,233,479 | 2,476,572,861 |
+| Entry                                            | Result         | Native Atom instructions | Native Atom cycles |
+| ------------------------------------------------ | -------------- | -----------------------: | -----------------: |
+| `aggregate-z80-slice-proof.json`                 | Byte-identical |              214,828,050 |      2,067,715,176 |
+| `expression-z80-slice-proof.json`                | Byte-identical |              242,417,549 |      2,334,786,804 |
+| `stage7-ll1-engine-proof.json`                   | Byte-identical |               37,695,198 |        361,752,509 |
+| `stage7-ll1-aggregate-call-z80-slice-proof.json` | Byte-identical |              493,133,150 |      4,735,667,554 |
+| `stage7-ll1-parser-coverage-proof.json`          | Byte-identical |              358,854,958 |      3,449,529,065 |
+| `stage8-failure-z80-slice-proof.json`            | Byte-identical |              535,185,080 |      5,142,343,705 |
+| `stage9-conformance-z80-slice-proof.json`        | Byte-identical |              437,446,853 |      4,200,990,412 |
+| `flat-target-z80-slice-proof.json`               | Byte-identical |              553,400,734 |      5,303,254,267 |
+| `structured-control-z80-slice-proof.json`        | Byte-identical |              236,696,029 |      2,278,272,577 |
+| `typed-expression-z80-slice-proof.json`          | Byte-identical |              257,233,479 |      2,476,572,861 |
 
 The seven other proof manifests that use
 `vertical-slice/flat-target-z80-slice-proof.asm` now share the same measured

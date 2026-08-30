@@ -75,6 +75,7 @@ type ProofAssembler =
       readonly maxInstructions?: number;
       readonly maxCycles?: number;
       readonly legacyOutputOrder?: boolean;
+      readonly diagnosticOnly?: true;
     };
 
 type NormalizedProofAssembler =
@@ -115,6 +116,11 @@ function normalizeProofAssembler(
   if (assembler.source !== "permanent" && assembler.source !== "preview") {
     throw new TypeError(
       "Atom proof assembler source must be permanent or preview",
+    );
+  }
+  if (assembler.source === "preview" && assembler.diagnosticOnly !== true) {
+    throw new TypeError(
+      "Atom preview proof assembly is diagnostic-only; set diagnosticOnly: true",
     );
   }
   return assembler;

@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import { globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  globSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,7 +14,10 @@ import { fileURLToPath } from "node:url";
 import { nucleusPermanentAtomProofOptions } from "../dist/src/atom-proof-options.js";
 import { runProofManifest } from "../dist/src/proof.js";
 
-import { scanAssembly, writeTranslatedTree } from "./atom-migration-dry-run.mjs";
+import {
+  scanAssembly,
+  writeTranslatedTree,
+} from "./atom-migration-dry-run.mjs";
 import {
   entryBudget,
   readBudgetFile,
@@ -18,7 +28,10 @@ const packageRoot = path.resolve(scriptDirectory, "..");
 const defaultAsmRoot = path.join(packageRoot, "asm");
 const defaultProofRoot = path.join(packageRoot, "proofs");
 const defaultPermanentRoot = path.join(packageRoot, "atom-asm");
-const defaultBudgetFile = path.join(defaultProofRoot, "atom-migration-preview-budgets.json");
+const defaultBudgetFile = path.join(
+  defaultProofRoot,
+  "atom-migration-preview-budgets.json",
+);
 const defaultMaxInstructions = 200_000_000;
 const defaultMaxCycles = 2_000_000_000;
 const permanentModes = new Set(["permanent", "permanent-ready"]);
@@ -52,22 +65,35 @@ function parseArgs(argv) {
       options.proofRoot = path.resolve(argv[++index] ?? "");
     } else if (arg === "--entry") {
       options.entry = argv[++index];
-      if (options.entry === undefined) throw new Error("--entry requires a proof manifest name or source entry");
+      if (options.entry === undefined)
+        throw new Error(
+          "--entry requires a proof manifest name or source entry",
+        );
     } else if (arg === "--max-part-bytes") {
       const value = Number.parseInt(argv[++index] ?? "", 10);
       if (!Number.isInteger(value) || value < 1 || value > 0xffff) {
-        throw new Error("--max-part-bytes requires an integer from 1 through 65535");
+        throw new Error(
+          "--max-part-bytes requires an integer from 1 through 65535",
+        );
       }
       options.maxPartBytes = value;
     } else if (arg === "--max-instructions") {
       const value = Number.parseInt(argv[++index] ?? "", 10);
-      if (!Number.isInteger(value) || value < 1 || value > Number.MAX_SAFE_INTEGER) {
+      if (
+        !Number.isInteger(value) ||
+        value < 1 ||
+        value > Number.MAX_SAFE_INTEGER
+      ) {
         throw new Error("--max-instructions requires a positive integer");
       }
       options.maxInstructions = value;
     } else if (arg === "--max-cycles") {
       const value = Number.parseInt(argv[++index] ?? "", 10);
-      if (!Number.isInteger(value) || value < 1 || value > Number.MAX_SAFE_INTEGER) {
+      if (
+        !Number.isInteger(value) ||
+        value < 1 ||
+        value > Number.MAX_SAFE_INTEGER
+      ) {
         throw new Error("--max-cycles requires a positive integer");
       }
       options.maxCycles = value;
@@ -143,27 +169,33 @@ function proofManifests(proofRoot) {
       const file = path.join(proofRoot, name);
       const manifest = JSON.parse(readFileSync(file, "utf8"));
       if (typeof manifest.source !== "string") return [];
-      return [Object.freeze({
-        name,
-        file,
-        manifest,
-      })];
+      return [
+        Object.freeze({
+          name,
+          file,
+          manifest,
+        }),
+      ];
     });
 }
 
 function entryForManifest(asmRoot, proof) {
-  return path.relative(
-    asmRoot,
-    path.resolve(path.dirname(proof.file), proof.manifest.source),
-  ).split(path.sep).join("/");
+  return path
+    .relative(
+      asmRoot,
+      path.resolve(path.dirname(proof.file), proof.manifest.source),
+    )
+    .split(path.sep)
+    .join("/");
 }
 
 function selectedProofs(proofs, asmRoot, entry) {
   if (entry === undefined) return proofs;
-  return proofs.filter((proof) =>
-    proof.name === entry ||
-    proof.name.replace(/\.json$/i, "") === entry ||
-    entryForManifest(asmRoot, proof) === entry
+  return proofs.filter(
+    (proof) =>
+      proof.name === entry ||
+      proof.name.replace(/\.json$/i, "") === entry ||
+      entryForManifest(asmRoot, proof) === entry,
   );
 }
 
@@ -173,7 +205,8 @@ function isMeasurement(proof, entry) {
 
 function summarize(results) {
   const counts = {};
-  for (const result of results) counts[result.status] = (counts[result.status] ?? 0) + 1;
+  for (const result of results)
+    counts[result.status] = (counts[result.status] ?? 0) + 1;
   return Object.freeze(counts);
 }
 
@@ -186,10 +219,13 @@ function printText(report) {
   }
   console.log("");
   for (const result of report.results) {
-    const detail = result.status === "passed"
-      ? `${result.instructions} instructions, ${result.cycles} cycles`
-      : result.reason ?? result.message;
-    console.log(`${result.status}\t${result.manifest}\t${result.entry}\t${detail}`);
+    const detail =
+      result.status === "passed"
+        ? `${result.instructions} instructions, ${result.cycles} cycles`
+        : (result.reason ?? result.message);
+    console.log(
+      `${result.status}\t${result.manifest}\t${result.entry}\t${detail}`,
+    );
   }
 }
 
@@ -279,6 +315,7 @@ async function runOne({
       assembler: {
         flavour: "atom",
         source: "preview",
+        diagnosticOnly: true,
         asmRoot,
         proofRoot,
         entry,
@@ -318,15 +355,19 @@ async function main() {
     proofRoot: options.proofRoot,
   });
   const proofMatrix = proofMatrixByManifest(migrationReport);
-  const generatedPermanentRoot = permanentModes.has(options.mode) && options.regeneratePermanentRoot
-    ? mkdtempSync(path.join(os.tmpdir(), "nucleus-atom-permanent-run-"))
-    : undefined;
+  const generatedPermanentRoot =
+    permanentModes.has(options.mode) && options.regeneratePermanentRoot
+      ? mkdtempSync(path.join(os.tmpdir(), "nucleus-atom-permanent-run-"))
+      : undefined;
   if (generatedPermanentRoot !== undefined) {
-    writeTranslatedTree(migrationReport, generatedPermanentRoot, { symbols: "permanent" });
+    writeTranslatedTree(migrationReport, generatedPermanentRoot, {
+      symbols: "permanent",
+    });
   }
-  const permanentRoot = options.mode === "permanent"
-    ? generatedPermanentRoot ?? options.permanentRoot
-    : undefined;
+  const permanentRoot =
+    options.mode === "permanent"
+      ? (generatedPermanentRoot ?? options.permanentRoot)
+      : undefined;
   const budgets = readBudgetFile(options.budgetFile);
   const proofs = selectedProofs(
     proofManifests(options.proofRoot),
@@ -372,7 +413,9 @@ async function main() {
     }
   }
   const execution = Object.freeze({
-    status: results.every(({ status }) => status === "passed" || status === "skipped")
+    status: results.every(
+      ({ status }) => status === "passed" || status === "skipped",
+    )
       ? "ready"
       : "blocked",
     mode: options.mode,
