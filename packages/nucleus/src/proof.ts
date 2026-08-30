@@ -51,32 +51,8 @@ import {
   type NucleusGeneratedSourceSegment,
 } from "./source-provenance.js";
 
-type LegacyProofAssembler =
-  | { readonly kind?: "azm" }
-  | {
-      readonly kind: "atom-permanent";
-      readonly root: string;
-      readonly entry: string;
-      readonly maxInstructions?: number;
-      readonly maxCycles?: number;
-      readonly legacyOutputOrder?: boolean;
-    }
-  | {
-      readonly kind: "atom-preview";
-      readonly asmRoot: string;
-      readonly proofRoot: string;
-      readonly entry?: string;
-      readonly maxPartBytes?: number;
-      readonly maxInstructions?: number;
-      readonly maxCycles?: number;
-      readonly legacyOutputOrder?: boolean;
-    };
-
 type ProofAssembler =
-  | LegacyProofAssembler
-  | {
-      readonly flavour?: "azm";
-    }
+  | { readonly flavour?: "azm" }
   | {
       readonly flavour: "atom";
       readonly source: "permanent";
@@ -109,40 +85,16 @@ function normalizeProofAssembler(
   assembler: ProofAssembler | undefined,
   sourcePath: string,
 ): NormalizedProofAssembler {
-  if (assembler === undefined || ("kind" in assembler && assembler.kind === undefined)) {
+  if (assembler === undefined) {
     return { flavour: NUCLEUS_LEGACY_PROOF_ASSEMBLER };
   }
   if ("kind" in assembler) {
-    if (assembler.kind === "azm") {
-      return { flavour: Z80_ASSEMBLER_FLAVOUR.azm };
-    }
-    if (assembler.kind === "atom-permanent") {
-      return Object.freeze({
-        flavour: Z80_ASSEMBLER_FLAVOUR.atom,
-        source: "permanent",
-        root: assembler.root,
-        entry: assembler.entry,
-        ...(assembler.maxInstructions === undefined ? {} : { maxInstructions: assembler.maxInstructions }),
-        ...(assembler.maxCycles === undefined ? {} : { maxCycles: assembler.maxCycles }),
-        ...(assembler.legacyOutputOrder === undefined ? {} : { legacyOutputOrder: assembler.legacyOutputOrder }),
-      });
-    }
-    if (assembler.kind === "atom-preview") {
-      return Object.freeze({
-        flavour: Z80_ASSEMBLER_FLAVOUR.atom,
-        source: "preview",
-        asmRoot: assembler.asmRoot,
-        proofRoot: assembler.proofRoot,
-        ...(assembler.entry === undefined ? {} : { entry: assembler.entry }),
-        ...(assembler.maxPartBytes === undefined ? {} : { maxPartBytes: assembler.maxPartBytes }),
-        ...(assembler.maxInstructions === undefined ? {} : { maxInstructions: assembler.maxInstructions }),
-        ...(assembler.maxCycles === undefined ? {} : { maxCycles: assembler.maxCycles }),
-        ...(assembler.legacyOutputOrder === undefined ? {} : { legacyOutputOrder: assembler.legacyOutputOrder }),
-      });
-    }
+    throw new TypeError(
+      "Nucleus proof assembler must use flavour/source; kind aliases were retired",
+    );
   }
   const flavour = dispatchZ80AssemblerFlavour({
-    requested: "flavour" in assembler ? assembler.flavour : undefined,
+    requested: assembler.flavour,
     defaultFlavour: NUCLEUS_LEGACY_PROOF_ASSEMBLER,
     sourcePath,
     handlers: {

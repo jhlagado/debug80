@@ -57,6 +57,18 @@ describe("source-prepared AZM and Debug80 proofs", () => {
     expect(NUCLEUS_LEGACY_PROOF_ASSEMBLER).toBe("azm");
   });
 
+  it("rejects retired proof assembler kind aliases instead of falling back to AZM", async () => {
+    await expect(
+      runProofManifest(proof("memory-map-proof"), {
+        assembler: {
+          kind: "atom-permanent",
+          root: "unused",
+          entry: "vertical-slice/memory-map-proof.asm",
+        } as never,
+      }),
+    ).rejects.toThrow(/flavour\/source; kind aliases were retired/);
+  });
+
   it("maps Atom-built proof symbols back to proof-facing names", () => {
     const symbols = createProofSymbolView(
       {

@@ -1220,7 +1220,8 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(proofRoot, "memory-map-proof.json"),
         {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry: "vertical-slice/memory-map-proof.asm",
           },
