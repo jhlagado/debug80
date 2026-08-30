@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { compile } from "@jhlagado/azm/compile";
 import {
   createZ80Runtime,
   parseIntelHex,
@@ -28,6 +27,10 @@ import {
   defaultRuntimeLinkContext,
   loadCanonicalRuntimeProvider,
 } from "./nucleus-runtime.js";
+import {
+  assembleLegacyAzmCurrentSource,
+  assembleLegacyAzmProofSource,
+} from "./legacy-proof-assembler.js";
 import type { NucleusTargetPublicationDescriptor } from "./target-publication.js";
 import {
   createNucleusHostRuntimeStreamAdapter,
@@ -78,8 +81,7 @@ type NormalizedProofAssembler =
   | { readonly flavour: "azm" }
   | Extract<ProofAssembler, { readonly flavour: "atom" }>;
 
-export const NUCLEUS_LEGACY_PROOF_ASSEMBLER =
-  Z80_ASSEMBLER_FLAVOUR.azm;
+export const NUCLEUS_LEGACY_PROOF_ASSEMBLER = Z80_ASSEMBLER_FLAVOUR.azm;
 
 function normalizeProofAssembler(
   assembler: ProofAssembler | undefined,
@@ -106,10 +108,14 @@ function normalizeProofAssembler(
     return { flavour };
   }
   if (!("source" in assembler)) {
-    throw new TypeError("Atom proof assembler source must be permanent or preview");
+    throw new TypeError(
+      "Atom proof assembler source must be permanent or preview",
+    );
   }
   if (assembler.source !== "permanent" && assembler.source !== "preview") {
-    throw new TypeError("Atom proof assembler source must be permanent or preview");
+    throw new TypeError(
+      "Atom proof assembler source must be permanent or preview",
+    );
   }
   return assembler;
 }
@@ -282,8 +288,7 @@ export interface NobjHostRuntimeStreamExecution {
 export interface NucleusProofResidentSourceInstallation {
   readonly image: NucleusResidentSourceImage;
   readonly entry:
-    | NucleusResidentCompilerEntry
-    | NucleusResidentCompilerEntrySymbols;
+    NucleusResidentCompilerEntry | NucleusResidentCompilerEntrySymbols;
 }
 
 export interface RunProofManifestOptions {
@@ -338,7 +343,11 @@ export function createProofSymbolView(
   }
 
   for (const entry of atomMigration.proofLimitMap ?? []) {
-    if (!Number.isInteger(entry.value) || entry.value < 0 || entry.value > 0x10000) {
+    if (
+      !Number.isInteger(entry.value) ||
+      entry.value < 0 ||
+      entry.value > 0x10000
+    ) {
       throw new ProofFailure(
         `invalid Atom proof-limit value for ${entry.original}: ${entry.value}`,
       );
@@ -372,9 +381,12 @@ function contentBase(generation: {
 }): number {
   const addresses = generation.images.map(({ address }) => address);
   for (const event of generation.layout ?? []) {
-    if (event.kind === "reserve" && event.count !== 0) addresses.push(event.address);
+    if (event.kind === "reserve" && event.count !== 0)
+      addresses.push(event.address);
   }
-  return addresses.length === 0 ? generation.finalCursor : Math.min(...addresses);
+  return addresses.length === 0
+    ? generation.finalCursor
+    : Math.min(...addresses);
 }
 
 async function assembleAtomPreviewProofSource({
@@ -386,19 +398,26 @@ async function assembleAtomPreviewProofSource({
   readonly manifest: ProofManifest;
   readonly sourcePath: string;
   readonly manifestDirectory: string;
-  readonly assembler: Extract<ProofAssembler, { readonly flavour: "atom"; readonly source: "preview" }>;
+  readonly assembler: Extract<
+    ProofAssembler,
+    { readonly flavour: "atom"; readonly source: "preview" }
+  >;
 }): Promise<{
   readonly hexText: string;
   readonly rawSymbols: Readonly<Record<string, number>>;
 }> {
   const packageRoot = path.dirname(manifestDirectory);
   const dryRunModule = await import(
-    pathToFileURL(path.join(packageRoot, "scripts", "atom-migration-dry-run.mjs")).href
+    pathToFileURL(
+      path.join(packageRoot, "scripts", "atom-migration-dry-run.mjs"),
+    ).href
   );
   const compareModule = await import(
-    pathToFileURL(path.join(packageRoot, "scripts", "atom-migration-proof-compare.mjs")).href
+    pathToFileURL(
+      path.join(packageRoot, "scripts", "atom-migration-proof-compare.mjs"),
+    ).href
   );
-  const atomModule = await import("atom-z80") as unknown as {
+  const atomModule = (await import("atom-z80")) as unknown as {
     assembleResolvedAtomProject: (
       project: unknown,
       options: unknown,
@@ -417,26 +436,18 @@ async function assembleAtomPreviewProofSource({
     writeIntelHex: (materialized: unknown) => string;
   };
 
-  const current = await compile(sourcePath, { outputType: "bin" });
-  const diagnostics = current.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === "error",
-  );
-  if (diagnostics.length > 0) {
-    throw new ProofFailure(
-      `${manifest.name}: current assembly failed before Atom-preview lowering\n${diagnostics
-        .map(
-          (diagnostic) =>
-            `  ${diagnostic.sourceName ?? sourcePath}:${diagnostic.line ?? "?"}:${diagnostic.column ?? "?"} ${diagnostic.message}`,
-        )
-        .join("\n")}`,
-    );
-  }
+  const current = await assembleLegacyAzmCurrentSource({
+    manifestName: manifest.name,
+    sourcePath,
+    failure: (message) => new ProofFailure(message),
+  });
 
   const report = dryRunModule.scanAssembly({
     asmRoot: assembler.asmRoot,
     proofRoot: assembler.proofRoot,
   });
-  const relativeEntry = assembler.entry ??
+  const relativeEntry =
+    assembler.entry ??
     path.relative(assembler.asmRoot, sourcePath).split(path.sep).join("/");
   const translated = dryRunModule.flattenTranslatedEntry(report, relativeEntry);
   const symbolValues = compareModule.symbolValuesFromCurrentAssembly(
@@ -467,14 +478,17 @@ async function assembleAtomPreviewProofSource({
         pendingEnd: 0xe000,
         partDescriptors: 0xe000,
       },
-      ...(assembler.legacyOutputOrder ?? true
+      ...((assembler.legacyOutputOrder ?? true)
         ? { sink: compareModule.createLegacyUnorderedMemoryAtomSink() }
         : {}),
     },
   );
-  const materialized = atomModule.materializeAtomGeneration(assembled.generation, {
-    base: contentBase(assembled.generation),
-  });
+  const materialized = atomModule.materializeAtomGeneration(
+    assembled.generation,
+    {
+      base: contentBase(assembled.generation),
+    },
+  );
   return {
     hexText: atomModule.writeIntelHex(materialized),
     rawSymbols: Object.fromEntries(
@@ -518,22 +532,20 @@ async function assembleProofSource({
     selectedAssembler.flavour === Z80_ASSEMBLER_FLAVOUR.atom &&
     selectedAssembler.source === "permanent"
   ) {
-    const {
-      assembleAtomProject,
-      materializeAtomGeneration,
-      writeIntelHex,
-    } = await import("atom-z80");
-    const compareModule = selectedAssembler.legacyOutputOrder === true
-      ? await import(
-          pathToFileURL(
-            path.join(
-              path.dirname(manifestDirectory),
-              "scripts",
-              "atom-migration-proof-compare.mjs",
-            ),
-          ).href,
-        )
-      : undefined;
+    const { assembleAtomProject, materializeAtomGeneration, writeIntelHex } =
+      await import("atom-z80");
+    const compareModule =
+      selectedAssembler.legacyOutputOrder === true
+        ? await import(
+            pathToFileURL(
+              path.join(
+                path.dirname(manifestDirectory),
+                "scripts",
+                "atom-migration-proof-compare.mjs",
+              ),
+            ).href
+          )
+        : undefined;
     const assembled = await assembleAtomProject({
       root: selectedAssembler.root,
       entry: selectedAssembler.entry,
@@ -558,46 +570,13 @@ async function assembleProofSource({
     };
   }
 
-  const assembled = await compile(sourcePath, {
-    emitBin: false,
-    emitHex: true,
-    emitD8m: true,
-    registerContracts: "strict",
-    registerContractsInterfaces: (manifest.interfaces ?? []).map((file) =>
-      path.resolve(manifestDirectory, file),
-    ),
+  return assembleLegacyAzmProofSource({
+    manifestName: manifest.name,
+    sourcePath,
+    manifestDirectory,
+    interfaces: manifest.interfaces ?? [],
+    failure: (message) => new ProofFailure(message),
   });
-  const errors = assembled.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === "error",
-  );
-  if (errors.length > 0) {
-    throw new ProofFailure(
-      `${manifest.name}: assembly failed\n${errors
-        .map(
-          (diagnostic) =>
-            `  ${diagnostic.sourceName ?? sourcePath}:${diagnostic.line ?? "?"}:${diagnostic.column ?? "?"} ${diagnostic.message}`,
-        )
-        .join("\n")}`,
-    );
-  }
-
-  const hex = assembled.artifacts.find((artifact) => artifact.kind === "hex");
-  const debugMap = assembled.artifacts.find(
-    (artifact) => artifact.kind === "d8m",
-  );
-  if (hex?.kind !== "hex" || debugMap?.kind !== "d8m") {
-    throw new ProofFailure(`${manifest.name}: AZM omitted HEX or D8M output`);
-  }
-
-  return {
-    hexText: hex.text,
-    rawSymbols: Object.fromEntries(
-      debugMap.json.symbols.flatMap((entry) => {
-        const value = entry.address ?? entry.value;
-        return value === undefined ? [] : [[entry.name, value] as const];
-      }),
-    ),
-  };
 }
 
 const isResolvedResidentCompilerEntry = (
@@ -630,7 +609,10 @@ export async function runProofManifest(
     assembler: options.assembler,
   });
 
-  const symbols = createProofSymbolView(assembled.rawSymbols, options.atomMigration);
+  const symbols = createProofSymbolView(
+    assembled.rawSymbols,
+    options.atomMigration,
+  );
   const symbolValue = (name: string): number => {
     const wanted = name.toLowerCase();
     for (const [candidate, value] of Object.entries(symbols)) {
