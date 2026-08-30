@@ -15,7 +15,7 @@ import { AzmBackend } from './azm-backend';
 import { GlimmerBackend } from './glimmer-backend';
 import { NucleusBackend } from './nucleus-backend';
 import {
-  normalizeZ80AssemblerFlavour,
+  selectConcreteZ80AssemblerFlavour,
   Z80_ASSEMBLER_FLAVOUR,
 } from '@jhlagado/z80-tool-services';
 
@@ -85,7 +85,11 @@ export function resolveAssemblerBackend(
     return new NucleusBackend();
   }
   try {
-    const z80Assembler = normalizeZ80AssemblerFlavour(id, { allowAuto: false });
+    const z80Assembler = selectConcreteZ80AssemblerFlavour({
+      requested: id,
+      defaultFlavour: Z80_ASSEMBLER_FLAVOUR.atom,
+      ...(asmPath === undefined ? {} : { sourcePath: asmPath }),
+    });
     if (z80Assembler === Z80_ASSEMBLER_FLAVOUR.atom) {
       return new AtomBackend();
     }

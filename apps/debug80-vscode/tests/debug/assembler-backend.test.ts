@@ -48,6 +48,12 @@ describe('assembler-backend', () => {
     expectAtomBackend('ATOM-Z80', '/tmp/program.asm');
   });
 
+  it('rejects auto because Debug80 launch must resolve a concrete backend', () => {
+    expect(() => resolveAssemblerBackend('auto', '/tmp/program.asm')).toThrow(
+      'Unknown assembler backend'
+    );
+  });
+
   it('throws for unknown backends', () => {
     expect(() => resolveAssemblerBackend('unknown', undefined)).toThrow(
       'Unknown assembler backend'
