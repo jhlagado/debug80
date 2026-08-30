@@ -414,6 +414,47 @@ describe('project-config helpers', () => {
     expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('atom');
   });
 
+  it('canonicalizes shared Z80 assembler aliases when changing between assembly files', () => {
+    const { configPath } = createProject('debug80-z80-assembler-aliases-', {
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: 'src/old.asm',
+          assembler: 'ASM80',
+          platform: 'simple',
+        },
+        atomAlias: {
+          sourceFile: 'src/old.z80',
+          assembler: 'ATOM-Z80',
+          platform: 'simple',
+        },
+      },
+    });
+
+    expect(updateProjectTargetSource(configPath, 'app', 'src/main.asm')).toBe(true);
+    expect(updateProjectTargetSource(configPath, 'atomAlias', 'src/main.z80')).toBe(true);
+    const config = readProjectConfig(configPath);
+    expect(config?.targets?.app?.assembler).toBe('azm');
+    expect(config?.targets?.atomAlias?.assembler).toBe('atom');
+  });
+
+  it('canonicalizes the selected Glimmer generated-source assembler', () => {
+    const { configPath } = createProject('debug80-glimmer-alias-entry-', {
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: 'src/old.glim',
+          assembler: 'glimmer',
+          platform: 'tec1g',
+          glimmer: { assembler: 'ASM80' },
+        },
+      },
+    });
+
+    expect(updateProjectTargetSource(configPath, 'app', 'src/game.glim')).toBe(true);
+    expect(readProjectConfig(configPath)?.targets?.app?.glimmer).toEqual({ assembler: 'azm' });
+  });
+
   it('selects Atom when a Glimmer target changes to assembly source', () => {
     const { configPath } = createProject('debug80-cross-language-entry-', {
       defaultTarget: 'app',

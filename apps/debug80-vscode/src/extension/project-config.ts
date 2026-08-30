@@ -5,6 +5,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import {
+  normalizeZ80AssemblerFlavour,
+  Z80_ASSEMBLER_FLAVOUR,
+  type ConcreteZ80AssemblerFlavour,
+} from '@jhlagado/z80-tool-services';
 import type { AzmSymbolCaseMode, ProjectConfig } from '../debug/session/types';
 import { DEFAULT_OUTPUT_DIR } from '../debug/launch/config-utils';
 import { targetNameFromSourcePath } from './project-target-source-policy';
@@ -34,12 +39,21 @@ function isSupportedAssemblerId(value: unknown): boolean {
     return false;
   }
   const normalized = value.trim().toLowerCase();
-  return (
-    normalized === 'atom' ||
-    normalized === 'azm' ||
-    normalized === 'glimmer' ||
-    normalized === 'nucleus'
-  );
+  if (normalized === 'glimmer' || normalized === 'nucleus') {
+    return true;
+  }
+  return normalizeConcreteZ80AssemblerId(value) !== undefined;
+}
+
+function normalizeConcreteZ80AssemblerId(
+  value: unknown
+): ConcreteZ80AssemblerFlavour | undefined {
+  try {
+    const assembler = normalizeZ80AssemblerFlavour(value, { allowAuto: false });
+    return assembler === Z80_ASSEMBLER_FLAVOUR.auto ? undefined : assembler;
+  } catch {
+    return undefined;
+  }
 }
 
 function glimmerAssembler(value: unknown): 'atom' | 'azm' | undefined {
@@ -47,7 +61,7 @@ function glimmerAssembler(value: unknown): 'atom' | 'azm' | undefined {
     return undefined;
   }
   const assembler = (value as { assembler?: unknown }).assembler;
-  return assembler === 'atom' || assembler === 'azm' ? assembler : undefined;
+  return normalizeConcreteZ80AssemblerId(assembler);
 }
 
 /** Keep a target's explicit frontend and generated-source backend aligned with its entry file. */
@@ -71,7 +85,7 @@ export function selectTargetAssemblerForSource(
     return;
   }
   if (extension === '.asm' || extension === '.inc' || extension === '.z80') {
-    target.assembler = assembler === 'azm' || assembler === 'atom' ? assembler : 'atom';
+    target.assembler = normalizeConcreteZ80AssemblerId(assembler) ?? Z80_ASSEMBLER_FLAVOUR.atom;
     return;
   }
   if (target.assembler !== undefined && !isSupportedAssemblerId(target.assembler)) {
