@@ -16,6 +16,7 @@ import {
   buildNucleusResidentSourceImage,
   defineNucleusTargetPublicationDescriptor,
   installNucleusResidentSourceImage,
+  NUCLEUS_DEFAULT_COMPILER_ASSEMBLER,
   NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
   NUCLEUS_TARGET_PUBLICATION_SCHEMA,
   NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
@@ -512,7 +513,7 @@ describe("Nucleus application boundary", () => {
 
       expect(publication.nobj.parsed.commit.recordCount).toBe(130);
       expect(publication.nobj.parsed.map.entryAddress).toBe(0x8000);
-      expect(publication.assembler).toBe("atom");
+      expect(publication.assembler).toBe(NUCLEUS_DEFAULT_COMPILER_ASSEMBLER);
       expect(await readFile(output)).toEqual(
         Buffer.from(publication.nobj.serialized),
       );
@@ -560,7 +561,7 @@ describe("Nucleus application boundary", () => {
 
           expect(publication.root).toBe(root);
           expect(publication.entry).toBe("src/main.nu");
-          expect(publication.assembler).toBe("atom");
+          expect(publication.assembler).toBe(NUCLEUS_DEFAULT_COMPILER_ASSEMBLER);
           expect(publication.sourceParts).toBe(1);
           expect(publication.sourceProvenance).toEqual([
             {
@@ -935,7 +936,7 @@ describe("Nucleus application boundary", () => {
         expect(summary).toMatchObject({
           root,
           entry: "src/main.nu",
-          assembler: "atom",
+          assembler: NUCLEUS_DEFAULT_COMPILER_ASSEMBLER,
           sourceParts: 1,
           bytes: 1396,
           records: 130,

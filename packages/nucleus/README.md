@@ -87,6 +87,8 @@ prints the ordered compiler input.
 
 `nucleus publish` prepares an entry source file, runs it through the current
 resident compiler proof image, and publishes selected output paths by suffix.
+The resident compiler proof image is assembled with Atom by default; pass
+`--assembler azm` only when explicitly exercising the legacy assembly path.
 Name the output files you want after the input file; each suffix selects one
 format. The implemented desktop formats are `.nobj`, `.bin`, `.hex`, and
 `.d8.json`.

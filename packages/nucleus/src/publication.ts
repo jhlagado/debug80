@@ -50,6 +50,9 @@ const NUCLEUS_DEFAULT_RESIDENT_SOURCE_CAPACITY = 0x0800;
 
 export type NucleusCompilerAssemblerFlavour = ConcreteZ80AssemblerFlavour;
 
+export const NUCLEUS_DEFAULT_COMPILER_ASSEMBLER =
+  "atom" satisfies NucleusCompilerAssemblerFlavour;
+
 export const NUCLEUS_FLAT_TARGET_COMPILER_ENTRY = Object.freeze({
   executionEntry: "ProofStart",
   sourceDescriptorBase: "FlatTargetParts",
@@ -232,7 +235,7 @@ const selectNucleusCompilerAssembler = (
 ): NucleusCompilerAssemblerFlavour =>
   selectConcreteZ80AssemblerFlavour({
     requested: assembler,
-    defaultFlavour: "atom",
+    defaultFlavour: NUCLEUS_DEFAULT_COMPILER_ASSEMBLER,
     sourcePath: "Nucleus compiler proof image",
   });
 
