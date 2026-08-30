@@ -27,7 +27,6 @@ import type {
   RuntimeServiceAddresses,
 } from "./nobj.js";
 import { NobjError } from "./nobj.js";
-import { assembleLegacyAzmRuntimeImage } from "./legacy-runtime-assembler.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const runtimeSourceDirectoryCandidates = [
@@ -400,6 +399,9 @@ export async function loadCanonicalRuntimeImage(
         ),
       );
     } else {
+      const { assembleLegacyAzmRuntimeImage } = await import(
+        "./legacy-runtime-assembler.js"
+      );
       ({ hexText, rawSymbols } = await assembleLegacyAzmRuntimeImage({
         temporaryDirectory,
         runtimeSourceDirectory,

@@ -27,10 +27,6 @@ import {
   defaultRuntimeLinkContext,
   loadCanonicalRuntimeProvider,
 } from "./nucleus-runtime.js";
-import {
-  assembleLegacyAzmCurrentSource,
-  assembleLegacyAzmProofSource,
-} from "./legacy-proof-assembler.js";
 import { createLegacyUnorderedMemoryAtomSink } from "./atom-proof-sink.js";
 import type { NucleusTargetPublicationDescriptor } from "./target-publication.js";
 import {
@@ -443,6 +439,9 @@ async function assembleAtomPreviewProofSource({
     writeIntelHex: (materialized: unknown) => string;
   };
 
+  const { assembleLegacyAzmCurrentSource } = await import(
+    "./legacy-proof-assembler.js"
+  );
   const current = await assembleLegacyAzmCurrentSource({
     manifestName: manifest.name,
     sourcePath,
@@ -565,6 +564,9 @@ async function assembleProofSource({
     };
   }
 
+  const { assembleLegacyAzmProofSource } = await import(
+    "./legacy-proof-assembler.js"
+  );
   return assembleLegacyAzmProofSource({
     manifestName: manifest.name,
     sourcePath,
