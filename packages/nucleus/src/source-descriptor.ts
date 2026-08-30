@@ -1,7 +1,10 @@
+import { Z80_RESIDENT_SOURCE_PART_CAPACITY } from "@jhlagado/z80-tool-services";
+
 import type { SourcePart } from "./source-part.js";
 
 export const NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE = 5;
-export const NUCLEUS_RESIDENT_SOURCE_PART_CAPACITY = 255;
+export const NUCLEUS_RESIDENT_SOURCE_PART_CAPACITY =
+  Z80_RESIDENT_SOURCE_PART_CAPACITY;
 
 export interface NucleusResidentSourceDescriptorOptions {
   readonly sourceParts: readonly SourcePart[];
