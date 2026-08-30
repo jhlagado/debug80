@@ -239,6 +239,14 @@ the header, then brackets the target runtime wrapper with generated section
 parts. The translated `nucleus-target-runtime-link.asm` assembles
 byte-identically with the current runtime link image.
 
+The canonical runtime provider now uses that permanent Atom layout by default.
+For a context-specific runtime link, the host writes an Atom-form link context
+into a temporary assembly root, assembles `nucleus-target-runtime-link.asm` with
+Atom, maps the generated short runtime symbols back through the `;@NUC-GLOBAL`
+comments, and verifies the same identity, extent, vector, state, and helper
+offsets as the legacy AZM path. The AZM route remains available as an explicit
+runtime-provider option while the broader Atom-only cleanup is still underway.
+
 It can also run a proof with Atom as the selected assembler when the caller
 supplies an already translated Atom source tree:
 

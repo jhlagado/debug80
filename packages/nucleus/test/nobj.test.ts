@@ -22,6 +22,7 @@ import {
   type RuntimeImageProvider,
 } from "../src/nobj.js";
 import {
+  NUCLEUS_DEFAULT_RUNTIME_ASSEMBLER,
   NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES,
   defaultRuntimeLinkContext,
   loadCanonicalRuntimeImage,
@@ -180,6 +181,21 @@ const withCrc = (bytes: Uint8Array): Uint8Array => {
 };
 
 describe("NOBJ 0.1", () => {
+  it("links the canonical runtime with Atom by default and keeps the AZM path byte-identical", async () => {
+    expect(NUCLEUS_DEFAULT_RUNTIME_ASSEMBLER).toBe("atom");
+    const atom = await loadCanonicalRuntimeImage(defaultRuntimeLinkContext);
+    const azm = await loadCanonicalRuntimeImage(defaultRuntimeLinkContext, {
+      assembler: "azm",
+    });
+
+    expect(atom.identity).toBe(azm.identity);
+    expect(atom.bytes).toEqual(azm.bytes);
+    expect(atom.initialBytes).toEqual(azm.initialBytes);
+    expect(atom.vectorBytes).toEqual(azm.vectorBytes);
+    expect(atom.currentBankOffset).toBe(azm.currentBankOffset);
+    expect(atom.helperOffsets).toEqual(azm.helperOffsets);
+  });
+
   it("encodes exact framing, little-endian fields and the standard CRC", () => {
     expect(crc16CcittFalse(new TextEncoder().encode("123456789"))).toBe(0x29b1);
     const object = build({

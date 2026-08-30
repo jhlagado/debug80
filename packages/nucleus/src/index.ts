@@ -75,9 +75,11 @@ export {
   type SourcePart,
 } from "./source-part.js";
 export {
+  NUCLEUS_DEFAULT_RUNTIME_ASSEMBLER,
   NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES,
   nucleusRuntimeServiceOrder,
   nucleusRuntimeServiceVectorBytes,
+  type NucleusRuntimeAssemblerFlavour,
 } from "./nucleus-runtime.js";
 export {
   createNucleusHostRuntimeStreamAdapter,

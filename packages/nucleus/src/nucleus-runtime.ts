@@ -1,11 +1,15 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { compile } from "@jhlagado/azm/compile";
 import { parseIntelHex } from "@jhlagado/debug80-runtime";
+import {
+  selectConcreteZ80AssemblerFlavour,
+  type ConcreteZ80AssemblerFlavour,
+} from "@jhlagado/z80-tool-services";
 
 import type {
   RuntimeImage,
@@ -23,6 +27,13 @@ const runtimeSourceDirectoryCandidates = [
 const runtimeSourceDirectory =
   runtimeSourceDirectoryCandidates.find((candidate) => existsSync(candidate)) ??
   runtimeSourceDirectoryCandidates[0]!;
+const runtimeAtomSourceDirectoryCandidates = [
+  path.resolve(moduleDirectory, "../atom-asm/vertical-slice"),
+  path.resolve(moduleDirectory, "../../atom-asm/vertical-slice"),
+];
+const runtimeAtomSourceDirectory =
+  runtimeAtomSourceDirectoryCandidates.find((candidate) => existsSync(candidate)) ??
+  runtimeAtomSourceDirectoryCandidates[0]!;
 
 const helperIdentitySymbols = {
   ActivationPush: "NucleusRuntimeActivationPushOffset",
@@ -42,6 +53,10 @@ const helperIdentitySymbols = {
 } as const;
 
 export const NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES = 3;
+export type NucleusRuntimeAssemblerFlavour = ConcreteZ80AssemblerFlavour;
+
+export const NUCLEUS_DEFAULT_RUNTIME_ASSEMBLER =
+  "atom" satisfies NucleusRuntimeAssemblerFlavour;
 
 export const nucleusRuntimeServiceOrder = [
   "readInputByte",
@@ -143,6 +158,14 @@ export const validateRuntimeLinkContext = (
 const hexWord = (value: number): string =>
   `$${value.toString(16).padStart(4, "0")}`;
 
+const contentBase = (generation: {
+  readonly images: readonly { readonly address: number }[];
+}): number =>
+  generation.images.reduce(
+    (minimum, image) => Math.min(minimum, image.address),
+    0xffff,
+  );
+
 const contextAssembly = (context: RuntimeLinkContext): string => `
 RuntimeLinkBase             .equ ${hexWord(context.runtimeBase)}
 RuntimeWritableStateBase    .equ ${hexWord(context.writableStateBase)}
@@ -186,6 +209,84 @@ ComparisonLessEqual    .equ 3
 ComparisonGreater      .equ 4
 ComparisonGreaterEqual .equ 5
 `;
+
+const atomContextAssembly = (context: RuntimeLinkContext): string => `
+; Generated context-specific Atom runtime link context.
+RNTMLNKB             EQU ${hexWord(context.runtimeBase)} ;@NUC-GLOBAL RuntimeLinkBase PERMANENT RNTMLNKB
+RNTMWRTB    EQU ${hexWord(context.writableStateBase)} ;@NUC-GLOBAL RuntimeWritableStateBase PERMANENT RNTMWRTB
+RNTMPRGR      EQU ${hexWord(context.programDataBase)} ;@NUC-GLOBAL RuntimeProgramDataBase PERMANENT RNTMPRGR
+RNTMPRG0  EQU ${hexWord(context.programDataCapacity)} ;@NUC-GLOBAL RuntimeProgramDataCapacity PERMANENT RNTMPRG0
+RNTMRDON         EQU ${hexWord(context.readOnlyBase)} ;@NUC-GLOBAL RuntimeReadOnlyBase PERMANENT RNTMRDON
+RNTMRDO0     EQU ${hexWord(context.readOnlyCapacity)} ;@NUC-GLOBAL RuntimeReadOnlyCapacity PERMANENT RNTMRDO0
+
+STTBS          EQU RNTMWRTB ;@NUC-GLOBAL StateBase PERMANENT STTBS
+RunState           EQU STTBS+$00
+TRPNMBR         EQU STTBS+$01 ;@NUC-GLOBAL TrapNumber PERMANENT TRPNMBR
+TRPRTN        EQU STTBS+$02 ;@NUC-GLOBAL TrapRoutine PERMANENT TRPRTN
+TRPOFFST         EQU STTBS+$03 ;@NUC-GLOBAL TrapOffset PERMANENT TRPOFFST
+TRPERRR          EQU STTBS+$05 ;@NUC-GLOBAL TrapError PERMANENT TRPERRR
+ACTVTNDP    EQU STTBS+$06 ;@NUC-GLOBAL ActivationDepth PERMANENT ACTVTNDP
+ACTVTNLM    EQU STTBS+$07 ;@NUC-GLOBAL ActivationLimit PERMANENT ACTVTNLM
+SCLRSLT         EQU STTBS+$08 ;@NUC-GLOBAL ScalarSlot PERMANENT SCLRSLT
+CRRNTBNK        EQU SCLRSLT ;@NUC-GLOBAL CurrentBank PERMANENT CRRNTBNK
+ACTVTNAR    EQU STTBS+$09 ;@NUC-GLOBAL ActivationArena PERMANENT ACTVTNAR
+ACTVTNCP EQU 8 ;@NUC-GLOBAL ActivationCapacity PERMANENT ACTVTNCP
+RootSP             EQU ACTVTNAR+ACTVTNCP
+RootIX             EQU RootSP+2
+FRRTRNAR     EQU RootIX+2 ;@NUC-GLOBAL FarReturnArena PERMANENT FRRTRNAR
+FRRTRNCP  EQU ACTVTNCP*2 ;@NUC-GLOBAL FarReturnCapacity PERMANENT FRRTRNCP
+StateEnd           EQU FRRTRNAR+FRRTRNCP
+
+RunReady           EQU 1
+RNSCCDD       EQU 2 ;@NUC-GLOBAL RunSucceeded PERMANENT RNSCCDD
+RNTRPPD         EQU 3 ;@NUC-GLOBAL RunTrapped PERMANENT RNTRPPD
+
+PRGRMDTB           EQU RNTMPRGR ;@NUC-GLOBAL ProgramDataBase PERMANENT PRGRMDTB
+PRGRMDT0 EQU RNTMPRG0 ;@NUC-GLOBAL ProgramDataRegionCapacity PERMANENT PRGRMDT0
+GNRTDRO0       EQU RNTMRDON ;@NUC-GLOBAL GeneratedRoDataBase PERMANENT GNRTDRO0
+GNRTDRO2   EQU RNTMRDO0 ;@NUC-GLOBAL GeneratedRoDataCapacity PERMANENT GNRTDRO2
+
+CMPRSNEQ        EQU 0 ;@NUC-GLOBAL ComparisonEqual PERMANENT CMPRSNEQ
+CMPRSNNT     EQU 1 ;@NUC-GLOBAL ComparisonNotEqual PERMANENT CMPRSNNT
+CMPRSNLS         EQU 2 ;@NUC-GLOBAL ComparisonLess PERMANENT CMPRSNLS
+CMPRSNL0    EQU 3 ;@NUC-GLOBAL ComparisonLessEqual PERMANENT CMPRSNL0
+CMPRSNGR      EQU 4 ;@NUC-GLOBAL ComparisonGreater PERMANENT CMPRSNGR
+CMPRSNG0 EQU 5 ;@NUC-GLOBAL ComparisonGreaterEqual PERMANENT CMPRSNG0
+`;
+
+const atomSymbolAliasesFromText = (
+  text: string,
+): ReadonlyMap<string, string> => {
+  const aliases = new Map<string, string>();
+  for (const line of text.split(/\n/)) {
+    const match = /;@NUC-GLOBAL\s+(\S+)\s+PERMANENT\s+(\S+)/.exec(line);
+    if (match !== null) aliases.set(match[1]!.toLowerCase(), match[2]!);
+  }
+  return aliases;
+};
+
+const atomSymbolAliases = async (
+  root: string,
+  generatedContext: string,
+): Promise<ReadonlyMap<string, string>> => {
+  const aliases = new Map(atomSymbolAliasesFromText(generatedContext));
+  const visit = async (directory: string): Promise<void> => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const child = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await visit(child);
+      } else if (entry.isFile()) {
+        for (const [original, permanent] of atomSymbolAliasesFromText(
+          await readFile(child, "utf8"),
+        )) {
+          aliases.set(original, permanent);
+        }
+      }
+    }
+  };
+  await visit(root);
+  return aliases;
+};
 
 export const nucleusRuntimeServiceVectorBytes = (
   services: RuntimeServiceAddresses,
@@ -272,57 +373,120 @@ export class CanonicalRuntimeImageProvider implements RuntimeImageProvider {
   }
 }
 
-export const loadCanonicalRuntimeImage = async (
+export function loadCanonicalRuntimeImage(): Promise<RuntimeImage>;
+export function loadCanonicalRuntimeImage(
+  context: RuntimeLinkContext,
+): Promise<RuntimeImage>;
+export function loadCanonicalRuntimeImage(
+  context: RuntimeLinkContext,
+  options: { readonly assembler?: string },
+): Promise<RuntimeImage>;
+export async function loadCanonicalRuntimeImage(
   context: RuntimeLinkContext = defaultRuntimeLinkContext,
-): Promise<RuntimeImage> => {
+  options: { readonly assembler?: string } | number = {},
+): Promise<RuntimeImage> {
   validateRuntimeLinkContext(context);
+  const requestedAssembler =
+    typeof options === "object" && options !== null
+      ? options.assembler
+      : undefined;
+  const assembler = selectConcreteZ80AssemblerFlavour({
+    requested: requestedAssembler,
+    defaultFlavour: NUCLEUS_DEFAULT_RUNTIME_ASSEMBLER,
+    sourcePath: "Nucleus canonical runtime image",
+  });
   const temporaryDirectory = await mkdtemp(
     path.join(os.tmpdir(), "nucleus-runtime-link-"),
   );
   try {
-    const contextPath = path.join(
-      temporaryDirectory,
-      "nucleus-runtime-link-context.asmi",
-    );
-    const entryPath = path.join(temporaryDirectory, "runtime-link.asm");
-    await writeFile(contextPath, contextAssembly(context), "utf8");
-    await writeFile(
-      entryPath,
-      `.include "nucleus-runtime-link-context.asmi"\n` +
-        `.org RuntimeLinkBase\nRuntimeCodeStart:\n` +
-        `.include "target-z80-runtime.asm"\nRuntimeCodeEnd:\n`,
-      "utf8",
-    );
-    const assembled = await compile(entryPath, {
-      includeDirs: [temporaryDirectory, runtimeSourceDirectory],
-      emitBin: false,
-      emitHex: true,
-      emitD8m: true,
-      registerContracts: "strict",
-    });
-    const errors = assembled.diagnostics.filter(
-      (diagnostic) => diagnostic.severity === "error",
-    );
-    if (errors.length > 0) {
-      throw new NobjError(
-        `canonical runtime link failed: ${errors
-          .map((diagnostic) => diagnostic.message)
-          .join("; ")}`,
+    let hexText: string;
+    let rawSymbols: Readonly<Record<string, number>>;
+    let atomAliases: ReadonlyMap<string, string> = new Map();
+    if (assembler === "atom") {
+      const {
+        assembleAtomProject,
+        materializeAtomGeneration,
+        writeIntelHex,
+      } = await import("atom-z80");
+      await cp(runtimeAtomSourceDirectory, temporaryDirectory, {
+        recursive: true,
+      });
+      const contextText = atomContextAssembly(context);
+      await writeFile(
+        path.join(temporaryDirectory, "nucleus-runtime-link-context.asmi"),
+        contextText,
+        "utf8",
       );
-    }
-    const hex = assembled.artifacts.find((artifact) => artifact.kind === "hex");
-    const debugMap = assembled.artifacts.find(
-      (artifact) => artifact.kind === "d8m",
-    );
-    if (hex?.kind !== "hex" || debugMap?.kind !== "d8m") {
-      throw new NobjError("canonical runtime link omitted HEX or D8M output");
+      atomAliases = await atomSymbolAliases(temporaryDirectory, contextText);
+      const assembled = await assembleAtomProject({
+        root: temporaryDirectory,
+        entry: "nucleus-target-runtime-link.asm",
+        target: { start: 0, capacity: 0xffff },
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
+      const materialized = materializeAtomGeneration(assembled.generation, {
+        base: contentBase(assembled.generation),
+      });
+      hexText = writeIntelHex(materialized);
+      rawSymbols = Object.fromEntries(
+        (assembled.generation.symbols ?? []).map(
+          (entry: { readonly name: string; readonly value: number }) =>
+            [entry.name, entry.value] as const,
+        ),
+      );
+    } else {
+      const contextPath = path.join(
+        temporaryDirectory,
+        "nucleus-runtime-link-context.asmi",
+      );
+      const entryPath = path.join(temporaryDirectory, "runtime-link.asm");
+      await writeFile(contextPath, contextAssembly(context), "utf8");
+      await writeFile(
+        entryPath,
+        `.include "nucleus-runtime-link-context.asmi"\n` +
+          `.org RuntimeLinkBase\nRuntimeCodeStart:\n` +
+          `.include "target-z80-runtime.asm"\nRuntimeCodeEnd:\n`,
+        "utf8",
+      );
+      const assembled = await compile(entryPath, {
+        includeDirs: [temporaryDirectory, runtimeSourceDirectory],
+        emitBin: false,
+        emitHex: true,
+        emitD8m: true,
+        registerContracts: "strict",
+      });
+      const errors = assembled.diagnostics.filter(
+        (diagnostic) => diagnostic.severity === "error",
+      );
+      if (errors.length > 0) {
+        throw new NobjError(
+          `canonical runtime link failed: ${errors
+            .map((diagnostic) => diagnostic.message)
+            .join("; ")}`,
+        );
+      }
+      const hex = assembled.artifacts.find((artifact) => artifact.kind === "hex");
+      const debugMap = assembled.artifacts.find(
+        (artifact) => artifact.kind === "d8m",
+      );
+      if (hex?.kind !== "hex" || debugMap?.kind !== "d8m") {
+        throw new NobjError("canonical runtime link omitted HEX or D8M output");
+      }
+      hexText = hex.text;
+      rawSymbols = Object.fromEntries(
+        debugMap.json.symbols.flatMap((entry) => {
+          const value = entry.address ?? entry.value;
+          return value === undefined ? [] : [[entry.name, value] as const];
+        }),
+      );
     }
     const symbol = (name: string): number => {
       const wanted = name.toLowerCase();
-      for (const entry of debugMap.json.symbols) {
-        if (entry.name.toLowerCase() !== wanted) continue;
-        const value = entry.address ?? entry.value;
-        if (value !== undefined) return value;
+      const atomAlias = atomAliases.get(wanted)?.toLowerCase();
+      for (const [candidate, value] of Object.entries(rawSymbols)) {
+        const lower = candidate.toLowerCase();
+        if (lower === wanted || lower === atomAlias) return value;
       }
       throw new NobjError(`canonical runtime link omitted ${name}`);
     };
@@ -397,7 +561,7 @@ export const loadCanonicalRuntimeImage = async (
     }
     return {
       identity: symbol("NucleusRuntimeIdentity"),
-      bytes: parseIntelHex(hex.text).memory.slice(start, end),
+      bytes: parseIntelHex(hexText).memory.slice(start, end),
       initialBytes: Uint8Array.from([...linkedVectors, ...linkedState]),
       vectorBytes: linkedVectors,
       helperOffsets,
@@ -406,16 +570,17 @@ export const loadCanonicalRuntimeImage = async (
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
-};
+}
 
 export const loadCanonicalRuntimeProvider = async (
   contexts: readonly RuntimeLinkContext[] = [defaultRuntimeLinkContext],
+  options: { readonly assembler?: string } = {},
 ): Promise<CanonicalRuntimeImageProvider> =>
   new CanonicalRuntimeImageProvider(
     await Promise.all(
       contexts.map(async (context) => ({
         context,
-        image: await loadCanonicalRuntimeImage(context),
+        image: await loadCanonicalRuntimeImage(context, options),
       })),
     ),
   );
