@@ -6,2110 +6,10 @@
   "endianness": "little",
   "files": {
     "bios.asm": {
-      "segments": [
-        {
-          "start": 64000,
-          "end": 64003,
-          "line": 30,
-          "column": 9,
-          "lstLine": 30,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64003,
-          "end": 64006,
-          "line": 31,
-          "column": 9,
-          "lstLine": 31,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64006,
-          "end": 64009,
-          "line": 32,
-          "column": 9,
-          "lstLine": 32,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64009,
-          "end": 64012,
-          "line": 33,
-          "column": 9,
-          "lstLine": 33,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64012,
-          "end": 64015,
-          "line": 34,
-          "column": 9,
-          "lstLine": 34,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64015,
-          "end": 64018,
-          "line": 35,
-          "column": 9,
-          "lstLine": 35,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64018,
-          "end": 64021,
-          "line": 36,
-          "column": 9,
-          "lstLine": 36,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64021,
-          "end": 64024,
-          "line": 37,
-          "column": 9,
-          "lstLine": 37,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64024,
-          "end": 64027,
-          "line": 38,
-          "column": 9,
-          "lstLine": 38,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64027,
-          "end": 64030,
-          "line": 39,
-          "column": 9,
-          "lstLine": 39,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64030,
-          "end": 64033,
-          "line": 40,
-          "column": 9,
-          "lstLine": 40,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64033,
-          "end": 64036,
-          "line": 41,
-          "column": 9,
-          "lstLine": 41,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64036,
-          "end": 64039,
-          "line": 42,
-          "column": 9,
-          "lstLine": 42,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64039,
-          "end": 64042,
-          "line": 43,
-          "column": 9,
-          "lstLine": 43,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64042,
-          "end": 64045,
-          "line": 44,
-          "column": 9,
-          "lstLine": 44,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64045,
-          "end": 64048,
-          "line": 45,
-          "column": 9,
-          "lstLine": 45,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64048,
-          "end": 64051,
-          "line": 46,
-          "column": 9,
-          "lstLine": 46,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64051,
-          "end": 64052,
-          "line": 49,
-          "column": 9,
-          "lstLine": 49,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64052,
-          "end": 64055,
-          "line": 50,
-          "column": 9,
-          "lstLine": 50,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64055,
-          "end": 64056,
-          "line": 51,
-          "column": 9,
-          "lstLine": 51,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64056,
-          "end": 64059,
-          "line": 52,
-          "column": 9,
-          "lstLine": 52,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64059,
-          "end": 64062,
-          "line": 53,
-          "column": 9,
-          "lstLine": 53,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64062,
-          "end": 64063,
-          "line": 54,
-          "column": 9,
-          "lstLine": 54,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64063,
-          "end": 64066,
-          "line": 55,
-          "column": 9,
-          "lstLine": 55,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64066,
-          "end": 64069,
-          "line": 56,
-          "column": 9,
-          "lstLine": 56,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64069,
-          "end": 64070,
-          "line": 59,
-          "column": 9,
-          "lstLine": 59,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64070,
-          "end": 64073,
-          "line": 60,
-          "column": 9,
-          "lstLine": 60,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64073,
-          "end": 64074,
-          "line": 61,
-          "column": 9,
-          "lstLine": 61,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64074,
-          "end": 64077,
-          "line": 62,
-          "column": 9,
-          "lstLine": 62,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64077,
-          "end": 64079,
-          "line": 63,
-          "column": 9,
-          "lstLine": 63,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64079,
-          "end": 64081,
-          "line": 64,
-          "column": 9,
-          "lstLine": 64,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64081,
-          "end": 64084,
-          "line": 65,
-          "column": 9,
-          "lstLine": 65,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64084,
-          "end": 64086,
-          "line": 66,
-          "column": 9,
-          "lstLine": 66,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64086,
-          "end": 64089,
-          "line": 67,
-          "column": 9,
-          "lstLine": 67,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64089,
-          "end": 64092,
-          "line": 68,
-          "column": 9,
-          "lstLine": 68,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64092,
-          "end": 64095,
-          "line": 71,
-          "column": 9,
-          "lstLine": 71,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64095,
-          "end": 64097,
-          "line": 72,
-          "column": 9,
-          "lstLine": 72,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64097,
-          "end": 64098,
-          "line": 73,
-          "column": 9,
-          "lstLine": 73,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64098,
-          "end": 64100,
-          "line": 74,
-          "column": 9,
-          "lstLine": 74,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64100,
-          "end": 64103,
-          "line": 75,
-          "column": 9,
-          "lstLine": 75,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64103,
-          "end": 64105,
-          "line": 76,
-          "column": 9,
-          "lstLine": 76,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64105,
-          "end": 64107,
-          "line": 77,
-          "column": 9,
-          "lstLine": 77,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64107,
-          "end": 64109,
-          "line": 78,
-          "column": 9,
-          "lstLine": 78,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64109,
-          "end": 64111,
-          "line": 79,
-          "column": 9,
-          "lstLine": 79,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64111,
-          "end": 64112,
-          "line": 80,
-          "column": 9,
-          "lstLine": 80,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64112,
-          "end": 64114,
-          "line": 81,
-          "column": 9,
-          "lstLine": 81,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64114,
-          "end": 64116,
-          "line": 82,
-          "column": 9,
-          "lstLine": 82,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64116,
-          "end": 64118,
-          "line": 83,
-          "column": 9,
-          "lstLine": 83,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64118,
-          "end": 64120,
-          "line": 84,
-          "column": 9,
-          "lstLine": 84,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64120,
-          "end": 64122,
-          "line": 85,
-          "column": 9,
-          "lstLine": 85,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64122,
-          "end": 64123,
-          "line": 86,
-          "column": 9,
-          "lstLine": 86,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64123,
-          "end": 64125,
-          "line": 87,
-          "column": 9,
-          "lstLine": 87,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64125,
-          "end": 64128,
-          "line": 89,
-          "column": 9,
-          "lstLine": 89,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64128,
-          "end": 64129,
-          "line": 90,
-          "column": 9,
-          "lstLine": 90,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64129,
-          "end": 64131,
-          "line": 91,
-          "column": 9,
-          "lstLine": 91,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64131,
-          "end": 64133,
-          "line": 92,
-          "column": 9,
-          "lstLine": 92,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64133,
-          "end": 64135,
-          "line": 93,
-          "column": 9,
-          "lstLine": 93,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64135,
-          "end": 64138,
-          "line": 94,
-          "column": 9,
-          "lstLine": 94,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64138,
-          "end": 64141,
-          "line": 95,
-          "column": 9,
-          "lstLine": 95,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64141,
-          "end": 64142,
-          "line": 96,
-          "column": 9,
-          "lstLine": 96,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64142,
-          "end": 64145,
-          "line": 97,
-          "column": 9,
-          "lstLine": 97,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64145,
-          "end": 64147,
-          "line": 98,
-          "column": 9,
-          "lstLine": 98,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64147,
-          "end": 64150,
-          "line": 101,
-          "column": 9,
-          "lstLine": 101,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64150,
-          "end": 64153,
-          "line": 104,
-          "column": 9,
-          "lstLine": 104,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64153,
-          "end": 64154,
-          "line": 105,
-          "column": 9,
-          "lstLine": 105,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64154,
-          "end": 64157,
-          "line": 106,
-          "column": 9,
-          "lstLine": 106,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64157,
-          "end": 64159,
-          "line": 107,
-          "column": 9,
-          "lstLine": 107,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64159,
-          "end": 64162,
-          "line": 108,
-          "column": 9,
-          "lstLine": 108,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64162,
-          "end": 64163,
-          "line": 109,
-          "column": 9,
-          "lstLine": 109,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64163,
-          "end": 64166,
-          "line": 110,
-          "column": 9,
-          "lstLine": 110,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64166,
-          "end": 64169,
-          "line": 111,
-          "column": 9,
-          "lstLine": 111,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64169,
-          "end": 64172,
-          "line": 114,
-          "column": 9,
-          "lstLine": 114,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64172,
-          "end": 64175,
-          "line": 115,
-          "column": 9,
-          "lstLine": 115,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64175,
-          "end": 64176,
-          "line": 116,
-          "column": 9,
-          "lstLine": 116,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64176,
-          "end": 64178,
-          "line": 117,
-          "column": 9,
-          "lstLine": 117,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64178,
-          "end": 64180,
-          "line": 120,
-          "column": 9,
-          "lstLine": 120,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64180,
-          "end": 64183,
-          "line": 121,
-          "column": 9,
-          "lstLine": 121,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64183,
-          "end": 64186,
-          "line": 122,
-          "column": 9,
-          "lstLine": 122,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64186,
-          "end": 64189,
-          "line": 123,
-          "column": 9,
-          "lstLine": 123,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64189,
-          "end": 64192,
-          "line": 124,
-          "column": 9,
-          "lstLine": 124,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64192,
-          "end": 64195,
-          "line": 125,
-          "column": 9,
-          "lstLine": 125,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64195,
-          "end": 64198,
-          "line": 126,
-          "column": 9,
-          "lstLine": 126,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64198,
-          "end": 64199,
-          "line": 127,
-          "column": 9,
-          "lstLine": 127,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64199,
-          "end": 64201,
-          "line": 130,
-          "column": 9,
-          "lstLine": 130,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64201,
-          "end": 64203,
-          "line": 131,
-          "column": 9,
-          "lstLine": 131,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64203,
-          "end": 64204,
-          "line": 132,
-          "column": 9,
-          "lstLine": 132,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64204,
-          "end": 64206,
-          "line": 133,
-          "column": 9,
-          "lstLine": 133,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64206,
-          "end": 64207,
-          "line": 134,
-          "column": 9,
-          "lstLine": 134,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64207,
-          "end": 64210,
-          "line": 137,
-          "column": 9,
-          "lstLine": 137,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64210,
-          "end": 64211,
-          "line": 138,
-          "column": 9,
-          "lstLine": 138,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64211,
-          "end": 64213,
-          "line": 139,
-          "column": 9,
-          "lstLine": 139,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64213,
-          "end": 64215,
-          "line": 140,
-          "column": 9,
-          "lstLine": 140,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64215,
-          "end": 64217,
-          "line": 141,
-          "column": 9,
-          "lstLine": 141,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64217,
-          "end": 64218,
-          "line": 142,
-          "column": 9,
-          "lstLine": 142,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64218,
-          "end": 64219,
-          "line": 145,
-          "column": 9,
-          "lstLine": 145,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64219,
-          "end": 64221,
-          "line": 146,
-          "column": 9,
-          "lstLine": 146,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64221,
-          "end": 64222,
-          "line": 147,
-          "column": 9,
-          "lstLine": 147,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64222,
-          "end": 64223,
-          "line": 151,
-          "column": 9,
-          "lstLine": 151,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64223,
-          "end": 64225,
-          "line": 154,
-          "column": 9,
-          "lstLine": 154,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64225,
-          "end": 64226,
-          "line": 155,
-          "column": 9,
-          "lstLine": 155,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64226,
-          "end": 64229,
-          "line": 158,
-          "column": 9,
-          "lstLine": 158,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64229,
-          "end": 64233,
-          "line": 161,
-          "column": 9,
-          "lstLine": 161,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64233,
-          "end": 64234,
-          "line": 162,
-          "column": 9,
-          "lstLine": 162,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64234,
-          "end": 64235,
-          "line": 165,
-          "column": 9,
-          "lstLine": 165,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64235,
-          "end": 64236,
-          "line": 166,
-          "column": 9,
-          "lstLine": 166,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64236,
-          "end": 64239,
-          "line": 167,
-          "column": 9,
-          "lstLine": 167,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64239,
-          "end": 64240,
-          "line": 168,
-          "column": 9,
-          "lstLine": 168,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64240,
-          "end": 64243,
-          "line": 169,
-          "column": 9,
-          "lstLine": 169,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64243,
-          "end": 64244,
-          "line": 170,
-          "column": 9,
-          "lstLine": 170,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64244,
-          "end": 64248,
-          "line": 173,
-          "column": 9,
-          "lstLine": 173,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64248,
-          "end": 64249,
-          "line": 174,
-          "column": 9,
-          "lstLine": 174,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64249,
-          "end": 64253,
-          "line": 177,
-          "column": 9,
-          "lstLine": 177,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64253,
-          "end": 64254,
-          "line": 178,
-          "column": 9,
-          "lstLine": 178,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64254,
-          "end": 64257,
-          "line": 181,
-          "column": 9,
-          "lstLine": 181,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64257,
-          "end": 64258,
-          "line": 182,
-          "column": 9,
-          "lstLine": 182,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64258,
-          "end": 64261,
-          "line": 183,
-          "column": 9,
-          "lstLine": 183,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64261,
-          "end": 64263,
-          "line": 184,
-          "column": 9,
-          "lstLine": 184,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64263,
-          "end": 64265,
-          "line": 185,
-          "column": 9,
-          "lstLine": 185,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64265,
-          "end": 64267,
-          "line": 186,
-          "column": 9,
-          "lstLine": 186,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64267,
-          "end": 64269,
-          "line": 187,
-          "column": 9,
-          "lstLine": 187,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64269,
-          "end": 64270,
-          "line": 188,
-          "column": 9,
-          "lstLine": 188,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64270,
-          "end": 64271,
-          "line": 189,
-          "column": 9,
-          "lstLine": 189,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64271,
-          "end": 64273,
-          "line": 190,
-          "column": 9,
-          "lstLine": 190,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64273,
-          "end": 64274,
-          "line": 191,
-          "column": 9,
-          "lstLine": 191,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64274,
-          "end": 64277,
-          "line": 194,
-          "column": 9,
-          "lstLine": 194,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64277,
-          "end": 64278,
-          "line": 195,
-          "column": 9,
-          "lstLine": 195,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64278,
-          "end": 64280,
-          "line": 196,
-          "column": 9,
-          "lstLine": 196,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64280,
-          "end": 64282,
-          "line": 197,
-          "column": 9,
-          "lstLine": 197,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64282,
-          "end": 64284,
-          "line": 198,
-          "column": 9,
-          "lstLine": 198,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64284,
-          "end": 64285,
-          "line": 199,
-          "column": 9,
-          "lstLine": 199,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64285,
-          "end": 64287,
-          "line": 200,
-          "column": 9,
-          "lstLine": 200,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64287,
-          "end": 64290,
-          "line": 201,
-          "column": 9,
-          "lstLine": 201,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64290,
-          "end": 64292,
-          "line": 202,
-          "column": 9,
-          "lstLine": 202,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64292,
-          "end": 64294,
-          "line": 203,
-          "column": 9,
-          "lstLine": 203,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64294,
-          "end": 64296,
-          "line": 204,
-          "column": 9,
-          "lstLine": 204,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64296,
-          "end": 64298,
-          "line": 205,
-          "column": 9,
-          "lstLine": 205,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64298,
-          "end": 64299,
-          "line": 206,
-          "column": 9,
-          "lstLine": 206,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64299,
-          "end": 64300,
-          "line": 207,
-          "column": 9,
-          "lstLine": 207,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64300,
-          "end": 64302,
-          "line": 210,
-          "column": 9,
-          "lstLine": 210,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64302,
-          "end": 64303,
-          "line": 211,
-          "column": 9,
-          "lstLine": 211,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64303,
-          "end": 64306,
-          "line": 214,
-          "column": 9,
-          "lstLine": 214,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64306,
-          "end": 64307,
-          "line": 215,
-          "column": 9,
-          "lstLine": 215,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64307,
-          "end": 64309,
-          "line": 216,
-          "column": 9,
-          "lstLine": 216,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64309,
-          "end": 64311,
-          "line": 217,
-          "column": 9,
-          "lstLine": 217,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64311,
-          "end": 64313,
-          "line": 218,
-          "column": 9,
-          "lstLine": 218,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64313,
-          "end": 64314,
-          "line": 219,
-          "column": 9,
-          "lstLine": 219,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64314,
-          "end": 64316,
-          "line": 220,
-          "column": 9,
-          "lstLine": 220,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64316,
-          "end": 64317,
-          "line": 221,
-          "column": 9,
-          "lstLine": 221,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64317,
-          "end": 64318,
-          "line": 224,
-          "column": 9,
-          "lstLine": 224,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64318,
-          "end": 64320,
-          "line": 225,
-          "column": 9,
-          "lstLine": 225,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64320,
-          "end": 64323,
-          "line": 226,
-          "column": 9,
-          "lstLine": 226,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64323,
-          "end": 64325,
-          "line": 227,
-          "column": 9,
-          "lstLine": 227,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64325,
-          "end": 64328,
-          "line": 228,
-          "column": 9,
-          "lstLine": 228,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64328,
-          "end": 64330,
-          "line": 229,
-          "column": 9,
-          "lstLine": 229,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64330,
-          "end": 64333,
-          "line": 230,
-          "column": 9,
-          "lstLine": 230,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64333,
-          "end": 64335,
-          "line": 231,
-          "column": 9,
-          "lstLine": 231,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64335,
-          "end": 64336,
-          "line": 232,
-          "column": 9,
-          "lstLine": 232,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64336,
-          "end": 64337,
-          "line": 233,
-          "column": 9,
-          "lstLine": 233,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64337,
-          "end": 64338,
-          "line": 236,
-          "column": 9,
-          "lstLine": 236,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64338,
-          "end": 64339,
-          "line": 237,
-          "column": 9,
-          "lstLine": 237,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64339,
-          "end": 64340,
-          "line": 240,
-          "column": 9,
-          "lstLine": 240,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64340,
-          "end": 64341,
-          "line": 241,
-          "column": 9,
-          "lstLine": 241,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64341,
-          "end": 64342,
-          "line": 242,
-          "column": 9,
-          "lstLine": 242,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64342,
-          "end": 64343,
-          "line": 243,
-          "column": 9,
-          "lstLine": 243,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64343,
-          "end": 64344,
-          "line": 246,
-          "column": 9,
-          "lstLine": 246,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64344,
-          "end": 64345,
-          "line": 247,
-          "column": 9,
-          "lstLine": 247,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64345,
-          "end": 64346,
-          "line": 248,
-          "column": 9,
-          "lstLine": 248,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64346,
-          "end": 64348,
-          "line": 249,
-          "column": 9,
-          "lstLine": 249,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64348,
-          "end": 64349,
-          "line": 250,
-          "column": 9,
-          "lstLine": 250,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64349,
-          "end": 64351,
-          "line": 251,
-          "column": 9,
-          "lstLine": 251,
-          "kind": "code",
-          "confidence": "high"
-        },
-        {
-          "start": 64351,
-          "end": 64369,
-          "line": 254,
-          "column": 9,
-          "lstLine": 254,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64369,
-          "end": 64370,
-          "line": 257,
-          "column": 9,
-          "lstLine": 257,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64370,
-          "end": 64371,
-          "line": 259,
-          "column": 9,
-          "lstLine": 259,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64371,
-          "end": 64372,
-          "line": 261,
-          "column": 9,
-          "lstLine": 261,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64372,
-          "end": 64374,
-          "line": 264,
-          "column": 9,
-          "lstLine": 264,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64374,
-          "end": 64376,
-          "line": 266,
-          "column": 9,
-          "lstLine": 266,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64376,
-          "end": 64378,
-          "line": 268,
-          "column": 9,
-          "lstLine": 268,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64378,
-          "end": 64380,
-          "line": 271,
-          "column": 9,
-          "lstLine": 271,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64380,
-          "end": 64386,
-          "line": 272,
-          "column": 9,
-          "lstLine": 272,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64386,
-          "end": 64388,
-          "line": 273,
-          "column": 9,
-          "lstLine": 273,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64388,
-          "end": 64390,
-          "line": 274,
-          "column": 9,
-          "lstLine": 274,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64390,
-          "end": 64392,
-          "line": 275,
-          "column": 9,
-          "lstLine": 275,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64392,
-          "end": 64394,
-          "line": 276,
-          "column": 9,
-          "lstLine": 276,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64394,
-          "end": 64396,
-          "line": 279,
-          "column": 9,
-          "lstLine": 279,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64396,
-          "end": 64397,
-          "line": 280,
-          "column": 9,
-          "lstLine": 280,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64397,
-          "end": 64398,
-          "line": 281,
-          "column": 9,
-          "lstLine": 281,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64398,
-          "end": 64399,
-          "line": 282,
-          "column": 9,
-          "lstLine": 282,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64399,
-          "end": 64401,
-          "line": 283,
-          "column": 9,
-          "lstLine": 283,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64401,
-          "end": 64403,
-          "line": 284,
-          "column": 9,
-          "lstLine": 284,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64403,
-          "end": 64405,
-          "line": 285,
-          "column": 9,
-          "lstLine": 285,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64405,
-          "end": 64407,
-          "line": 286,
-          "column": 9,
-          "lstLine": 286,
-          "kind": "data",
-          "confidence": "high"
-        },
-        {
-          "start": 64407,
-          "end": 64409,
-          "line": 287,
-          "column": 9,
-          "lstLine": 287,
-          "kind": "data",
-          "confidence": "high"
-        }
-      ],
       "symbols": [
         {
-          "name": "ColdBoot",
-          "identity": "bios.asm:48:1:label:ColdBoot",
-          "kind": "label",
-          "address": 64051,
-          "line": 48,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "WarmBoot",
-          "identity": "bios.asm:58:1:label:WarmBoot",
-          "kind": "label",
-          "address": 64069,
-          "line": 58,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "WarmBootRead",
-          "identity": "bios.asm:70:1:label:WarmBootRead",
-          "kind": "label",
-          "address": 64092,
-          "line": 70,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "WarmBootStoreSector",
-          "identity": "bios.asm:100:1:label:WarmBootStoreSector",
-          "kind": "label",
-          "address": 64147,
-          "line": 100,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "WarmBootSectorAdvanced",
-          "identity": "bios.asm:103:1:label:WarmBootSectorAdvanced",
-          "kind": "label",
-          "address": 64150,
-          "line": 103,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "BootDiskError",
-          "identity": "bios.asm:113:1:label:BootDiskError",
-          "kind": "label",
-          "address": 64169,
-          "line": 113,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "InstallPageZero",
-          "identity": "bios.asm:119:1:label:InstallPageZero",
-          "kind": "label",
-          "address": 64178,
-          "line": 119,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "ConsoleStatus",
-          "identity": "bios.asm:129:1:label:ConsoleStatus",
-          "kind": "label",
-          "address": 64199,
-          "line": 129,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "ConsoleInput",
-          "identity": "bios.asm:136:1:label:ConsoleInput",
-          "kind": "label",
-          "address": 64207,
-          "line": 136,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "ConsoleOutput",
-          "identity": "bios.asm:144:1:label:ConsoleOutput",
-          "kind": "label",
-          "address": 64218,
-          "line": 144,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "ListOutput",
-          "identity": "bios.asm:149:1:label:ListOutput",
-          "kind": "label",
-          "address": 64222,
-          "line": 149,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PunchOutput",
-          "identity": "bios.asm:150:1:label:PunchOutput",
-          "kind": "label",
-          "address": 64222,
-          "line": 150,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "ReaderInput",
-          "identity": "bios.asm:153:1:label:ReaderInput",
-          "kind": "label",
-          "address": 64223,
-          "line": 153,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "Home",
-          "identity": "bios.asm:157:1:label:Home",
-          "kind": "label",
-          "address": 64226,
-          "line": 157,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SetTrack",
-          "identity": "bios.asm:160:1:label:SetTrack",
-          "kind": "label",
-          "address": 64229,
-          "line": 160,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SelectDisk",
-          "identity": "bios.asm:164:1:label:SelectDisk",
-          "kind": "label",
-          "address": 64234,
-          "line": 164,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SetSector",
-          "identity": "bios.asm:172:1:label:SetSector",
-          "kind": "label",
-          "address": 64244,
-          "line": 172,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SetDma",
-          "identity": "bios.asm:176:1:label:SetDma",
-          "kind": "label",
-          "address": 64249,
-          "line": 176,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "ReadSector",
-          "identity": "bios.asm:180:1:label:ReadSector",
-          "kind": "label",
-          "address": 64254,
-          "line": 180,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "WriteSector",
-          "identity": "bios.asm:193:1:label:WriteSector",
-          "kind": "label",
-          "address": 64274,
-          "line": 193,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "DiskError",
-          "identity": "bios.asm:209:1:label:DiskError",
-          "kind": "label",
-          "address": 64300,
-          "line": 209,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SelectCurrentSector",
-          "identity": "bios.asm:213:1:label:SelectCurrentSector",
-          "kind": "label",
-          "address": 64303,
-          "line": 213,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SelectCurrentAddress",
-          "identity": "bios.asm:223:1:label:SelectCurrentAddress",
-          "kind": "label",
-          "address": 64317,
-          "line": 223,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "ListStatus",
-          "identity": "bios.asm:235:1:label:ListStatus",
-          "kind": "label",
-          "address": 64337,
-          "line": 235,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SectorTranslate",
-          "identity": "bios.asm:239:1:label:SectorTranslate",
-          "kind": "label",
-          "address": 64339,
-          "line": 239,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PrintZeroTerminated",
-          "identity": "bios.asm:245:1:label:PrintZeroTerminated",
-          "kind": "label",
-          "address": 64343,
-          "line": 245,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "BootErrorMessage",
-          "identity": "bios.asm:253:1:label:BootErrorMessage",
-          "kind": "label",
-          "address": 64351,
-          "line": 253,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "BootTrack",
-          "identity": "bios.asm:256:1:label:BootTrack",
-          "kind": "label",
-          "address": 64369,
-          "line": 256,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "BootSector",
-          "identity": "bios.asm:258:1:label:BootSector",
-          "kind": "label",
-          "address": 64370,
-          "line": 258,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "BootSectorsRemaining",
-          "identity": "bios.asm:260:1:label:BootSectorsRemaining",
-          "kind": "label",
-          "address": 64371,
-          "line": 260,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "CurrentTrack",
-          "identity": "bios.asm:263:1:label:CurrentTrack",
-          "kind": "label",
-          "address": 64372,
-          "line": 263,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "CurrentSector",
-          "identity": "bios.asm:265:1:label:CurrentSector",
-          "kind": "label",
-          "address": 64374,
-          "line": 265,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "CurrentDma",
-          "identity": "bios.asm:267:1:label:CurrentDma",
-          "kind": "label",
-          "address": 64376,
-          "line": 267,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "DiskParameterHeader",
-          "identity": "bios.asm:270:1:label:DiskParameterHeader",
-          "kind": "label",
-          "address": 64378,
-          "line": 270,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "DiskParameterBlock",
-          "identity": "bios.asm:278:1:label:DiskParameterBlock",
-          "kind": "label",
-          "address": 64394,
-          "line": 278,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "DirectoryBuffer",
-          "identity": "bios.asm:289:1:label:DirectoryBuffer",
-          "kind": "label",
-          "address": 64409,
-          "line": 289,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "ChecksumVector",
-          "identity": "bios.asm:291:1:label:ChecksumVector",
-          "kind": "label",
-          "address": 64537,
-          "line": 291,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
           "name": "AllocationVector",
-          "identity": "bios.asm:293:1:label:AllocationVector",
+          "identity": "bios.asm#5289:AllocationVector",
           "kind": "label",
           "address": 64553,
           "line": 293,
@@ -2118,198 +18,8 @@
           "sourceUnit": "bios.asm"
         },
         {
-          "name": "BootStackTop",
-          "identity": "bios.asm:297:1:label:BootStackTop",
-          "kind": "label",
-          "address": 64616,
-          "line": 297,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_TERMINAL_TX",
-          "identity": "bios.asm:12:1:constant:PORT_TERMINAL_TX",
-          "kind": "constant",
-          "value": 0,
-          "line": 12,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "DISK_COMMAND_READ",
-          "identity": "bios.asm:22:1:constant:DISK_COMMAND_READ",
-          "kind": "constant",
-          "value": 1,
-          "line": 22,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_TERMINAL_RX",
-          "identity": "bios.asm:13:1:constant:PORT_TERMINAL_RX",
-          "kind": "constant",
-          "value": 1,
-          "line": 13,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "DISK_COMMAND_WRITE",
-          "identity": "bios.asm:23:1:constant:DISK_COMMAND_WRITE",
-          "kind": "constant",
-          "value": 2,
-          "line": 23,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_TERMINAL_STATUS",
-          "identity": "bios.asm:14:1:constant:PORT_TERMINAL_STATUS",
-          "kind": "constant",
-          "value": 2,
-          "line": 14,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "IOBYTE",
-          "identity": "bios.asm:25:1:constant:IOBYTE",
-          "kind": "constant",
-          "value": 3,
-          "line": 25,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "CURRENT_DISK",
-          "identity": "bios.asm:26:1:constant:CURRENT_DISK",
-          "kind": "constant",
-          "value": 4,
-          "line": 26,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_DISK_STATUS",
-          "identity": "bios.asm:15:1:constant:PORT_DISK_STATUS",
-          "kind": "constant",
-          "value": 16,
-          "line": 15,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_DISK_DRIVE",
-          "identity": "bios.asm:16:1:constant:PORT_DISK_DRIVE",
-          "kind": "constant",
-          "value": 17,
-          "line": 16,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_DISK_TRACK_LOW",
-          "identity": "bios.asm:17:1:constant:PORT_DISK_TRACK_LOW",
-          "kind": "constant",
-          "value": 18,
-          "line": 17,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_DISK_TRACK_HIGH",
-          "identity": "bios.asm:18:1:constant:PORT_DISK_TRACK_HIGH",
-          "kind": "constant",
-          "value": 19,
-          "line": 18,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_DISK_SECTOR",
-          "identity": "bios.asm:19:1:constant:PORT_DISK_SECTOR",
-          "kind": "constant",
-          "value": 20,
-          "line": 19,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "PORT_DISK_DATA",
-          "identity": "bios.asm:20:1:constant:PORT_DISK_DATA",
-          "kind": "constant",
-          "value": 21,
-          "line": 20,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SECTORS_PER_TRACK",
-          "identity": "bios.asm:9:1:constant:SECTORS_PER_TRACK",
-          "kind": "constant",
-          "value": 26,
-          "line": 9,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "WARM_BOOT_SECTORS",
-          "identity": "bios.asm:8:1:constant:WARM_BOOT_SECTORS",
-          "kind": "constant",
-          "value": 44,
-          "line": 8,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "DEFAULT_DMA",
-          "identity": "bios.asm:27:1:constant:DEFAULT_DMA",
-          "kind": "constant",
-          "value": 128,
-          "line": 27,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "SECTOR_BYTES",
-          "identity": "bios.asm:10:1:constant:SECTOR_BYTES",
-          "kind": "constant",
-          "value": 128,
-          "line": 10,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
-          "name": "CCP_BASE",
-          "identity": "bios.asm:5:1:constant:CCP_BASE",
-          "kind": "constant",
-          "value": 58368,
-          "line": 5,
-          "scope": "global",
-          "visibility": "source",
-          "sourceUnit": "bios.asm"
-        },
-        {
           "name": "BDOS_ENTRY",
-          "identity": "bios.asm:6:1:constant:BDOS_ENTRY",
+          "identity": "bios.asm#119:BDOS_ENTRY",
           "kind": "constant",
           "value": 60422,
           "line": 6,
@@ -2319,13 +29,2339 @@
         },
         {
           "name": "BIOS_BASE",
-          "identity": "bios.asm:7:1:constant:BIOS_BASE",
+          "identity": "bios.asm#150:BIOS_BASE",
           "kind": "constant",
           "value": 64000,
           "line": 7,
           "scope": "global",
           "visibility": "source",
           "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "BootDiskError",
+          "identity": "bios.asm#2424:BootDiskError",
+          "kind": "label",
+          "address": 64169,
+          "line": 113,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "BootErrorMessage",
+          "identity": "bios.asm#4722:BootErrorMessage",
+          "kind": "label",
+          "address": 64351,
+          "line": 253,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "BootSectorsRemaining",
+          "identity": "bios.asm#4825:BootSectorsRemaining",
+          "kind": "label",
+          "address": 64371,
+          "line": 260,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "BootSector",
+          "identity": "bios.asm#4799:BootSector",
+          "kind": "label",
+          "address": 64370,
+          "line": 258,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "BootStackTop",
+          "identity": "bios.asm#5336:BootStackTop",
+          "kind": "label",
+          "address": 64616,
+          "line": 297,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "BootTrack",
+          "identity": "bios.asm#4773:BootTrack",
+          "kind": "label",
+          "address": 64369,
+          "line": 256,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "CCP_BASE",
+          "identity": "bios.asm#85:CCP_BASE",
+          "kind": "constant",
+          "value": 58368,
+          "line": 5,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "ChecksumVector",
+          "identity": "bios.asm#5262:ChecksumVector",
+          "kind": "label",
+          "address": 64537,
+          "line": 291,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "COLDBOOT",
+          "identity": "bios.asm#1053:COLDBOOT",
+          "kind": "label",
+          "address": 64051,
+          "line": 48,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "ConsoleInput",
+          "identity": "bios.asm#2833:ConsoleInput",
+          "kind": "label",
+          "address": 64207,
+          "line": 136,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "ConsoleOutput",
+          "identity": "bios.asm#2964:ConsoleOutput",
+          "kind": "label",
+          "address": 64218,
+          "line": 144,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "ConsoleStatus",
+          "identity": "bios.asm#2726:ConsoleStatus",
+          "kind": "label",
+          "address": 64199,
+          "line": 129,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "CURRENT_DISK",
+          "identity": "bios.asm#518:CURRENT_DISK",
+          "kind": "constant",
+          "value": 4,
+          "line": 26,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "CurrentDma",
+          "identity": "bios.asm#4902:CurrentDma",
+          "kind": "label",
+          "address": 64376,
+          "line": 267,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "CurrentSector",
+          "identity": "bios.asm#4877:CurrentSector",
+          "kind": "label",
+          "address": 64374,
+          "line": 265,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "CurrentTrack",
+          "identity": "bios.asm#4852:CurrentTrack",
+          "kind": "label",
+          "address": 64372,
+          "line": 263,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "DEFAULT_DMA",
+          "identity": "bios.asm#547:DEFAULT_DMA",
+          "kind": "constant",
+          "value": 128,
+          "line": 27,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "DirectoryBuffer",
+          "identity": "bios.asm#5235:DirectoryBuffer",
+          "kind": "label",
+          "address": 64409,
+          "line": 289,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "DISK_COMMAND_READ",
+          "identity": "bios.asm#446:DISK_COMMAND_READ",
+          "kind": "constant",
+          "value": 1,
+          "line": 22,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "DISK_COMMAND_WRITE",
+          "identity": "bios.asm#465:DISK_COMMAND_WRITE",
+          "kind": "constant",
+          "value": 2,
+          "line": 23,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "DiskParameterBlock",
+          "identity": "bios.asm#5065:DiskParameterBlock",
+          "kind": "label",
+          "address": 64394,
+          "line": 278,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "DiskParameterHeader",
+          "identity": "bios.asm#4933:DiskParameterHeader",
+          "kind": "label",
+          "address": 64378,
+          "line": 270,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "DiskError",
+          "identity": "bios.asm#3982:DiskError",
+          "kind": "label",
+          "address": 64300,
+          "line": 209,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "HOME",
+          "identity": "bios.asm#3107:HOME",
+          "kind": "label",
+          "address": 64226,
+          "line": 157,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "InstallPageZero",
+          "identity": "bios.asm#2521:InstallPageZero",
+          "kind": "label",
+          "address": 64178,
+          "line": 119,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "IOBYTE",
+          "identity": "bios.asm#484:IOBYTE",
+          "kind": "constant",
+          "value": 3,
+          "line": 25,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "ListOutput",
+          "identity": "bios.asm#3030:ListOutput",
+          "kind": "label",
+          "address": 64222,
+          "line": 149,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "ListStatus",
+          "identity": "bios.asm#4466:ListStatus",
+          "kind": "label",
+          "address": 64337,
+          "line": 235,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_DISK_DATA",
+          "identity": "bios.asm#422:PORT_DISK_DATA",
+          "kind": "constant",
+          "value": 21,
+          "line": 20,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_DISK_DRIVE",
+          "identity": "bios.asm#336:PORT_DISK_DRIVE",
+          "kind": "constant",
+          "value": 17,
+          "line": 16,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PrintZeroTerminated",
+          "identity": "bios.asm#4587:PrintZeroTerminated",
+          "kind": "label",
+          "address": 64343,
+          "line": 245,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_DISK_SECTOR",
+          "identity": "bios.asm#399:PORT_DISK_SECTOR",
+          "kind": "constant",
+          "value": 20,
+          "line": 19,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_DISK_STATUS",
+          "identity": "bios.asm#313:PORT_DISK_STATUS",
+          "kind": "constant",
+          "value": 16,
+          "line": 15,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_DISK_TRACK_HIGH",
+          "identity": "bios.asm#379:PORT_DISK_TRACK_HIGH",
+          "kind": "constant",
+          "value": 19,
+          "line": 18,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_DISK_TRACK_LOW",
+          "identity": "bios.asm#359:PORT_DISK_TRACK_LOW",
+          "kind": "constant",
+          "value": 18,
+          "line": 17,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_TERMINAL_RX",
+          "identity": "bios.asm#275:PORT_TERMINAL_RX",
+          "kind": "constant",
+          "value": 1,
+          "line": 13,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_TERMINAL_STATUS",
+          "identity": "bios.asm#295:PORT_TERMINAL_STATUS",
+          "kind": "constant",
+          "value": 2,
+          "line": 14,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PORT_TERMINAL_TX",
+          "identity": "bios.asm#255:PORT_TERMINAL_TX",
+          "kind": "constant",
+          "value": 0,
+          "line": 12,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "PunchOutput",
+          "identity": "bios.asm#3039:PunchOutput",
+          "kind": "label",
+          "address": 64222,
+          "line": 150,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "ReaderInput",
+          "identity": "bios.asm#3062:ReaderInput",
+          "kind": "label",
+          "address": 64223,
+          "line": 153,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "ReadSector",
+          "identity": "bios.asm#3407:ReadSector",
+          "kind": "label",
+          "address": 64254,
+          "line": 180,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SECTOR_BYTES",
+          "identity": "bios.asm#226:SECTOR_BYTES",
+          "kind": "constant",
+          "value": 128,
+          "line": 10,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SECTORS_PER_TRACK",
+          "identity": "bios.asm#205:SECTORS_PER_TRACK",
+          "kind": "constant",
+          "value": 26,
+          "line": 9,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SectorTranslate",
+          "identity": "bios.asm#4506:SectorTranslate",
+          "kind": "label",
+          "address": 64339,
+          "line": 239,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SelectCurrentAddress",
+          "identity": "bios.asm#4213:SelectCurrentAddress",
+          "kind": "label",
+          "address": 64317,
+          "line": 223,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SelectCurrentSector",
+          "identity": "bios.asm#4023:SelectCurrentSector",
+          "kind": "label",
+          "address": 64303,
+          "line": 213,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SelectDisk",
+          "identity": "bios.asm#3186:SelectDisk",
+          "kind": "label",
+          "address": 64234,
+          "line": 164,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SETDMA",
+          "identity": "bios.asm#3358:SETDMA",
+          "kind": "label",
+          "address": 64249,
+          "line": 176,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SetSector",
+          "identity": "bios.asm#3309:SetSector",
+          "kind": "label",
+          "address": 64244,
+          "line": 172,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "SETTRACK",
+          "identity": "bios.asm#3135:SETTRACK",
+          "kind": "label",
+          "address": 64229,
+          "line": 160,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "WARMBOOT",
+          "identity": "bios.asm#1244:WARMBOOT",
+          "kind": "label",
+          "address": 64069,
+          "line": 58,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "WarmBootSectorAdvanced",
+          "identity": "bios.asm#2215:WarmBootSectorAdvanced",
+          "kind": "label",
+          "address": 64150,
+          "line": 103,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "WarmBootRead",
+          "identity": "bios.asm#1497:WarmBootRead",
+          "kind": "label",
+          "address": 64092,
+          "line": 70,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "WARM_BOOT_SECTORS",
+          "identity": "bios.asm#183:WARM_BOOT_SECTORS",
+          "kind": "constant",
+          "value": 44,
+          "line": 8,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "WarmBootStoreSector",
+          "identity": "bios.asm#2176:WarmBootStoreSector",
+          "kind": "label",
+          "address": 64147,
+          "line": 100,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        },
+        {
+          "name": "WriteSector",
+          "identity": "bios.asm#3648:WriteSector",
+          "kind": "label",
+          "address": 64274,
+          "line": 193,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "bios.asm"
+        }
+      ],
+      "segments": [
+        {
+          "start": 64000,
+          "end": 64003,
+          "lstLine": 30,
+          "line": 30,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64003,
+          "end": 64006,
+          "lstLine": 31,
+          "line": 31,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64006,
+          "end": 64009,
+          "lstLine": 32,
+          "line": 32,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64009,
+          "end": 64012,
+          "lstLine": 33,
+          "line": 33,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64012,
+          "end": 64015,
+          "lstLine": 34,
+          "line": 34,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64015,
+          "end": 64018,
+          "lstLine": 35,
+          "line": 35,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64018,
+          "end": 64021,
+          "lstLine": 36,
+          "line": 36,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64021,
+          "end": 64024,
+          "lstLine": 37,
+          "line": 37,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64024,
+          "end": 64027,
+          "lstLine": 38,
+          "line": 38,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64027,
+          "end": 64030,
+          "lstLine": 39,
+          "line": 39,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64030,
+          "end": 64033,
+          "lstLine": 40,
+          "line": 40,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64033,
+          "end": 64036,
+          "lstLine": 41,
+          "line": 41,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64036,
+          "end": 64039,
+          "lstLine": 42,
+          "line": 42,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64039,
+          "end": 64042,
+          "lstLine": 43,
+          "line": 43,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64042,
+          "end": 64045,
+          "lstLine": 44,
+          "line": 44,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64045,
+          "end": 64048,
+          "lstLine": 45,
+          "line": 45,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64048,
+          "end": 64051,
+          "lstLine": 46,
+          "line": 46,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64051,
+          "end": 64052,
+          "lstLine": 49,
+          "line": 49,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64052,
+          "end": 64055,
+          "lstLine": 50,
+          "line": 50,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64055,
+          "end": 64056,
+          "lstLine": 51,
+          "line": 51,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64056,
+          "end": 64059,
+          "lstLine": 52,
+          "line": 52,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64059,
+          "end": 64062,
+          "lstLine": 53,
+          "line": 53,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64062,
+          "end": 64063,
+          "lstLine": 54,
+          "line": 54,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64063,
+          "end": 64066,
+          "lstLine": 55,
+          "line": 55,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64066,
+          "end": 64069,
+          "lstLine": 56,
+          "line": 56,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64069,
+          "end": 64070,
+          "lstLine": 59,
+          "line": 59,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64070,
+          "end": 64073,
+          "lstLine": 60,
+          "line": 60,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64073,
+          "end": 64074,
+          "lstLine": 61,
+          "line": 61,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64074,
+          "end": 64077,
+          "lstLine": 62,
+          "line": 62,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64077,
+          "end": 64079,
+          "lstLine": 63,
+          "line": 63,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64079,
+          "end": 64081,
+          "lstLine": 64,
+          "line": 64,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64081,
+          "end": 64084,
+          "lstLine": 65,
+          "line": 65,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64084,
+          "end": 64086,
+          "lstLine": 66,
+          "line": 66,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64086,
+          "end": 64089,
+          "lstLine": 67,
+          "line": 67,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64089,
+          "end": 64092,
+          "lstLine": 68,
+          "line": 68,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64092,
+          "end": 64095,
+          "lstLine": 71,
+          "line": 71,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64095,
+          "end": 64097,
+          "lstLine": 72,
+          "line": 72,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64097,
+          "end": 64098,
+          "lstLine": 73,
+          "line": 73,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64098,
+          "end": 64100,
+          "lstLine": 74,
+          "line": 74,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64100,
+          "end": 64103,
+          "lstLine": 75,
+          "line": 75,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64103,
+          "end": 64105,
+          "lstLine": 76,
+          "line": 76,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64105,
+          "end": 64107,
+          "lstLine": 77,
+          "line": 77,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64107,
+          "end": 64109,
+          "lstLine": 78,
+          "line": 78,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64109,
+          "end": 64111,
+          "lstLine": 79,
+          "line": 79,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64111,
+          "end": 64112,
+          "lstLine": 80,
+          "line": 80,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64112,
+          "end": 64114,
+          "lstLine": 81,
+          "line": 81,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64114,
+          "end": 64116,
+          "lstLine": 82,
+          "line": 82,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64116,
+          "end": 64118,
+          "lstLine": 83,
+          "line": 83,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64118,
+          "end": 64120,
+          "lstLine": 84,
+          "line": 84,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64120,
+          "end": 64122,
+          "lstLine": 85,
+          "line": 85,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64122,
+          "end": 64123,
+          "lstLine": 86,
+          "line": 86,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64123,
+          "end": 64125,
+          "lstLine": 87,
+          "line": 87,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64125,
+          "end": 64128,
+          "lstLine": 89,
+          "line": 89,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64128,
+          "end": 64129,
+          "lstLine": 90,
+          "line": 90,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64129,
+          "end": 64131,
+          "lstLine": 91,
+          "line": 91,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64131,
+          "end": 64133,
+          "lstLine": 92,
+          "line": 92,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64133,
+          "end": 64135,
+          "lstLine": 93,
+          "line": 93,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64135,
+          "end": 64138,
+          "lstLine": 94,
+          "line": 94,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64138,
+          "end": 64141,
+          "lstLine": 95,
+          "line": 95,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64141,
+          "end": 64142,
+          "lstLine": 96,
+          "line": 96,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64142,
+          "end": 64145,
+          "lstLine": 97,
+          "line": 97,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64145,
+          "end": 64147,
+          "lstLine": 98,
+          "line": 98,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64147,
+          "end": 64150,
+          "lstLine": 101,
+          "line": 101,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64150,
+          "end": 64153,
+          "lstLine": 104,
+          "line": 104,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64153,
+          "end": 64154,
+          "lstLine": 105,
+          "line": 105,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64154,
+          "end": 64157,
+          "lstLine": 106,
+          "line": 106,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64157,
+          "end": 64159,
+          "lstLine": 107,
+          "line": 107,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64159,
+          "end": 64162,
+          "lstLine": 108,
+          "line": 108,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64162,
+          "end": 64163,
+          "lstLine": 109,
+          "line": 109,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64163,
+          "end": 64166,
+          "lstLine": 110,
+          "line": 110,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64166,
+          "end": 64169,
+          "lstLine": 111,
+          "line": 111,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64169,
+          "end": 64172,
+          "lstLine": 114,
+          "line": 114,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64172,
+          "end": 64175,
+          "lstLine": 115,
+          "line": 115,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64175,
+          "end": 64176,
+          "lstLine": 116,
+          "line": 116,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64176,
+          "end": 64178,
+          "lstLine": 117,
+          "line": 117,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64178,
+          "end": 64180,
+          "lstLine": 120,
+          "line": 120,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64180,
+          "end": 64183,
+          "lstLine": 121,
+          "line": 121,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64183,
+          "end": 64186,
+          "lstLine": 122,
+          "line": 122,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64186,
+          "end": 64189,
+          "lstLine": 123,
+          "line": 123,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64189,
+          "end": 64192,
+          "lstLine": 124,
+          "line": 124,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64192,
+          "end": 64195,
+          "lstLine": 125,
+          "line": 125,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64195,
+          "end": 64198,
+          "lstLine": 126,
+          "line": 126,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64198,
+          "end": 64199,
+          "lstLine": 127,
+          "line": 127,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64199,
+          "end": 64201,
+          "lstLine": 130,
+          "line": 130,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64201,
+          "end": 64203,
+          "lstLine": 131,
+          "line": 131,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64203,
+          "end": 64204,
+          "lstLine": 132,
+          "line": 132,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64204,
+          "end": 64206,
+          "lstLine": 133,
+          "line": 133,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64206,
+          "end": 64207,
+          "lstLine": 134,
+          "line": 134,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64207,
+          "end": 64210,
+          "lstLine": 137,
+          "line": 137,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64210,
+          "end": 64211,
+          "lstLine": 138,
+          "line": 138,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64211,
+          "end": 64213,
+          "lstLine": 139,
+          "line": 139,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64213,
+          "end": 64215,
+          "lstLine": 140,
+          "line": 140,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64215,
+          "end": 64217,
+          "lstLine": 141,
+          "line": 141,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64217,
+          "end": 64218,
+          "lstLine": 142,
+          "line": 142,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64218,
+          "end": 64219,
+          "lstLine": 145,
+          "line": 145,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64219,
+          "end": 64221,
+          "lstLine": 146,
+          "line": 146,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64221,
+          "end": 64222,
+          "lstLine": 147,
+          "line": 147,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64222,
+          "end": 64223,
+          "lstLine": 151,
+          "line": 151,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64223,
+          "end": 64225,
+          "lstLine": 154,
+          "line": 154,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64225,
+          "end": 64226,
+          "lstLine": 155,
+          "line": 155,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64226,
+          "end": 64229,
+          "lstLine": 158,
+          "line": 158,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64229,
+          "end": 64233,
+          "lstLine": 161,
+          "line": 161,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64233,
+          "end": 64234,
+          "lstLine": 162,
+          "line": 162,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64234,
+          "end": 64235,
+          "lstLine": 165,
+          "line": 165,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64235,
+          "end": 64236,
+          "lstLine": 166,
+          "line": 166,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64236,
+          "end": 64239,
+          "lstLine": 167,
+          "line": 167,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64239,
+          "end": 64240,
+          "lstLine": 168,
+          "line": 168,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64240,
+          "end": 64243,
+          "lstLine": 169,
+          "line": 169,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64243,
+          "end": 64244,
+          "lstLine": 170,
+          "line": 170,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64244,
+          "end": 64248,
+          "lstLine": 173,
+          "line": 173,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64248,
+          "end": 64249,
+          "lstLine": 174,
+          "line": 174,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64249,
+          "end": 64253,
+          "lstLine": 177,
+          "line": 177,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64253,
+          "end": 64254,
+          "lstLine": 178,
+          "line": 178,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64254,
+          "end": 64257,
+          "lstLine": 181,
+          "line": 181,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64257,
+          "end": 64258,
+          "lstLine": 182,
+          "line": 182,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64258,
+          "end": 64261,
+          "lstLine": 183,
+          "line": 183,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64261,
+          "end": 64263,
+          "lstLine": 184,
+          "line": 184,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64263,
+          "end": 64265,
+          "lstLine": 185,
+          "line": 185,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64265,
+          "end": 64267,
+          "lstLine": 186,
+          "line": 186,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64267,
+          "end": 64269,
+          "lstLine": 187,
+          "line": 187,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64269,
+          "end": 64270,
+          "lstLine": 188,
+          "line": 188,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64270,
+          "end": 64271,
+          "lstLine": 189,
+          "line": 189,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64271,
+          "end": 64273,
+          "lstLine": 190,
+          "line": 190,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64273,
+          "end": 64274,
+          "lstLine": 191,
+          "line": 191,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64274,
+          "end": 64277,
+          "lstLine": 194,
+          "line": 194,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64277,
+          "end": 64278,
+          "lstLine": 195,
+          "line": 195,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64278,
+          "end": 64280,
+          "lstLine": 196,
+          "line": 196,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64280,
+          "end": 64282,
+          "lstLine": 197,
+          "line": 197,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64282,
+          "end": 64284,
+          "lstLine": 198,
+          "line": 198,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64284,
+          "end": 64285,
+          "lstLine": 199,
+          "line": 199,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64285,
+          "end": 64287,
+          "lstLine": 200,
+          "line": 200,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64287,
+          "end": 64290,
+          "lstLine": 201,
+          "line": 201,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64290,
+          "end": 64292,
+          "lstLine": 202,
+          "line": 202,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64292,
+          "end": 64294,
+          "lstLine": 203,
+          "line": 203,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64294,
+          "end": 64296,
+          "lstLine": 204,
+          "line": 204,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64296,
+          "end": 64298,
+          "lstLine": 205,
+          "line": 205,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64298,
+          "end": 64299,
+          "lstLine": 206,
+          "line": 206,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64299,
+          "end": 64300,
+          "lstLine": 207,
+          "line": 207,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64300,
+          "end": 64302,
+          "lstLine": 210,
+          "line": 210,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64302,
+          "end": 64303,
+          "lstLine": 211,
+          "line": 211,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64303,
+          "end": 64306,
+          "lstLine": 214,
+          "line": 214,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64306,
+          "end": 64307,
+          "lstLine": 215,
+          "line": 215,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64307,
+          "end": 64309,
+          "lstLine": 216,
+          "line": 216,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64309,
+          "end": 64311,
+          "lstLine": 217,
+          "line": 217,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64311,
+          "end": 64313,
+          "lstLine": 218,
+          "line": 218,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64313,
+          "end": 64314,
+          "lstLine": 219,
+          "line": 219,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64314,
+          "end": 64316,
+          "lstLine": 220,
+          "line": 220,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64316,
+          "end": 64317,
+          "lstLine": 221,
+          "line": 221,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64317,
+          "end": 64318,
+          "lstLine": 224,
+          "line": 224,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64318,
+          "end": 64320,
+          "lstLine": 225,
+          "line": 225,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64320,
+          "end": 64323,
+          "lstLine": 226,
+          "line": 226,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64323,
+          "end": 64325,
+          "lstLine": 227,
+          "line": 227,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64325,
+          "end": 64328,
+          "lstLine": 228,
+          "line": 228,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64328,
+          "end": 64330,
+          "lstLine": 229,
+          "line": 229,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64330,
+          "end": 64333,
+          "lstLine": 230,
+          "line": 230,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64333,
+          "end": 64335,
+          "lstLine": 231,
+          "line": 231,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64335,
+          "end": 64336,
+          "lstLine": 232,
+          "line": 232,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64336,
+          "end": 64337,
+          "lstLine": 233,
+          "line": 233,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64337,
+          "end": 64338,
+          "lstLine": 236,
+          "line": 236,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64338,
+          "end": 64339,
+          "lstLine": 237,
+          "line": 237,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64339,
+          "end": 64340,
+          "lstLine": 240,
+          "line": 240,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64340,
+          "end": 64341,
+          "lstLine": 241,
+          "line": 241,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64341,
+          "end": 64342,
+          "lstLine": 242,
+          "line": 242,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64342,
+          "end": 64343,
+          "lstLine": 243,
+          "line": 243,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64343,
+          "end": 64344,
+          "lstLine": 246,
+          "line": 246,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64344,
+          "end": 64345,
+          "lstLine": 247,
+          "line": 247,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64345,
+          "end": 64346,
+          "lstLine": 248,
+          "line": 248,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64346,
+          "end": 64348,
+          "lstLine": 249,
+          "line": 249,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64348,
+          "end": 64349,
+          "lstLine": 250,
+          "line": 250,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64349,
+          "end": 64351,
+          "lstLine": 251,
+          "line": 251,
+          "column": 1,
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 64351,
+          "end": 64369,
+          "lstLine": 254,
+          "line": 254,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64369,
+          "end": 64370,
+          "lstLine": 259,
+          "line": 257,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64370,
+          "end": 64371,
+          "lstLine": 261,
+          "line": 259,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64371,
+          "end": 64372,
+          "lstLine": 263,
+          "line": 261,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64372,
+          "end": 64374,
+          "lstLine": 266,
+          "line": 264,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64374,
+          "end": 64376,
+          "lstLine": 268,
+          "line": 266,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64376,
+          "end": 64378,
+          "lstLine": 270,
+          "line": 268,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64378,
+          "end": 64380,
+          "lstLine": 273,
+          "line": 271,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64380,
+          "end": 64386,
+          "lstLine": 274,
+          "line": 272,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64386,
+          "end": 64388,
+          "lstLine": 275,
+          "line": 273,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64388,
+          "end": 64390,
+          "lstLine": 276,
+          "line": 274,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64390,
+          "end": 64392,
+          "lstLine": 277,
+          "line": 275,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64392,
+          "end": 64394,
+          "lstLine": 278,
+          "line": 276,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64394,
+          "end": 64396,
+          "lstLine": 281,
+          "line": 279,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64396,
+          "end": 64397,
+          "lstLine": 282,
+          "line": 280,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64397,
+          "end": 64398,
+          "lstLine": 283,
+          "line": 281,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64398,
+          "end": 64399,
+          "lstLine": 284,
+          "line": 282,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64399,
+          "end": 64401,
+          "lstLine": 285,
+          "line": 283,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64401,
+          "end": 64403,
+          "lstLine": 286,
+          "line": 284,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64403,
+          "end": 64405,
+          "lstLine": 287,
+          "line": 285,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64405,
+          "end": 64407,
+          "lstLine": 288,
+          "line": 286,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64407,
+          "end": 64409,
+          "lstLine": 289,
+          "line": 287,
+          "column": 1,
+          "kind": "data",
+          "confidence": "high"
+        },
+        {
+          "start": 64409,
+          "end": 64537,
+          "lstLine": 292,
+          "line": 290,
+          "column": 1,
+          "kind": "directive",
+          "confidence": "high"
+        },
+        {
+          "start": 64537,
+          "end": 64553,
+          "lstLine": 294,
+          "line": 292,
+          "column": 1,
+          "kind": "directive",
+          "confidence": "high"
+        },
+        {
+          "start": 64553,
+          "end": 64584,
+          "lstLine": 296,
+          "line": 294,
+          "column": 1,
+          "kind": "directive",
+          "confidence": "high"
+        },
+        {
+          "start": 64584,
+          "end": 64616,
+          "lstLine": 298,
+          "line": 296,
+          "column": 1,
+          "kind": "directive",
+          "confidence": "high"
         }
       ]
     }
@@ -2333,7 +2369,7 @@
   "segments": [
     {
       "start": 64000,
-      "end": 64409
+      "end": 64616
     }
   ],
   "fileList": [
@@ -2341,415 +2377,8 @@
   ],
   "symbols": [
     {
-      "name": "ColdBoot",
-      "identity": "bios.asm:48:1:label:ColdBoot",
-      "kind": "label",
-      "address": 64051,
-      "file": "bios.asm",
-      "line": 48,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "WarmBoot",
-      "identity": "bios.asm:58:1:label:WarmBoot",
-      "kind": "label",
-      "address": 64069,
-      "file": "bios.asm",
-      "line": 58,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "WarmBootRead",
-      "identity": "bios.asm:70:1:label:WarmBootRead",
-      "kind": "label",
-      "address": 64092,
-      "file": "bios.asm",
-      "line": 70,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "WarmBootStoreSector",
-      "identity": "bios.asm:100:1:label:WarmBootStoreSector",
-      "kind": "label",
-      "address": 64147,
-      "file": "bios.asm",
-      "line": 100,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "WarmBootSectorAdvanced",
-      "identity": "bios.asm:103:1:label:WarmBootSectorAdvanced",
-      "kind": "label",
-      "address": 64150,
-      "file": "bios.asm",
-      "line": 103,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "BootDiskError",
-      "identity": "bios.asm:113:1:label:BootDiskError",
-      "kind": "label",
-      "address": 64169,
-      "file": "bios.asm",
-      "line": 113,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "InstallPageZero",
-      "identity": "bios.asm:119:1:label:InstallPageZero",
-      "kind": "label",
-      "address": 64178,
-      "file": "bios.asm",
-      "line": 119,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "ConsoleStatus",
-      "identity": "bios.asm:129:1:label:ConsoleStatus",
-      "kind": "label",
-      "address": 64199,
-      "file": "bios.asm",
-      "line": 129,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "ConsoleInput",
-      "identity": "bios.asm:136:1:label:ConsoleInput",
-      "kind": "label",
-      "address": 64207,
-      "file": "bios.asm",
-      "line": 136,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "ConsoleOutput",
-      "identity": "bios.asm:144:1:label:ConsoleOutput",
-      "kind": "label",
-      "address": 64218,
-      "file": "bios.asm",
-      "line": 144,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "ListOutput",
-      "identity": "bios.asm:149:1:label:ListOutput",
-      "kind": "label",
-      "address": 64222,
-      "file": "bios.asm",
-      "line": 149,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PunchOutput",
-      "identity": "bios.asm:150:1:label:PunchOutput",
-      "kind": "label",
-      "address": 64222,
-      "file": "bios.asm",
-      "line": 150,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "ReaderInput",
-      "identity": "bios.asm:153:1:label:ReaderInput",
-      "kind": "label",
-      "address": 64223,
-      "file": "bios.asm",
-      "line": 153,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "Home",
-      "identity": "bios.asm:157:1:label:Home",
-      "kind": "label",
-      "address": 64226,
-      "file": "bios.asm",
-      "line": 157,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SetTrack",
-      "identity": "bios.asm:160:1:label:SetTrack",
-      "kind": "label",
-      "address": 64229,
-      "file": "bios.asm",
-      "line": 160,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SelectDisk",
-      "identity": "bios.asm:164:1:label:SelectDisk",
-      "kind": "label",
-      "address": 64234,
-      "file": "bios.asm",
-      "line": 164,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SetSector",
-      "identity": "bios.asm:172:1:label:SetSector",
-      "kind": "label",
-      "address": 64244,
-      "file": "bios.asm",
-      "line": 172,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SetDma",
-      "identity": "bios.asm:176:1:label:SetDma",
-      "kind": "label",
-      "address": 64249,
-      "file": "bios.asm",
-      "line": 176,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "ReadSector",
-      "identity": "bios.asm:180:1:label:ReadSector",
-      "kind": "label",
-      "address": 64254,
-      "file": "bios.asm",
-      "line": 180,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "WriteSector",
-      "identity": "bios.asm:193:1:label:WriteSector",
-      "kind": "label",
-      "address": 64274,
-      "file": "bios.asm",
-      "line": 193,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "DiskError",
-      "identity": "bios.asm:209:1:label:DiskError",
-      "kind": "label",
-      "address": 64300,
-      "file": "bios.asm",
-      "line": 209,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SelectCurrentSector",
-      "identity": "bios.asm:213:1:label:SelectCurrentSector",
-      "kind": "label",
-      "address": 64303,
-      "file": "bios.asm",
-      "line": 213,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SelectCurrentAddress",
-      "identity": "bios.asm:223:1:label:SelectCurrentAddress",
-      "kind": "label",
-      "address": 64317,
-      "file": "bios.asm",
-      "line": 223,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "ListStatus",
-      "identity": "bios.asm:235:1:label:ListStatus",
-      "kind": "label",
-      "address": 64337,
-      "file": "bios.asm",
-      "line": 235,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SectorTranslate",
-      "identity": "bios.asm:239:1:label:SectorTranslate",
-      "kind": "label",
-      "address": 64339,
-      "file": "bios.asm",
-      "line": 239,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PrintZeroTerminated",
-      "identity": "bios.asm:245:1:label:PrintZeroTerminated",
-      "kind": "label",
-      "address": 64343,
-      "file": "bios.asm",
-      "line": 245,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "BootErrorMessage",
-      "identity": "bios.asm:253:1:label:BootErrorMessage",
-      "kind": "label",
-      "address": 64351,
-      "file": "bios.asm",
-      "line": 253,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "BootTrack",
-      "identity": "bios.asm:256:1:label:BootTrack",
-      "kind": "label",
-      "address": 64369,
-      "file": "bios.asm",
-      "line": 256,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "BootSector",
-      "identity": "bios.asm:258:1:label:BootSector",
-      "kind": "label",
-      "address": 64370,
-      "file": "bios.asm",
-      "line": 258,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "BootSectorsRemaining",
-      "identity": "bios.asm:260:1:label:BootSectorsRemaining",
-      "kind": "label",
-      "address": 64371,
-      "file": "bios.asm",
-      "line": 260,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "CurrentTrack",
-      "identity": "bios.asm:263:1:label:CurrentTrack",
-      "kind": "label",
-      "address": 64372,
-      "file": "bios.asm",
-      "line": 263,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "CurrentSector",
-      "identity": "bios.asm:265:1:label:CurrentSector",
-      "kind": "label",
-      "address": 64374,
-      "file": "bios.asm",
-      "line": 265,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "CurrentDma",
-      "identity": "bios.asm:267:1:label:CurrentDma",
-      "kind": "label",
-      "address": 64376,
-      "file": "bios.asm",
-      "line": 267,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "DiskParameterHeader",
-      "identity": "bios.asm:270:1:label:DiskParameterHeader",
-      "kind": "label",
-      "address": 64378,
-      "file": "bios.asm",
-      "line": 270,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "DiskParameterBlock",
-      "identity": "bios.asm:278:1:label:DiskParameterBlock",
-      "kind": "label",
-      "address": 64394,
-      "file": "bios.asm",
-      "line": 278,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "DirectoryBuffer",
-      "identity": "bios.asm:289:1:label:DirectoryBuffer",
-      "kind": "label",
-      "address": 64409,
-      "file": "bios.asm",
-      "line": 289,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "ChecksumVector",
-      "identity": "bios.asm:291:1:label:ChecksumVector",
-      "kind": "label",
-      "address": 64537,
-      "file": "bios.asm",
-      "line": 291,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
       "name": "AllocationVector",
-      "identity": "bios.asm:293:1:label:AllocationVector",
+      "identity": "bios.asm#5289:AllocationVector",
       "kind": "label",
       "address": 64553,
       "file": "bios.asm",
@@ -2759,217 +2388,8 @@
       "sourceUnit": "bios.asm"
     },
     {
-      "name": "BootStackTop",
-      "identity": "bios.asm:297:1:label:BootStackTop",
-      "kind": "label",
-      "address": 64616,
-      "file": "bios.asm",
-      "line": 297,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_TERMINAL_TX",
-      "identity": "bios.asm:12:1:constant:PORT_TERMINAL_TX",
-      "kind": "constant",
-      "value": 0,
-      "file": "bios.asm",
-      "line": 12,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "DISK_COMMAND_READ",
-      "identity": "bios.asm:22:1:constant:DISK_COMMAND_READ",
-      "kind": "constant",
-      "value": 1,
-      "file": "bios.asm",
-      "line": 22,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_TERMINAL_RX",
-      "identity": "bios.asm:13:1:constant:PORT_TERMINAL_RX",
-      "kind": "constant",
-      "value": 1,
-      "file": "bios.asm",
-      "line": 13,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "DISK_COMMAND_WRITE",
-      "identity": "bios.asm:23:1:constant:DISK_COMMAND_WRITE",
-      "kind": "constant",
-      "value": 2,
-      "file": "bios.asm",
-      "line": 23,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_TERMINAL_STATUS",
-      "identity": "bios.asm:14:1:constant:PORT_TERMINAL_STATUS",
-      "kind": "constant",
-      "value": 2,
-      "file": "bios.asm",
-      "line": 14,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "IOBYTE",
-      "identity": "bios.asm:25:1:constant:IOBYTE",
-      "kind": "constant",
-      "value": 3,
-      "file": "bios.asm",
-      "line": 25,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "CURRENT_DISK",
-      "identity": "bios.asm:26:1:constant:CURRENT_DISK",
-      "kind": "constant",
-      "value": 4,
-      "file": "bios.asm",
-      "line": 26,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_DISK_STATUS",
-      "identity": "bios.asm:15:1:constant:PORT_DISK_STATUS",
-      "kind": "constant",
-      "value": 16,
-      "file": "bios.asm",
-      "line": 15,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_DISK_DRIVE",
-      "identity": "bios.asm:16:1:constant:PORT_DISK_DRIVE",
-      "kind": "constant",
-      "value": 17,
-      "file": "bios.asm",
-      "line": 16,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_DISK_TRACK_LOW",
-      "identity": "bios.asm:17:1:constant:PORT_DISK_TRACK_LOW",
-      "kind": "constant",
-      "value": 18,
-      "file": "bios.asm",
-      "line": 17,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_DISK_TRACK_HIGH",
-      "identity": "bios.asm:18:1:constant:PORT_DISK_TRACK_HIGH",
-      "kind": "constant",
-      "value": 19,
-      "file": "bios.asm",
-      "line": 18,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_DISK_SECTOR",
-      "identity": "bios.asm:19:1:constant:PORT_DISK_SECTOR",
-      "kind": "constant",
-      "value": 20,
-      "file": "bios.asm",
-      "line": 19,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "PORT_DISK_DATA",
-      "identity": "bios.asm:20:1:constant:PORT_DISK_DATA",
-      "kind": "constant",
-      "value": 21,
-      "file": "bios.asm",
-      "line": 20,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SECTORS_PER_TRACK",
-      "identity": "bios.asm:9:1:constant:SECTORS_PER_TRACK",
-      "kind": "constant",
-      "value": 26,
-      "file": "bios.asm",
-      "line": 9,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "WARM_BOOT_SECTORS",
-      "identity": "bios.asm:8:1:constant:WARM_BOOT_SECTORS",
-      "kind": "constant",
-      "value": 44,
-      "file": "bios.asm",
-      "line": 8,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "DEFAULT_DMA",
-      "identity": "bios.asm:27:1:constant:DEFAULT_DMA",
-      "kind": "constant",
-      "value": 128,
-      "file": "bios.asm",
-      "line": 27,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "SECTOR_BYTES",
-      "identity": "bios.asm:10:1:constant:SECTOR_BYTES",
-      "kind": "constant",
-      "value": 128,
-      "file": "bios.asm",
-      "line": 10,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
-      "name": "CCP_BASE",
-      "identity": "bios.asm:5:1:constant:CCP_BASE",
-      "kind": "constant",
-      "value": 58368,
-      "file": "bios.asm",
-      "line": 5,
-      "scope": "global",
-      "visibility": "source",
-      "sourceUnit": "bios.asm"
-    },
-    {
       "name": "BDOS_ENTRY",
-      "identity": "bios.asm:6:1:constant:BDOS_ENTRY",
+      "identity": "bios.asm#119:BDOS_ENTRY",
       "kind": "constant",
       "value": 60422,
       "file": "bios.asm",
@@ -2980,7 +2400,7 @@
     },
     {
       "name": "BIOS_BASE",
-      "identity": "bios.asm:7:1:constant:BIOS_BASE",
+      "identity": "bios.asm#150:BIOS_BASE",
       "kind": "constant",
       "value": 64000,
       "file": "bios.asm",
@@ -2988,14 +2408,631 @@
       "scope": "global",
       "visibility": "source",
       "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "BootDiskError",
+      "identity": "bios.asm#2424:BootDiskError",
+      "kind": "label",
+      "address": 64169,
+      "file": "bios.asm",
+      "line": 113,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "BootErrorMessage",
+      "identity": "bios.asm#4722:BootErrorMessage",
+      "kind": "label",
+      "address": 64351,
+      "file": "bios.asm",
+      "line": 253,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "BootSectorsRemaining",
+      "identity": "bios.asm#4825:BootSectorsRemaining",
+      "kind": "label",
+      "address": 64371,
+      "file": "bios.asm",
+      "line": 260,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "BootSector",
+      "identity": "bios.asm#4799:BootSector",
+      "kind": "label",
+      "address": 64370,
+      "file": "bios.asm",
+      "line": 258,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "BootStackTop",
+      "identity": "bios.asm#5336:BootStackTop",
+      "kind": "label",
+      "address": 64616,
+      "file": "bios.asm",
+      "line": 297,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "BootTrack",
+      "identity": "bios.asm#4773:BootTrack",
+      "kind": "label",
+      "address": 64369,
+      "file": "bios.asm",
+      "line": 256,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "CCP_BASE",
+      "identity": "bios.asm#85:CCP_BASE",
+      "kind": "constant",
+      "value": 58368,
+      "file": "bios.asm",
+      "line": 5,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "ChecksumVector",
+      "identity": "bios.asm#5262:ChecksumVector",
+      "kind": "label",
+      "address": 64537,
+      "file": "bios.asm",
+      "line": 291,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "COLDBOOT",
+      "identity": "bios.asm#1053:COLDBOOT",
+      "kind": "label",
+      "address": 64051,
+      "file": "bios.asm",
+      "line": 48,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "ConsoleInput",
+      "identity": "bios.asm#2833:ConsoleInput",
+      "kind": "label",
+      "address": 64207,
+      "file": "bios.asm",
+      "line": 136,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "ConsoleOutput",
+      "identity": "bios.asm#2964:ConsoleOutput",
+      "kind": "label",
+      "address": 64218,
+      "file": "bios.asm",
+      "line": 144,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "ConsoleStatus",
+      "identity": "bios.asm#2726:ConsoleStatus",
+      "kind": "label",
+      "address": 64199,
+      "file": "bios.asm",
+      "line": 129,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "CURRENT_DISK",
+      "identity": "bios.asm#518:CURRENT_DISK",
+      "kind": "constant",
+      "value": 4,
+      "file": "bios.asm",
+      "line": 26,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "CurrentDma",
+      "identity": "bios.asm#4902:CurrentDma",
+      "kind": "label",
+      "address": 64376,
+      "file": "bios.asm",
+      "line": 267,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "CurrentSector",
+      "identity": "bios.asm#4877:CurrentSector",
+      "kind": "label",
+      "address": 64374,
+      "file": "bios.asm",
+      "line": 265,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "CurrentTrack",
+      "identity": "bios.asm#4852:CurrentTrack",
+      "kind": "label",
+      "address": 64372,
+      "file": "bios.asm",
+      "line": 263,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "DEFAULT_DMA",
+      "identity": "bios.asm#547:DEFAULT_DMA",
+      "kind": "constant",
+      "value": 128,
+      "file": "bios.asm",
+      "line": 27,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "DirectoryBuffer",
+      "identity": "bios.asm#5235:DirectoryBuffer",
+      "kind": "label",
+      "address": 64409,
+      "file": "bios.asm",
+      "line": 289,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "DISK_COMMAND_READ",
+      "identity": "bios.asm#446:DISK_COMMAND_READ",
+      "kind": "constant",
+      "value": 1,
+      "file": "bios.asm",
+      "line": 22,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "DISK_COMMAND_WRITE",
+      "identity": "bios.asm#465:DISK_COMMAND_WRITE",
+      "kind": "constant",
+      "value": 2,
+      "file": "bios.asm",
+      "line": 23,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "DiskParameterBlock",
+      "identity": "bios.asm#5065:DiskParameterBlock",
+      "kind": "label",
+      "address": 64394,
+      "file": "bios.asm",
+      "line": 278,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "DiskParameterHeader",
+      "identity": "bios.asm#4933:DiskParameterHeader",
+      "kind": "label",
+      "address": 64378,
+      "file": "bios.asm",
+      "line": 270,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "DiskError",
+      "identity": "bios.asm#3982:DiskError",
+      "kind": "label",
+      "address": 64300,
+      "file": "bios.asm",
+      "line": 209,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "HOME",
+      "identity": "bios.asm#3107:HOME",
+      "kind": "label",
+      "address": 64226,
+      "file": "bios.asm",
+      "line": 157,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "InstallPageZero",
+      "identity": "bios.asm#2521:InstallPageZero",
+      "kind": "label",
+      "address": 64178,
+      "file": "bios.asm",
+      "line": 119,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "IOBYTE",
+      "identity": "bios.asm#484:IOBYTE",
+      "kind": "constant",
+      "value": 3,
+      "file": "bios.asm",
+      "line": 25,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "ListOutput",
+      "identity": "bios.asm#3030:ListOutput",
+      "kind": "label",
+      "address": 64222,
+      "file": "bios.asm",
+      "line": 149,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "ListStatus",
+      "identity": "bios.asm#4466:ListStatus",
+      "kind": "label",
+      "address": 64337,
+      "file": "bios.asm",
+      "line": 235,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_DISK_DATA",
+      "identity": "bios.asm#422:PORT_DISK_DATA",
+      "kind": "constant",
+      "value": 21,
+      "file": "bios.asm",
+      "line": 20,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_DISK_DRIVE",
+      "identity": "bios.asm#336:PORT_DISK_DRIVE",
+      "kind": "constant",
+      "value": 17,
+      "file": "bios.asm",
+      "line": 16,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PrintZeroTerminated",
+      "identity": "bios.asm#4587:PrintZeroTerminated",
+      "kind": "label",
+      "address": 64343,
+      "file": "bios.asm",
+      "line": 245,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_DISK_SECTOR",
+      "identity": "bios.asm#399:PORT_DISK_SECTOR",
+      "kind": "constant",
+      "value": 20,
+      "file": "bios.asm",
+      "line": 19,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_DISK_STATUS",
+      "identity": "bios.asm#313:PORT_DISK_STATUS",
+      "kind": "constant",
+      "value": 16,
+      "file": "bios.asm",
+      "line": 15,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_DISK_TRACK_HIGH",
+      "identity": "bios.asm#379:PORT_DISK_TRACK_HIGH",
+      "kind": "constant",
+      "value": 19,
+      "file": "bios.asm",
+      "line": 18,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_DISK_TRACK_LOW",
+      "identity": "bios.asm#359:PORT_DISK_TRACK_LOW",
+      "kind": "constant",
+      "value": 18,
+      "file": "bios.asm",
+      "line": 17,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_TERMINAL_RX",
+      "identity": "bios.asm#275:PORT_TERMINAL_RX",
+      "kind": "constant",
+      "value": 1,
+      "file": "bios.asm",
+      "line": 13,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_TERMINAL_STATUS",
+      "identity": "bios.asm#295:PORT_TERMINAL_STATUS",
+      "kind": "constant",
+      "value": 2,
+      "file": "bios.asm",
+      "line": 14,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PORT_TERMINAL_TX",
+      "identity": "bios.asm#255:PORT_TERMINAL_TX",
+      "kind": "constant",
+      "value": 0,
+      "file": "bios.asm",
+      "line": 12,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "PunchOutput",
+      "identity": "bios.asm#3039:PunchOutput",
+      "kind": "label",
+      "address": 64222,
+      "file": "bios.asm",
+      "line": 150,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "ReaderInput",
+      "identity": "bios.asm#3062:ReaderInput",
+      "kind": "label",
+      "address": 64223,
+      "file": "bios.asm",
+      "line": 153,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "ReadSector",
+      "identity": "bios.asm#3407:ReadSector",
+      "kind": "label",
+      "address": 64254,
+      "file": "bios.asm",
+      "line": 180,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SECTOR_BYTES",
+      "identity": "bios.asm#226:SECTOR_BYTES",
+      "kind": "constant",
+      "value": 128,
+      "file": "bios.asm",
+      "line": 10,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SECTORS_PER_TRACK",
+      "identity": "bios.asm#205:SECTORS_PER_TRACK",
+      "kind": "constant",
+      "value": 26,
+      "file": "bios.asm",
+      "line": 9,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SectorTranslate",
+      "identity": "bios.asm#4506:SectorTranslate",
+      "kind": "label",
+      "address": 64339,
+      "file": "bios.asm",
+      "line": 239,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SelectCurrentAddress",
+      "identity": "bios.asm#4213:SelectCurrentAddress",
+      "kind": "label",
+      "address": 64317,
+      "file": "bios.asm",
+      "line": 223,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SelectCurrentSector",
+      "identity": "bios.asm#4023:SelectCurrentSector",
+      "kind": "label",
+      "address": 64303,
+      "file": "bios.asm",
+      "line": 213,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SelectDisk",
+      "identity": "bios.asm#3186:SelectDisk",
+      "kind": "label",
+      "address": 64234,
+      "file": "bios.asm",
+      "line": 164,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SETDMA",
+      "identity": "bios.asm#3358:SETDMA",
+      "kind": "label",
+      "address": 64249,
+      "file": "bios.asm",
+      "line": 176,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SetSector",
+      "identity": "bios.asm#3309:SetSector",
+      "kind": "label",
+      "address": 64244,
+      "file": "bios.asm",
+      "line": 172,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "SETTRACK",
+      "identity": "bios.asm#3135:SETTRACK",
+      "kind": "label",
+      "address": 64229,
+      "file": "bios.asm",
+      "line": 160,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "WARMBOOT",
+      "identity": "bios.asm#1244:WARMBOOT",
+      "kind": "label",
+      "address": 64069,
+      "file": "bios.asm",
+      "line": 58,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "WarmBootSectorAdvanced",
+      "identity": "bios.asm#2215:WarmBootSectorAdvanced",
+      "kind": "label",
+      "address": 64150,
+      "file": "bios.asm",
+      "line": 103,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "WarmBootRead",
+      "identity": "bios.asm#1497:WarmBootRead",
+      "kind": "label",
+      "address": 64092,
+      "file": "bios.asm",
+      "line": 70,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "WARM_BOOT_SECTORS",
+      "identity": "bios.asm#183:WARM_BOOT_SECTORS",
+      "kind": "constant",
+      "value": 44,
+      "file": "bios.asm",
+      "line": 8,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "WarmBootStoreSector",
+      "identity": "bios.asm#2176:WarmBootStoreSector",
+      "kind": "label",
+      "address": 64147,
+      "file": "bios.asm",
+      "line": 100,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
+    },
+    {
+      "name": "WriteSector",
+      "identity": "bios.asm#3648:WriteSector",
+      "kind": "label",
+      "address": 64274,
+      "file": "bios.asm",
+      "line": 193,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "bios.asm"
     }
   ],
   "generator": {
-    "name": "azm",
-    "tool": "azm",
-    "version": "0.3.9",
+    "name": "atom",
+    "tool": "atom",
+    "version": "0.2.0",
     "inputs": {
       "entry": "bios.asm"
-    }
+    },
+    "entryAddress": 64000
   }
 }

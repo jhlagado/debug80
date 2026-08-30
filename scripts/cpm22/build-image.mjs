@@ -9,6 +9,7 @@ import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
 import { installCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
 import {
   assembleConvertedWithAtom,
+  assembleProjectOwnedAtomArtifacts,
   assembleProjectOwnedWithAtom,
   converted8080Candidates,
   projectOwnedCandidates,
@@ -244,12 +245,14 @@ async function main() {
         candidate: convertedByName.get("bdos"),
         azmBytes: bdosAzm.bytes,
       }).then((bytes) => withDebugMap(bytes, bdosAzm)),
-      assembleProjectOwnedWithAtom({
+      assembleProjectOwnedAtomArtifacts({
         outputDirectory,
         temporaryDirectory,
         candidate: projectOwnedByName.get("bios.asm"),
         azmBytes: biosAzm.bytes,
-      }).then((bytes) => withDebugMap(bytes, biosAzm)),
+        base: 0xfa00,
+        entryAddress: 0xfa00,
+      }),
       assembleProjectOwnedWithAtom({
         outputDirectory,
         temporaryDirectory,

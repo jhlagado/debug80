@@ -5,6 +5,7 @@ import { isAbsolute, join, normalize } from "node:path";
 import {
   assembleAtomProject,
   materializeAtomGeneration,
+  renderAtomArtifacts,
   translateAzmSourceToAtom,
 } from "../../packages/atom/src/host/index.mjs";
 
@@ -456,4 +457,76 @@ export async function assembleProjectOwnedWithAtom({
       });
   requireByteIdentity(name, azmBytes, atomBytes);
   return atomBytes;
+}
+
+function restoreProjectedSymbolNames(name, debugMap) {
+  const sourceMap = smallSourceSymbolMaps[name] ?? {};
+  const reverseMap = new Map(
+    Object.entries(sourceMap).map(([original, projected]) => [
+      projected.toUpperCase(),
+      original,
+    ]),
+  );
+  const restoreSymbol = (symbol) => {
+    const original = reverseMap.get(symbol.name.toUpperCase());
+    if (original === undefined) return symbol;
+    const identity = symbol.identity?.endsWith(`:${symbol.name}`)
+      ? `${symbol.identity.slice(0, -symbol.name.length)}${original}`
+      : symbol.identity;
+    return Object.freeze({ ...symbol, name: original, ...(identity === undefined ? {} : { identity }) });
+  };
+  const symbols = debugMap.symbols.map(restoreSymbol);
+  const files = Object.fromEntries(
+    Object.entries(debugMap.files).map(([file, value]) => [
+      file,
+      Object.freeze({
+        ...value,
+        ...(value.symbols === undefined
+          ? {}
+          : { symbols: value.symbols.map(restoreSymbol) }),
+      }),
+    ]),
+  );
+  return Object.freeze({ ...debugMap, symbols, files });
+}
+
+export async function assembleProjectOwnedAtomArtifacts({
+  outputDirectory,
+  temporaryDirectory,
+  candidate,
+  azmBytes,
+  base,
+  entryAddress = base,
+}) {
+  const name = typeof candidate === "string" ? candidate : candidate.name;
+  const source = await readFile(join(outputDirectory, name), "utf8");
+  const projected =
+    typeof candidate === "object"
+      ? await projectOwnedAtomProjection(outputDirectory, name, source, candidate.projection)
+      : source;
+  const atomSource = translateAzmSourceToAtom(projected, { sourceName: name });
+  await writeFile(join(temporaryDirectory, name), atomSource, "utf8");
+  const result = await assembleAtomProject({
+    root: temporaryDirectory,
+    entry: name,
+    target: { start: 0, capacity: 0xffff },
+    maxInstructions: 50_000_000,
+    maxCycles: 500_000_000,
+  });
+  const start = orgStart(source);
+  const end = bintoEnd(source);
+  const atomBytes = start === undefined || end === undefined
+    ? materializeAtomGeneration(result.generation, {
+        base: result.generation.images.reduce(
+          (minimum, image) => Math.min(minimum, image.address),
+          0xffff,
+        ),
+      }).bytes
+    : assembleRange(result.generation, start, end);
+  requireByteIdentity(name, azmBytes, atomBytes);
+  const artifacts = renderAtomArtifacts(result, { base, entryAddress });
+  return Object.freeze({
+    bytes: atomBytes,
+    debugMap: restoreProjectedSymbolNames(name, artifacts.d8),
+  });
 }
