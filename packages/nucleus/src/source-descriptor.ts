@@ -1,4 +1,10 @@
-import { Z80_RESIDENT_SOURCE_PART_CAPACITY } from "@jhlagado/z80-tool-services";
+import {
+  Z80_ADDRESS_SPACE_BYTES,
+  Z80_BYTE_MAX,
+  Z80_RESIDENT_SOURCE_PART_CAPACITY,
+  Z80_WORD_MAX,
+  isUnsignedIntegerUpTo,
+} from "@jhlagado/z80-tool-services";
 
 import type { SourcePart } from "./source-part.js";
 
@@ -29,19 +35,19 @@ export interface NucleusResidentSourceImage {
 }
 
 const requireU16 = (name: string, value: number): void => {
-  if (!Number.isInteger(value) || value < 0 || value > 0xffff) {
+  if (!isUnsignedIntegerUpTo(value, Z80_WORD_MAX)) {
     throw new RangeError(`${name} is outside 0..65535`);
   }
 };
 
 const requireByte = (name: string, value: number): void => {
-  if (!Number.isInteger(value) || value < 0 || value > 0xff) {
+  if (!isUnsignedIntegerUpTo(value, Z80_BYTE_MAX)) {
     throw new RangeError(`${name} is outside 0..255`);
   }
 };
 
 const requireCapacity = (name: string, value: number): void => {
-  if (!Number.isInteger(value) || value < 0 || value > 0x10000) {
+  if (!isUnsignedIntegerUpTo(value, Z80_ADDRESS_SPACE_BYTES)) {
     throw new RangeError(`${name} is outside 0..65536`);
   }
 };
@@ -77,7 +83,7 @@ export function buildNucleusResidentSourceImage({
     0,
   );
   const sourceEnd = sourceBase + totalBytes;
-  if (sourceEnd > 0x10000) {
+  if (sourceEnd > Z80_ADDRESS_SPACE_BYTES) {
     throw new RangeError("source image crosses the Z80 address space");
   }
   if (sourceCapacity !== undefined && totalBytes > sourceCapacity) {

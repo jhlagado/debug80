@@ -1,4 +1,10 @@
 import {
+  Z80_ADDRESS_SPACE_BYTES,
+  Z80_WORD_MAX,
+  isUnsignedIntegerUpTo,
+} from "@jhlagado/z80-tool-services";
+
+import {
   installNucleusResidentSourceImage,
   NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
   type NucleusResidentSourceImage,
@@ -33,13 +39,13 @@ export interface NucleusResidentCompilerEntry {
 export type NucleusResidentCompilerSymbolResolver = (name: string) => number;
 
 const requireU16 = (name: string, value: number): void => {
-  if (!Number.isInteger(value) || value < 0 || value > 0xffff) {
+  if (!isUnsignedIntegerUpTo(value, Z80_WORD_MAX)) {
     throw new RangeError(`${name} is outside 0..65535`);
   }
 };
 
 const requireCapacity = (name: string, value: number): void => {
-  if (!Number.isInteger(value) || value < 0 || value > 0x10000) {
+  if (!isUnsignedIntegerUpTo(value, Z80_ADDRESS_SPACE_BYTES)) {
     throw new RangeError(`${name} is outside 0..65536`);
   }
 };
@@ -115,7 +121,7 @@ export function validateNucleusResidentCompilerEntry(
   requireU16("output log length", entry.outputLogLength);
   requireU16("output log limit", entry.outputLogLimit);
 
-  if (entry.sourceBase + entry.sourceCapacity > 0x10000) {
+  if (entry.sourceBase + entry.sourceCapacity > Z80_ADDRESS_SPACE_BYTES) {
     throw new RangeError("source region crosses the Z80 address space");
   }
   if (entry.outputLogBase > entry.outputLogLimit) {
@@ -136,9 +142,11 @@ export function validateNucleusResidentSourceForEntry(
   }
   if (
     entry.sourceDescriptorBase + image.descriptorBytes.length >
-    0x10000
+    Z80_ADDRESS_SPACE_BYTES
   ) {
-    throw new RangeError("source descriptor table crosses the Z80 address space");
+    throw new RangeError(
+      "source descriptor table crosses the Z80 address space",
+    );
   }
   if (
     image.descriptorBytes.length % NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE !==
@@ -154,9 +162,5 @@ export function installNucleusResidentCompilerSource(
   image: NucleusResidentSourceImage,
 ): void {
   validateNucleusResidentSourceForEntry(entry, image);
-  installNucleusResidentSourceImage(
-    memory,
-    image,
-    entry.sourceDescriptorBase,
-  );
+  installNucleusResidentSourceImage(memory, image, entry.sourceDescriptorBase);
 }

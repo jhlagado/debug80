@@ -1,17 +1,18 @@
+import {
+  Z80_WORD_MAX,
+  isUnsignedIntegerUpTo,
+} from "@jhlagado/z80-tool-services";
+
 import type {
   NucleusPreparedSourceTargetPublication,
   NucleusProofTargetPublication,
 } from "./publication.js";
 
 export type NucleusPublication =
-  | NucleusPreparedSourceTargetPublication
-  | NucleusProofTargetPublication;
+  NucleusPreparedSourceTargetPublication | NucleusProofTargetPublication;
 
 export type NucleusSourceSegmentKind =
-  | "code"
-  | "data"
-  | "directive"
-  | "unknown";
+  "code" | "data" | "directive" | "unknown";
 
 export type NucleusSourceSegmentConfidence = "high" | "medium" | "low";
 
@@ -91,7 +92,7 @@ const requirePositiveInteger = (name: string, value: number): void => {
 };
 
 const requireU16 = (name: string, value: number): void => {
-  if (!Number.isInteger(value) || value < 0 || value > 0xffff) {
+  if (!isUnsignedIntegerUpTo(value, Z80_WORD_MAX)) {
     throw new Error(`D8 source segment ${name} is outside 0..65535`);
   }
 };
@@ -140,8 +141,7 @@ export function decodeNucleusSourceProvenanceLog(
     const segmentStart = readU16Le(memory, cursor + 6);
     const segmentEnd = readU16Le(memory, cursor + 8);
     const kind = sourceSegmentKinds[memory[cursor + 10] ?? 0];
-    const confidence =
-      sourceSegmentConfidences[memory[cursor + 11] ?? 0];
+    const confidence = sourceSegmentConfidences[memory[cursor + 11] ?? 0];
 
     if (partOrdinal < 1) {
       throw new Error("source provenance record part ordinal must be positive");
@@ -216,7 +216,9 @@ export function renderNucleusD8(
   const files = Object.fromEntries(fileList.map((file) => [file, {}]));
   for (const segment of publicationSourceSegments(publication, options)) {
     if (segment.bank !== 0) {
-      throw new Error("D8 source segments currently require a flat NOBJ target");
+      throw new Error(
+        "D8 source segments currently require a flat NOBJ target",
+      );
     }
     validateSourceSegment(segment, imageBase, imageEnd);
     const file = partByOrdinal.get(segment.partOrdinal);
@@ -247,10 +249,12 @@ export function renderNucleusD8(
     addressWidth: 16,
     endianness: "little",
     files,
-    segments: [{
-      start: imageBase,
-      end: imageEnd,
-    }],
+    segments: [
+      {
+        start: imageBase,
+        end: imageEnd,
+      },
+    ],
     fileList,
     symbols: [],
     generator: {
