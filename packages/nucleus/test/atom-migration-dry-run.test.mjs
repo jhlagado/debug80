@@ -23,6 +23,7 @@ import { comparisonCacheKey } from "../scripts/atom-migration-proof-compare.mjs"
 import { createLegacyUnorderedMemoryAtomSink } from "../scripts/atom-migration-proof-compare.mjs";
 import { entryBudget } from "../scripts/atom-migration-proof-compare.mjs";
 import { readBudgetFile } from "../scripts/atom-migration-proof-compare.mjs";
+import { nucleusPermanentAtomProofOptions } from "../src/atom-proof-options.js";
 import { runProofManifest } from "../src/proof.js";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -62,8 +63,18 @@ async function withPermanentAtomTranslation(context, run) {
     await rm(translatedRoot, { recursive: true, force: true });
   });
 
+  const runPermanentAtomProof = async (name, options = {}) =>
+    runProofManifest(
+      path.join(proofRoot, name),
+      await nucleusPermanentAtomProofOptions(path.join(proofRoot, name), {
+        asmRoot,
+        atomRoot: translatedRoot,
+        ...options,
+      }),
+    );
+
   writeTranslatedTree(report, translatedRoot, { symbols: "permanent" });
-  return await run({ report, translatedRoot });
+  return await run({ report, translatedRoot, runPermanentAtomProof });
 }
 
 describe("Nucleus Atom migration dry-run", () => {
@@ -1095,7 +1106,7 @@ describe("Nucleus Atom migration dry-run", () => {
   });
 
   it("runs every permanent-ready proof through the proof harness using permanent Atom source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const readyProofs = report.proofMatrix
         .filter(({ status }) => status === "atom-permanent-ready");
       expect(readyProofs.map(({ proof }) => proof)).toEqual([
@@ -1126,22 +1137,6 @@ describe("Nucleus Atom migration dry-run", () => {
         "typed-expression-z80-slice-proof.json",
         "z80-slice-proof.json",
       ]);
-
-      const runAtomProof = (name, entry) => runProofManifest(path.join(proofRoot, name), {
-        assembler: {
-          flavour: "atom",
-          source: "permanent",
-          root: translatedRoot,
-          entry,
-          maxInstructions: 700_000_000,
-          maxCycles: 7_000_000_000,
-          legacyOutputOrder: true,
-        },
-        atomMigration: {
-          proofSymbolMap: report.proofSymbolMap,
-          proofLimitMap: report.proofLimitMap,
-        },
-      });
 
       const representativeProofsByEntry = new Map();
       for (const row of readyProofs) {
@@ -1198,8 +1193,12 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(structuredControlProofBody).toContain(";@NUC-GLOBAL ProofStart PERMANENT");
       expect(structuredControlProofBody).not.toContain("%INCLUDE");
 
-      for (const { proof, entry } of representativeProofs) {
-        const outcome = await runAtomProof(proof, entry);
+      for (const { proof } of representativeProofs) {
+        const outcome = await runPermanentAtomProof(proof, {
+          maxInstructions: 700_000_000,
+          maxCycles: 7_000_000_000,
+          legacyOutputOrder: true,
+        });
         if (outcome.symbols.ProofStatus !== undefined) {
           expect(outcome.memory[outcome.symbols.ProofStatus]).toBe(0xa5);
         }
@@ -1208,24 +1207,9 @@ describe("Nucleus Atom migration dry-run", () => {
         }
       }
 
-      const runSmallAtomProof = (name, entry) =>
-        runProofManifest(path.join(proofRoot, name), {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        });
+      const runSmallAtomProof = (name) => runPermanentAtomProof(name);
 
-      const memoryMap = await runSmallAtomProof(
-        "memory-map-proof.json",
-        "vertical-slice/memory-map-proof.asm",
-      );
+      const memoryMap = await runSmallAtomProof("memory-map-proof.json");
       expect(memoryMap.instructions).toBe(4);
       expect(memoryMap.cycles).toBe(34);
       expect(memoryMap.memory[memoryMap.symbols.ProofStatus ?? -1]).toBe(0xa5);
@@ -1249,10 +1233,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(legacyMemoryMap.instructions).toBe(4);
       expect(legacyMemoryMap.cycles).toBe(34);
 
-      const nobjRunner = await runSmallAtomProof(
-        "nobj-runner-proof.json",
-        "vertical-slice/nobj-runner-proof.asm",
-      );
+      const nobjRunner = await runSmallAtomProof("nobj-runner-proof.json");
       expect(nobjRunner.nobj).toBeDefined();
       expect(nobjRunner.nobj?.parsed.commit.recordCount).toBe(5);
       expect(nobjRunner.nobj?.serialized).toHaveLength(92);
@@ -1260,10 +1241,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(nobjRunner.nobj?.memory[0x8081]).toBe(0x5a);
       expect(nobjRunner.memory[0x8081]).toBe(0);
 
-      const sourceProvenance = await runSmallAtomProof(
-        "source-provenance-proof.json",
-        "vertical-slice/source-provenance-proof.asm",
-      );
+      const sourceProvenance = await runSmallAtomProof("source-provenance-proof.json");
       expect(sourceProvenance.sourceProvenance).toEqual([
         {
           partOrdinal: 1,
@@ -1280,7 +1258,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 420_000);
 
   it("runs the compiler-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const compilerSlice = report.proofMatrix.find(
         ({ proof }) => proof === "compiler-slice-proof.json",
       );
@@ -1293,21 +1271,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(helper).toContain("ORG CMPLRCRB");
       expect(helper).toContain("CMPLRCDS:");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "compiler-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/compiler-slice-proof.asm",
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("compiler-slice-proof.json");
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1322,7 +1286,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 120_000);
 
   it("runs the z80-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const z80Slice = report.proofMatrix.find(
         ({ proof }) => proof === "z80-slice-proof.json",
       );
@@ -1348,21 +1312,7 @@ describe("Nucleus Atom migration dry-run", () => {
         root.indexOf('%INCLUDE "z80-slice-end.asmi"'),
       );
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "z80-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/z80-slice-proof.asm",
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("z80-slice-proof.json");
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1383,7 +1333,7 @@ describe("Nucleus Atom migration dry-run", () => {
   });
 
   it("runs the loop compiler-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const loopCompilerSlice = report.proofMatrix.find(
         ({ proof }) => proof === "loop-compiler-slice-proof.json",
       );
@@ -1411,23 +1361,10 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(proofBody).not.toContain("CounterWriteStart-CounterWriteSource");
       expect(proofBody).not.toContain("MissingEndSourceEnd-MissingEndSource");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "loop-compiler-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/loop-compiler-slice-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("loop-compiler-slice-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1435,7 +1372,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 60_000);
 
   it("runs the loop z80-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const loopZ80Slice = report.proofMatrix.find(
         ({ proof }) => proof === "loop-z80-slice-proof.json",
       );
@@ -1458,23 +1395,10 @@ describe("Nucleus Atom migration dry-run", () => {
         root.indexOf('%INCLUDE "loop-z80-slice-end.asmi"'),
       );
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "loop-z80-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/loop-z80-slice-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("loop-z80-slice-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1482,7 +1406,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 60_000);
 
   it("runs the call z80-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const callZ80Slice = report.proofMatrix.find(
         ({ proof }) => proof === "call-z80-slice-proof.json",
       );
@@ -1503,23 +1427,10 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(proofBody).not.toContain("SemanticBufferBase+$10");
       expect(proofBody).not.toContain("BadCompletionName-BadCompletionSource");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "call-z80-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/call-z80-slice-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("call-z80-slice-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1527,7 +1438,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 60_000);
 
   it("runs the Stage 7 parser coverage proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const coverageProof = report.proofMatrix.find(
         ({ proof }) => proof === "stage7-ll1-parser-coverage-proof.json",
       );
@@ -1562,23 +1473,10 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(aggregateZ80).not.toContain("SymbolAggregateFlag+SymbolClassMask");
       expect(aggregateZ80).not.toContain("SymbolAggregateFlag+SymbolClassConstant");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "stage7-ll1-parser-coverage-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/stage7-ll1-parser-coverage-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("stage7-ll1-parser-coverage-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1586,7 +1484,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 60_000);
 
   it("runs the array z80-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const arraySlice = report.proofMatrix.find(
         ({ proof }) => proof === "array-z80-slice-proof.json",
       );
@@ -1607,23 +1505,10 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(proofBody).toContain("ARBDCOL EQU");
       expect(proofBody).not.toContain("LD   DE,BadArrayValue-BadArraySource");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "array-z80-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/array-z80-slice-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("array-z80-slice-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1631,7 +1516,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 60_000);
 
   it("runs the expression z80-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const expression = report.proofMatrix.find(
         ({ proof }) => proof === "expression-z80-slice-proof.json",
       );
@@ -1653,23 +1538,10 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(proofBody).not.toContain("LD   DE,ExpressionOutputCall-ExpressionProofSource");
       expect(proofBody).not.toContain("LD   DE,DuplicateScalarName-DuplicateScalarSource");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "expression-z80-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/expression-z80-slice-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("expression-z80-slice-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1677,7 +1549,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 60_000);
 
   it("runs the flat target z80-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const flatTarget = report.proofMatrix.find(
         ({ proof }) => proof === "flat-target-z80-slice-proof.json",
       );
@@ -1700,23 +1572,10 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(proofBody).not.toContain("AdapterCapturedBegin+TargetDescriptorImageBase");
       expect(proofBody).not.toContain("IX+TargetDescriptorBankCount");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "flat-target-z80-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/flat-target-z80-slice-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("flat-target-z80-slice-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1724,7 +1583,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 120_000);
 
   it("runs the aggregate z80-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const aggregate = report.proofMatrix.find(
         ({ proof }) => proof === "aggregate-z80-slice-proof.json",
       );
@@ -1748,23 +1607,10 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(proofBody).not.toContain("AggregateRecordStepPoint-AggregateRecordStepSource");
       expect(proofBody).not.toContain("AggregateDataCapacityPoint-AggregateDataCapacitySource");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "aggregate-z80-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/aggregate-z80-slice-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("aggregate-z80-slice-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1772,7 +1618,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 120_000);
 
   it("runs the typed-expression z80-slice proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const typedExpression = report.proofMatrix.find(
         ({ proof }) => proof === "typed-expression-z80-slice-proof.json",
       );
@@ -1833,23 +1679,10 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(loopParserCore).toContain("LPAIMOD EQU");
       expect(loopParserCore).not.toContain('%INCLUDE "typed-expression-parser.asm"');
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "typed-expression-z80-slice-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/typed-expression-z80-slice-proof.asm",
-            maxInstructions: 700_000_000,
-            maxCycles: 7_000_000_000,
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("typed-expression-z80-slice-proof.json", {
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+      });
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1857,7 +1690,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 60_000);
 
   it("runs the Stage 7 LL(1) engine proof from permanent Atom layout source", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const stage7 = report.proofMatrix.find(
         ({ proof }) => proof === "stage7-ll1-engine-proof.json",
       );
@@ -1892,21 +1725,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(beforeActions).toMatch(/\bHLL1STKL\s+EQU\s+[A-Z0-9.]+\b/);
       expect(beforeActions).not.toContain("HybridLL1StackBase+HybridLL1StackCapacity");
 
-      const outcome = await runProofManifest(
-        path.join(proofRoot, "stage7-ll1-engine-proof.json"),
-        {
-          assembler: {
-            flavour: "atom",
-            source: "permanent",
-            root: translatedRoot,
-            entry: "vertical-slice/stage7-ll1-engine-proof.asm",
-          },
-          atomMigration: {
-            proofSymbolMap: report.proofSymbolMap,
-            proofLimitMap: report.proofLimitMap,
-          },
-        },
-      );
+      const outcome = await runPermanentAtomProof("stage7-ll1-engine-proof.json");
 
       expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(outcome.extents).toEqual([
@@ -1919,7 +1738,7 @@ describe("Nucleus Atom migration dry-run", () => {
   }, 30_000);
 
   it("writes aggregate-call parser permanent source with Stage 7 header includes", async (context) => {
-    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const dependent = report.proofMatrix.find(
         ({ proof }) => proof === "stage7-ll1-aggregate-call-z80-slice-proof.json",
       );
