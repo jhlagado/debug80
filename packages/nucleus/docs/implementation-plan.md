@@ -170,10 +170,12 @@ post-parse transcript remains the smaller measured arrangement. Later slices
 must remeasure it when a general statement or expression dispatcher can replace
 enough fixed encoder code to pay for another organization.
 
-Host verification now has two independent layers. AZM checks the compiler and
-generated-program register contracts; Debug80 runs the emitted Z80 and exposes
-its output, state, trap record, and instruction count. A host-side source
-expectation checks those observations directly.
+Host verification now has three independent layers. The legacy AZM path checks
+the compiler and generated-program register contracts. The Atom permanent path
+assembles the checked-in Atom translation and byte-compares it against the
+legacy proof images. Debug80 runs the emitted Z80 and exposes its output,
+state, trap record, and instruction count. A host-side source expectation checks
+those observations directly.
 
 ## Current readiness baseline
 
@@ -198,13 +200,16 @@ gate passes. AZM and Debug80 dependencies are rebuilt only when their outputs
 are absent or stale; an ordinary Nucleus change does not trigger a monorepo-wide
 rebuild.
 
-## AZM and Debug80 proof architecture
+## Assembler and Debug80 proof architecture
 
 The first Z80 implementation follows the proof-driven approach established in
-TECM8, with a smaller and more regular harness. A proof is an AZM source program
-that includes or links the production assembly under test, runs at a declared
-address in a declared memory map, and exposes a small set of named observations.
-The host assembles the proof, loads it into Debug80, executes it with a finite
+TECM8, with a smaller and more regular harness. A proof is an assembler source
+program that includes or links the production assembly under test, runs at a
+declared address in a declared memory map, and exposes a small set of named
+observations. Direct proof-manifest execution retains a named legacy AZM
+default so old proofs remain stable. Publication and the Atom permanent gate use
+the checked-in Atom translation for every non-measurement proof image. The host
+assembles the proof, loads it into Debug80, executes it with a finite
 instruction or cycle limit, and compares those observations with the host
 expectation for that source program.
 

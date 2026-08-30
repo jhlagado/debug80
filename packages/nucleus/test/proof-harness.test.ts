@@ -6,7 +6,11 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 
 import { prepareNucleusCompilation } from "../src/application.js";
-import { createProofSymbolView, runProofManifest } from "../src/proof.js";
+import {
+  createProofSymbolView,
+  NUCLEUS_LEGACY_PROOF_ASSEMBLER,
+  runProofManifest,
+} from "../src/proof.js";
 import type { NucleusResidentCompilerEntrySymbols } from "../src/resident-compiler-entry.js";
 import { runNucleusProofRuntimeStreamOperations } from "../src/runtime-services.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
@@ -48,6 +52,10 @@ async function withSourceTree<T>(
 }
 
 describe("source-prepared AZM and Debug80 proofs", () => {
+  it("keeps direct proof-manifest execution on the named legacy assembler default", () => {
+    expect(NUCLEUS_LEGACY_PROOF_ASSEMBLER).toBe("azm");
+  });
+
   it("maps Atom-built proof symbols back to proof-facing names", () => {
     const symbols = createProofSymbolView(
       {

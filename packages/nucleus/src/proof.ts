@@ -102,12 +102,15 @@ type NormalizedProofAssembler =
   | { readonly flavour: "azm" }
   | Extract<ProofAssembler, { readonly flavour: "atom" }>;
 
+export const NUCLEUS_LEGACY_PROOF_ASSEMBLER =
+  Z80_ASSEMBLER_FLAVOUR.azm;
+
 function normalizeProofAssembler(
   assembler: ProofAssembler | undefined,
   sourcePath: string,
 ): NormalizedProofAssembler {
   if (assembler === undefined || ("kind" in assembler && assembler.kind === undefined)) {
-    return { flavour: Z80_ASSEMBLER_FLAVOUR.azm };
+    return { flavour: NUCLEUS_LEGACY_PROOF_ASSEMBLER };
   }
   if ("kind" in assembler) {
     if (assembler.kind === "azm") {
@@ -140,7 +143,7 @@ function normalizeProofAssembler(
   }
   const flavour = dispatchZ80AssemblerFlavour({
     requested: "flavour" in assembler ? assembler.flavour : undefined,
-    defaultFlavour: Z80_ASSEMBLER_FLAVOUR.azm,
+    defaultFlavour: NUCLEUS_LEGACY_PROOF_ASSEMBLER,
     sourcePath,
     handlers: {
       atom: () => Z80_ASSEMBLER_FLAVOUR.atom,

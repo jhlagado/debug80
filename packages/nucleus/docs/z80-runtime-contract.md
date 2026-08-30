@@ -813,12 +813,16 @@ source semantics.
 
 ### 10.1 Required evidence
 
-The active proof suite assembles the compiler and generated program with AZM,
-runs the result through Debug80, and checks source-level observations. It must
-cover the accepted and rejected Chapter 21 programs as implementation stages
-make them available, including normal output, static data, alias-visible
-mutation, recursion, recoverable failure, every reachable trap, exact
-diagnostic positions, and capacity boundaries.
+The active proof suite assembles the compiler and generated program, runs the
+result through Debug80, and checks source-level observations. The direct proof
+runner retains an explicit legacy AZM default for historical proof calls.
+Nucleus publication assembles its resident compiler proof image with Atom by
+default, and the Atom permanent gate must keep every non-measurement proof image
+byte-identical to the legacy path. The proof suite must cover the accepted and
+rejected Chapter 21 programs as implementation stages make them available,
+including normal output, static data, alias-visible mutation, recursion,
+recoverable failure, every reachable trap, exact diagnostic positions, and
+capacity boundaries.
 
 A module or boundary proof may test a smaller path. It must identify the
 language or contract rule it establishes and may not substitute a fixed
