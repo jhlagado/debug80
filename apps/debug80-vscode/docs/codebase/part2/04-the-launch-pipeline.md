@@ -296,35 +296,35 @@ On failure, the backend forwards formatted Glimmer diagnostics to the Debug Cons
 ### The Nucleus invocation
 
 `NucleusBackend` in `src/debug/launch/nucleus-backend.ts` loads
-`@jhlagado/nucleus` in-process and calls the standalone compiler API directly.
+`@jhlagado/nucleus` in-process and calls the prepared-source publication API.
 The backend reads either:
 
 - a configured `nucleus.project` file relative to the Debug80 source root, or
-- a single `.nu` source file plus a `nucleus-target.json` target profile beside
+- a single `.nu` source file plus a `nucleus-target.json` target descriptor beside
   it, unless `nucleus.targetProfile` overrides that default
 
-When a Nucleus project file is present, Debug80 reads the declared source set
-from the project root and resolves the target profile from the project's
-`target` field unless launch config overrides it. The launch backend passes
-`requireServices: true` to target-profile parsing, so launchable Nucleus targets
-must resolve real service destinations before Debug80 starts a session.
+When a Nucleus project file is present, Debug80 resolves the project root,
+reads one declared entry source, and resolves the target descriptor from the
+project's `target` field unless launch config overrides it. Older project files
+that declare an ordered `sources` list are rejected. Import ordering now comes
+from leading `//% import` directives inside the prepared Nucleus source tree.
 
-The Nucleus launch path is intentionally flat. If the parsed target profile
-declares `bankCount > 1`, the backend rejects the launch with a direct error and
-points the user to the standalone Nucleus API or CLI. Debug80's Nucleus runtime
-loader expects one flat HEX image plus one launchable D8 sidecar for the active
-session rather than a bank-selected NOBJ set.
+The Nucleus launch path now delegates target validation and artifact generation
+to Nucleus itself. Debug80 checks only that the resolved target descriptor file
+exists before it calls the prepared-source build. Build failures are surfaced as
+direct launch errors from the package API.
 
-Successful builds request HEX and D8 artifacts from the compiler, validate
-every returned D8 artifact with `parseD8DebugMap()`, then publish `.nobj`,
-`.hex`, and `.d8.json` beside the configured artifact base. That keeps the
-output layout parallel with the standalone toolchain while still letting the
-launch pipeline consume the HEX and D8 artifacts directly from disk.
+Successful builds receive one prepared artifact set from Nucleus: `.nobj`,
+flat `.hex`, native `.d8.json`, and the intermediate flat binary. Debug80
+validates the returned D8 map with `parseD8DebugMap()`, then publishes `.nobj`,
+`.hex`, and `.d8.json` beside the configured artifact base as one filesystem
+transaction. The intermediate flat binary stays inside the Nucleus build result
+rather than becoming a launch artifact.
 
-On source errors, the backend formats Nucleus diagnostics, resolves the source
-path relative to the Nucleus project root, and reads the failing source line
-from disk when possible. Configuration failures are surfaced as launch errors
-with the failing config path fragments inline.
+Nucleus now owns source resolution, proof assembly selection, NOBJ publication,
+flat binary materialization, Intel HEX rendering, and D8 rendering. Debug80's
+launch backend is responsible for project-file loading, target-descriptor path
+resolution, D8 validation, and artifact publication into the session workspace.
 
 ### Error handling
 

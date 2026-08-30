@@ -170,7 +170,7 @@ interface D8Segment {
   column?: number;
   kind?: 'code' | 'data' | 'directive' | 'label' | 'macro' | 'unknown';
   confidence?: 'high' | 'medium' | 'low';
-  lstLine: number;
+  lstLine?: number;
   lstText?: string;
   lstTextId?: number;
   includeChain?: string[];
@@ -178,7 +178,7 @@ interface D8Segment {
 }
 ```
 
-`buildMappingFromD8DebugMap()` converts each D8 segment into a `SourceMapSegment`. If `line` is missing, it falls back to `lstLine`; values below 1 become `null`. If `lstTextId` is present, the text is read from the top-level `lstText` table.
+`buildMappingFromD8DebugMap()` converts each D8 segment into a `SourceMapSegment`. Every segment must carry either `line` or `lstLine`. `loc.line` comes from `line`; values below 1 become `null`. `context.line` prefers `lstLine` and falls back to `line`, which keeps source-context lookups valid for producers that omit explicit listing-line numbers. If `lstTextId` is present, the text is read from the top-level `lstText` table.
 
 ### D8Symbol
 

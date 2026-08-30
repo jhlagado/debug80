@@ -141,13 +141,13 @@ project file has been loaded:
 | Field           | Type     | Default               | Description                                                           |
 | --------------- | -------- | --------------------- | --------------------------------------------------------------------- |
 | `project`       | `string` | inferred              | Nucleus project file. Defaults to `nucleus-project.json` when present |
-| `targetProfile` | `string` | `nucleus-target.json` | Nucleus target profile override                                       |
+| `targetProfile` | `string` | `nucleus-target.json` | Nucleus target descriptor override                                    |
 
 If `nucleus.project` is omitted and no conventional project file exists,
 Debug80 treats the selected `.nu` source as a single-source build rooted at the
-source file's directory. Debug80 launch currently accepts only flat Nucleus
-targets. Profiles with `bankCount > 1` must be built through the standalone
-Nucleus API or CLI rather than the live debugger launch path.
+source file's directory. When a project file is present, Debug80 expects one
+entry source and resolves any further source ordering from `//% import`
+directives inside the prepared source tree.
 
 ---
 

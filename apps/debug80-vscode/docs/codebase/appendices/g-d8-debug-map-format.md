@@ -104,7 +104,7 @@ interface D8Segment {
   column?: number;
   kind?: 'code' | 'data' | 'directive' | 'label' | 'macro' | 'unknown';
   confidence?: 'high' | 'medium' | 'low';
-  lstLine: number;
+  lstLine?: number;
   lstText?: string;
   lstTextId?: number;
   includeChain?: string[];
@@ -123,8 +123,8 @@ interface D8Segment {
 | -------------- | -------: | ------------------------------------------------------------- |
 | `start`        |      Yes | Inclusive address where the segment begins.                   |
 | `end`          |      Yes | Exclusive address where the segment ends.                     |
-| `lstLine`      |      Yes | 1-based listing line associated with the segment.             |
 | `line`         |       No | 1-based source line. Use `null` when no source line is known. |
+| `lstLine`      |       No | 1-based source-context line associated with the segment.      |
 | `column`       |       No | 1-based source column when available.                         |
 | `kind`         |       No | Producer's classification of the source item.                 |
 | `confidence`   |       No | Producer's confidence in the source association.              |
@@ -134,6 +134,8 @@ interface D8Segment {
 | `macro`        |       No | Macro expansion metadata.                                     |
 
 `start` is inclusive and `end` is exclusive. A one-byte instruction at `$0800` uses `start: 2048` and `end: 2049`. A zero-width segment, where `start === end`, can preserve source context for labels or directives but should not be treated as executable code.
+
+Each segment must include at least one line field. Producers can supply both `line` and `lstLine`, or either one on its own. Debug80 uses `line` for source lookup and falls back from `lstLine` to `line` when it needs source-context line metadata.
 
 `confidence` is a quality hint:
 
