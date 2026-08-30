@@ -20,7 +20,7 @@ import type { SourcePart } from "../src/source-part.js";
 const proof = (name: string): string =>
   path.resolve(import.meta.dirname, "..", "proofs", `${name}.json`);
 
-const legacyAzmProofOptions = {
+const legacyAzmCompatibilityProofOptions = {
   assembler: { flavour: "azm" },
 } as const;
 
@@ -682,7 +682,9 @@ describe("source-prepared Atom, AZM, and Debug80 proofs", () => {
 
   it("runs the memory-map proof with Atom migration metadata attached", async () => {
     const outcome = await runProofManifest(proof("memory-map-proof"), {
-      ...legacyAzmProofOptions,
+      // This test exercises proof-facing migration metadata on the legacy
+      // manifest path. It is not one of the permanent Atom proof images.
+      ...legacyAzmCompatibilityProofOptions,
       atomMigration: {
         proofSymbolMap: [
           {
@@ -1111,17 +1113,19 @@ describe("source-prepared Atom, AZM, and Debug80 proofs", () => {
   }, z80ProofExecutionTimeout);
 
   it("measures dense semantic dispatch against a comparison chain", async () => {
+    // Measurement artifacts remain on the legacy proof assembler unless they
+    // are promoted to permanent Atom measurement fixtures.
     const outcome = await runProofManifest(
       proof("dispatcher-measurement"),
-      legacyAzmProofOptions,
+      legacyAzmCompatibilityProofOptions,
     );
     const direct = await runProofManifest(
       proof("dispatcher-offset-direct-measurement"),
-      legacyAzmProofOptions,
+      legacyAzmCompatibilityProofOptions,
     );
     const trampoline = await runProofManifest(
       proof("dispatcher-offset-trampoline-measurement"),
-      legacyAzmProofOptions,
+      legacyAzmCompatibilityProofOptions,
     );
     expect(outcome.extents.slice(0, 2)).toEqual([
       { name: "table-dispatch-selection", bytes: 37 },

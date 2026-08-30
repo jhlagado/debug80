@@ -51,6 +51,24 @@ Broader expression support requires a separate design decision because it
 changes the pending-record ABI, memory account, and native-host proof surface.
 It is not an incidental compatibility cleanup.
 
+## Remaining explicit AZM selections
+
+Nucleus still contains a small number of explicit AZM selections. These are
+compatibility and measurement boundaries, not production defaults.
+
+| Location                                                                                        | Classification                                                             | Retire when                                                                                                                   |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `packages/nucleus/src/proof.ts` and `NUCLEUS_LEGACY_PROOF_ASSEMBLER`                            | Direct proof-manifest default for the legacy assembler path.               | Direct proof-manifest execution either requires an explicit assembler selection or defaults to the permanent Atom proof path. |
+| `packages/nucleus/test/proof-harness.test.ts` migration-metadata proof                          | Compatibility proof for legacy manifests carrying Atom migration metadata. | Legacy manifest metadata support is no longer part of the migration surface.                                                  |
+| `packages/nucleus/test/proof-harness.test.ts` dispatcher measurement proofs                     | Measurement artifacts pinned to the legacy proof assembler.                | Equivalent permanent Atom measurement fixtures exist, or the measurements are retired.                                        |
+| `packages/nucleus/test/nobj.test.ts` runtime comparison                                         | Byte-identity check for the explicit AZM runtime fallback.                 | The runtime fallback is removed after the Atom runtime path is the only supported path.                                       |
+| `packages/nucleus/test/publication-cli.test.ts` and `packages/nucleus/test/application.test.ts` | Compatibility tests for `ASM80` alias normalization.                       | The public CLI/API compatibility alias is retired.                                                                            |
+| `packages/nucleus/scripts/legacy-azm-comparison.mjs`                                            | Migration comparison baseline used by diagnostic scripts.                  | Atom-built proof images are authoritative and the comparison diagnostics are no longer needed.                                |
+
+New Nucleus proof, runtime, publication, or source-preparation code should not
+add a direct AZM dependency outside one of these classifications. If another
+case appears, classify it here before merging it.
+
 ## Frozen baseline
 
 Repositories at the start of the migration:
