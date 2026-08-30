@@ -13,8 +13,11 @@ import { fileURLToPath } from "node:url";
 
 import { parseIntelHex } from "@jhlagado/debug80-runtime";
 import {
+  Z80_WORD_MAX,
+  isUnsignedIntegerUpTo,
   selectConcreteZ80AssemblerFlavour,
   type ConcreteZ80AssemblerFlavour,
+  z80AddressEnd,
 } from "@jhlagado/z80-tool-services";
 
 import type {
@@ -106,7 +109,7 @@ export const defaultRuntimeLinkContext: RuntimeLinkContext = {
 };
 
 const checkedWord = (name: string, value: number): void => {
-  if (!Number.isInteger(value) || value < 0 || value > 0xffff) {
+  if (!isUnsignedIntegerUpTo(value, Z80_WORD_MAX)) {
     throw new NobjError(`${name} is outside 0..65535`);
   }
 };
@@ -121,7 +124,7 @@ const checkedRegion = (
   checkedWord(`${name} capacity`, capacity);
   if (!allowEmpty && capacity === 0)
     throw new NobjError(`${name} capacity is zero`);
-  if (base + capacity > 0x10000) {
+  if (z80AddressEnd(base, capacity) === undefined) {
     throw new NobjError(`${name} crosses the Z80 address space`);
   }
 };
@@ -171,7 +174,7 @@ const contentBase = (generation: {
 }): number =>
   generation.images.reduce(
     (minimum, image) => Math.min(minimum, image.address),
-    0xffff,
+    Z80_WORD_MAX,
   );
 
 const atomContextAssembly = (context: RuntimeLinkContext): string => `
@@ -382,7 +385,7 @@ export async function loadCanonicalRuntimeImage(
       const assembled = await assembleAtomProject({
         root: temporaryDirectory,
         entry: "nucleus-target-runtime-link.asm",
-        target: { start: 0, capacity: 0xffff },
+        target: { start: 0, capacity: Z80_WORD_MAX },
         maxInstructions: 700_000_000,
         maxCycles: 7_000_000_000,
       });
@@ -435,7 +438,7 @@ export async function loadCanonicalRuntimeImage(
       throw new NobjError("canonical runtime writable-state offset mismatch");
     }
     const writableEnd = context.writableBase + context.writableCapacity;
-    if (end > 0x10000) {
+    if (z80AddressEnd(start, expectedLength) === undefined) {
       throw new NobjError("canonical runtime crosses the Z80 address space");
     }
     if (context.vectorBase !== context.writableBase) {

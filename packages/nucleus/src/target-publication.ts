@@ -1,6 +1,13 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  Z80_BYTE_MAX,
+  Z80_WORD_MAX,
+  isUnsignedIntegerUpTo,
+  z80AddressEnd,
+} from "@jhlagado/z80-tool-services";
+
 import type { NobjBegin, NobjMap, RuntimeLinkContext } from "./nobj.js";
 
 export const NUCLEUS_TARGET_PUBLICATION_SCHEMA =
@@ -12,37 +19,31 @@ export interface NucleusTargetPublicationDescriptor {
   readonly runtimeLinkContext?: RuntimeLinkContext;
 }
 
-export interface NucleusTargetPublicationDescriptorFile
-  extends NucleusTargetPublicationDescriptor {
+export interface NucleusTargetPublicationDescriptorFile extends NucleusTargetPublicationDescriptor {
   readonly schema: typeof NUCLEUS_TARGET_PUBLICATION_SCHEMA;
 }
 
-const requireInteger = (
-  name: string,
-  value: number,
-  maximum: number,
-): void => {
-  if (!Number.isInteger(value) || value < 0 || value > maximum) {
+const requireInteger = (name: string, value: number, maximum: number): void => {
+  if (!isUnsignedIntegerUpTo(value, maximum)) {
     throw new RangeError(`${name} is outside 0..${maximum}`);
   }
 };
 
 const requireU8 = (name: string, value: number): void =>
-  requireInteger(name, value, 0xff);
+  requireInteger(name, value, Z80_BYTE_MAX);
 
 const requireU16 = (name: string, value: number): void =>
-  requireInteger(name, value, 0xffff);
+  requireInteger(name, value, Z80_WORD_MAX);
 
 const requireCapacity = (name: string, base: number, length: number): void => {
   requireU16(`${name} base`, base);
   requireU16(`${name} length`, length);
-  if (base + length > 0x10000) {
+  if (z80AddressEnd(base, length) === undefined) {
     throw new RangeError(`${name} crosses the Z80 address space`);
   }
 };
 
-const cloneBegin = (begin: NobjBegin): NobjBegin =>
-  Object.freeze({ ...begin });
+const cloneBegin = (begin: NobjBegin): NobjBegin => Object.freeze({ ...begin });
 
 const cloneMap = (map: NobjMap): NobjMap =>
   Object.freeze({
@@ -111,7 +112,11 @@ export function validateNucleusTargetPublicationDescriptor(
     descriptor.map.initializedRunBase,
     descriptor.map.initializedRunLength,
   );
-  requireCapacity("bss region", descriptor.map.bssBase, descriptor.map.bssLength);
+  requireCapacity(
+    "bss region",
+    descriptor.map.bssBase,
+    descriptor.map.bssLength,
+  );
   requireU16("stack requirement", descriptor.map.stackRequirement);
   requireU8("data load bank", descriptor.map.dataLoadBank);
   if (descriptor.map.dataLoadBank >= descriptor.begin.bankCount) {
@@ -171,9 +176,7 @@ export async function loadNucleusTargetPublicationDescriptor(
   file: string,
 ): Promise<NucleusTargetPublicationDescriptor> {
   const descriptorPath = path.resolve(file);
-  const parsed = JSON.parse(
-    await readFile(descriptorPath, "utf8"),
-  ) as unknown;
+  const parsed = JSON.parse(await readFile(descriptorPath, "utf8")) as unknown;
   if (!isObject(parsed)) {
     throw new TypeError("target descriptor file must contain a JSON object");
   }
