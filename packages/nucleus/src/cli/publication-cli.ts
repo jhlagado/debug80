@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import {
   publishOutputFiles,
   selectConcreteZ80AssemblerFlavour,
+  splitPositiveOutputArguments,
   validatePositiveOutputSelections,
   type OutputFormatSuffix,
   type PublishOutputFilesOptions,
@@ -133,7 +134,7 @@ export function parseNucleusPublicationOptions(
     readonly positionalName: string;
   },
 ): NucleusPublicationCliOptions {
-  const outputPaths: string[] = [];
+  const optionOutputs: string[] = [];
   let assembler: "azm" | "atom" | undefined;
   let root: string | undefined;
   let targetFile: string | undefined;
@@ -155,7 +156,7 @@ export function parseNucleusPublicationOptions(
       continue;
     }
     if (argument === "-o" || argument === "--output") {
-      outputPaths.push(optionValue(arguments_, index, argument));
+      optionOutputs.push(optionValue(arguments_, index, argument));
       index += 1;
       continue;
     }
@@ -200,13 +201,14 @@ export function parseNucleusPublicationOptions(
     positional.push(argument);
   }
 
-  if (positional.length > 1) {
-    outputPaths.push(...positional.slice(1));
-  }
+  const outputs = splitPositiveOutputArguments({
+    positionals: positional,
+    optionOutputs,
+  });
   return Object.freeze({
-    input: positional[0],
-    output: outputPaths[0],
-    outputPaths,
+    input: outputs.input,
+    output: outputs.output,
+    outputPaths: outputs.outputPaths,
     assembler,
     root,
     targetFile,
