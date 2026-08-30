@@ -1349,6 +1349,53 @@ describe("Nucleus application boundary", () => {
     );
   }, 30_000);
 
+  it("routes an entry source at the top level through publication", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const output = path.join(root, "build", "program.nobj");
+        const { stdout, stderr } = await execFileAsync(
+          process.execPath,
+          [
+            tsxBin,
+            "src/cli/nucleus.ts",
+            "src/main.nu",
+            "--json",
+            "--root",
+            root,
+            output,
+          ],
+          { cwd: packageRoot },
+        );
+
+        const summary = JSON.parse(stdout);
+        expect(stderr).toBe("");
+        expect(summary).toMatchObject({
+          root,
+          entry: "src/main.nu",
+          assembler: "atom",
+          sourceParts: 1,
+          output,
+          outputs: [output],
+          bytes: 1396,
+          records: 130,
+          entryBank: 0,
+          entryAddress: 0x8000,
+        });
+        expect(await readFile(output)).toHaveLength(1396);
+      },
+    );
+  }, 30_000);
+
   it("routes proof publication through the dispatcher CLI", async () => {
     const { stdout, stderr } = await execFileAsync(
       process.execPath,

@@ -110,10 +110,14 @@ The Nucleus CLI should follow the same product philosophy as Atom without copyin
 Recommended desktop shape:
 
 ```text
-nucleus main.nu --out build/program.nobj
-nucleus main.nu --hex build/program.hex --d8 build/program.d8.json
+nucleus main.nu build/program.nobj
+nucleus main.nu build/program.nobj build/program.hex build/program.d8.json
 nucleus --project nucleus.json
 ```
+
+The desktop command may also retain `publish` as an explicit subcommand for
+existing scripts and development tooling, but ordinary publication should not
+require it.
 
 Recommended native shape:
 

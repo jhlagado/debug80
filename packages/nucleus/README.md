@@ -72,6 +72,7 @@ success only. These forms lower to ordinary Z80 conditional control flow, not
 exceptions or stack unwinding.
 
 ```bash
+npm run cli -w nucleus -- src/main.nu --root path/to/project build/program.nobj build/program.bin build/program.hex build/program.d8.json
 npm run cli -w nucleus -- prepare --root path/to/project src/main.nu
 npm run cli -w nucleus -- publish --root path/to/project src/main.nu build/program.nobj build/program.bin build/program.hex build/program.d8.json
 npm run source:prepare -w nucleus -- --root path/to/project src/main.nu
@@ -85,8 +86,10 @@ npm test -w nucleus
 `//% import` directives through the shared Z80 source-preparation services and
 prints the ordered compiler input.
 
-`nucleus publish` prepares an entry source file, runs it through the current
-resident compiler proof image, and publishes selected output paths by suffix.
+`nucleus src/main.nu ...` is the ordinary Node-hosted publication command. It
+prepares an entry source file, runs it through the current resident compiler
+proof image, and publishes selected output paths by suffix. `nucleus publish`
+remains as the explicit development form for existing scripts.
 The resident compiler proof image and canonical target runtime image are
 assembled with Atom by default; pass `--assembler azm` only when explicitly
 exercising the legacy compiler assembly path.

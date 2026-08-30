@@ -7,9 +7,11 @@ import { runNucleusPrepareCli } from "./prepare.js";
 import { runNucleusProofPublishCli } from "./proof-publish.js";
 import { runNucleusPublishCli } from "./publish.js";
 
-const usage = `Usage: nucleus <command> [options]
+const usage = `Usage: nucleus <entry.nu> [output...]
+       nucleus <command> [options]
 
 Commands:
+  <entry.nu>     Publish NOBJ/artifacts from an entry source file.
   prepare        Resolve source parts and print the prepared compiler input.
   publish        Publish NOBJ from an entry .nu source file.
   proof:publish  Run or publish through proof/debug manifests.
@@ -22,6 +24,9 @@ export async function runNucleusCli(arguments_: readonly string[]): Promise<numb
   if (command === undefined || command === "-h" || command === "--help") {
     process.stdout.write(usage);
     return 0;
+  }
+  if (command.toLowerCase().endsWith(".nu")) {
+    return runNucleusPublishCli(arguments_);
   }
   if (command === "prepare" || command === "source:prepare") {
     return runNucleusPrepareCli(rest);
