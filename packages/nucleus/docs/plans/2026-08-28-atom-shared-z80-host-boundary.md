@@ -96,8 +96,9 @@ Nucleus's source profile owns:
 - conversion into the existing `SourcePart` shape.
 
 The older `source-manifest.ts` still exists. It parses a flat ordered manifest
-and builds source parts directly. It is now an adapter for explicit low-level
-tests and existing callers, not the desired high-level project model.
+and builds source parts directly. It is now confined to explicit low-level
+compatibility tests, not the desired high-level project model or the package
+root API.
 
 Nucleus's target boundary is richer than Atom's assembler boundary. It needs:
 
@@ -349,8 +350,9 @@ Completion evidence:
 ### Phase 2: make Nucleus consume prepared projects directly
 
 Replace internal use of flat manifest strings in high-level Nucleus callers with
-`resolveNucleusProject`. Keep `buildSourceParts` for explicit low-level tests
-and simple embedded callers.
+`resolveNucleusProject`. Keep `buildSourceParts` for explicit low-level
+compatibility tests only; new embedded callers should use prepared source parts
+from the resolver boundary.
 
 Completion evidence:
 

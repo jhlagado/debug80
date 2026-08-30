@@ -75,10 +75,6 @@ export {
   type NucleusPermanentAtomProofOptions,
 } from "./atom-proof-options.js";
 export {
-  buildSourceParts,
-  parseSourceManifest,
-} from "./source-manifest.js";
-export {
   type SourcePart,
 } from "./source-part.js";
 export {

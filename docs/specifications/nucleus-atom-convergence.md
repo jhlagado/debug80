@@ -138,7 +138,7 @@ That gives the migration direct access to:
 
 A standalone Nucleus repository can be reconsidered only after these facts are true:
 
-- Nucleus source preparation no longer depends on the old flat source-manifest path;
+- Nucleus source preparation no longer depends on the old flat source-manifest path, and that helper is not exported from the package root;
 - the shared service boundary is stable enough to consume as a package;
 - the Nucleus host API and CLI are stable;
 - an Atom-built Nucleus compiler image is proven against the old image;

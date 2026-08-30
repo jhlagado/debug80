@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 const packageRoot = path.resolve(import.meta.dirname, "..");
 const scannedRoots = ["src", "test"] as const;
 const allowedSourceManifestImporters = new Set([
-  "src/index.ts",
   "src/source-manifest.ts",
   "test/source-manifest.test.ts",
 ]);
