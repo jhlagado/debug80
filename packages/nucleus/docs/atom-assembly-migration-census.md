@@ -249,12 +249,12 @@ await runProofManifest("proofs/memory-map-proof.json", {
 });
 ```
 
-AZM remains the default assembler. The proof harness now accepts the same
-`flavour: "atom" | "azm"` vocabulary as the shared Debug80 assembler selector;
-Atom then names its source policy separately as `source: "permanent"` or
-`source: "preview"`. The Atom mode is explicit because permanent source
-requires strict leading includes and permanent symbol names; it is not safe to
-infer those from the existing AZM source tree.
+Nucleus publication now selects Atom by default. The proof harness accepts the
+same `flavour: "atom" | "azm"` vocabulary as the shared Debug80 assembler
+selector; Atom then names its source policy separately as `source: "permanent"`
+or `source: "preview"`. The Atom source policy remains explicit because
+permanent source requires strict leading includes and permanent symbol names.
+It is not inferred from a `.asm` filename.
 
 For integration work, prefer one consolidated bundle instead of several loose
 files:
@@ -877,8 +877,8 @@ This is a measured proof-image compatibility result, not a full migration. It
 shows that the current line translator, symbol ledger substitutions,
 proof-limit handling, terminal `.END` handling, include-after-header lowering,
 and simple conditional evaluation are sufficient for one substantial proof image.
-It does not yet prove all proof images, strict contract metadata translation, or
-proof-manifest symbol remapping.
+That pilot by itself did not prove the complete proof matrix, strict contract
+metadata translation, or proof-manifest symbol remapping.
 
 The first permanent-source pilot also succeeds without flattened include
 lowering:
@@ -898,16 +898,17 @@ as the assembler. The proof harness executes the Atom-built HEX image and uses
 the migration metadata to resolve proof-facing symbol names and the `$10000`
 proof boundary.
 
-The first scaled proof-image comparison uses generated multipart Atom preview
-source, so no generated part exceeds Atom's 16-bit source-offset range. Current
-routine bounded-matrix result:
+The first scaled proof-image comparison used generated multipart Atom preview
+source, so no generated part exceeded Atom's 16-bit source-offset range. The
+current permanent-ready proof gate now runs the checked-in Atom source tree for
+every non-measurement proof image:
 
 | Status | Count |
 | --- | ---: |
 | Byte-identical proof images | 26 |
 | Skipped known budget blockers | 0 |
 | Skipped measurement artifacts | 3 |
-| Atom-preview errors | 0 |
+| Atom errors | 0 |
 
 Byte-identical proof images:
 
@@ -1001,7 +1002,7 @@ Atom-preview account as `flat-target-z80-slice-proof.json` and are
 byte-identical under the same 700,000,000-instruction / 7,000,000,000-cycle
 budget.
 
-The next migration work should move from proof-image preview compatibility to
+The next migration work should move from proof-image assembly compatibility to
 the shared host boundary: identify which Nucleus harness/provider services match
 Atom's native host API directly, which need adapters, and which belong in a
 shared Debug80 Z80 services package.
@@ -1017,8 +1018,10 @@ guarding older preview workflows, but it is no longer required to hide source
 structure that permanent Atom source cannot express.
 
 The proof harness now runs every non-measurement proof manifest that has a
-permanent Atom layout. The remaining migration work is to check in the generated
-Atom source tree, preserve the AZM fallback until the compiler and proof runner
-select Atom deliberately, then curate the human-facing permanent symbol names.
+permanent Atom layout, and Nucleus publication selects that Atom route by
+default. The remaining migration work is to keep the checked-in Atom source
+tree current, preserve the explicit legacy assembly route until replacement
+gates exist for every caller, then curate the human-facing permanent symbol
+names.
 
 The migration should therefore start with tooling, not manual source edits.

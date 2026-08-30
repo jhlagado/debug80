@@ -33,9 +33,9 @@ authorities:
 
 ## Method
 
-Bottom up. Every claim about Z80 bytes or timing is produced by AZM and the
-Debug80 Z80 runtime from a test in `test/`, or is labelled an estimate in the
-document that makes it.
+Bottom up. Every claim about Z80 bytes or timing is produced by the selected
+assembler and the Debug80 Z80 runtime from a test in `test/`, or is labelled an
+estimate in the document that makes it.
 
 The specification grammar analyzer checks the grammar printed in the language
 specification. The packed parser uses the machine-readable Stage 7 grammar in
@@ -100,9 +100,10 @@ surface converges.
 
 `npm run atom:migration:materialize -w nucleus` regenerates the permanent Atom
 translation under `atom-asm/`. The matching check command compares that tree
-with a fresh temporary translation and fails on drift. The AZM source in `asm/`
-remains the fallback path until the compiler and proof runner explicitly switch
-their default assembler.
+with a fresh temporary translation and fails on drift. Nucleus publication now
+uses the checked-in Atom tree by default. The source in `asm/` remains available
+for explicit legacy assembly while the wider Atom-only cleanup is still in
+progress.
 
 `npm run atom:migration:proof-run:permanent-ready -w nucleus` reads the
 checked-in `atom-asm/` tree by default. Pass `--regenerate-permanent-root` only
