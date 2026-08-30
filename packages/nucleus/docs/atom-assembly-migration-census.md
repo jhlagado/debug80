@@ -219,7 +219,7 @@ known `$10000` proof-boundary constants are restored from the proof-limit map.
 The current AZM proof route remains unchanged; this is the join point for
 Atom-built proof images.
 
-`npm run atom:migration:proof-run:permanent-ready -w nucleus` now reads
+`npm run atom:migration:proof-run:permanent -w nucleus` now reads
 `packages/nucleus/atom-asm` by default. Use
 `--regenerate-permanent-root` only for experiments that need a temporary
 translation from the current AZM tree. The checked-in Atom tree should be

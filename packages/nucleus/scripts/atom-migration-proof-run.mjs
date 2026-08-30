@@ -21,6 +21,12 @@ const defaultPermanentRoot = path.join(packageRoot, "atom-asm");
 const defaultBudgetFile = path.join(defaultProofRoot, "atom-migration-preview-budgets.json");
 const defaultMaxInstructions = 200_000_000;
 const defaultMaxCycles = 2_000_000_000;
+const permanentModes = new Set(["permanent", "permanent-ready"]);
+
+function normalizeMode(mode) {
+  if (mode === "permanent-ready") return "permanent";
+  return mode;
+}
 
 function parseArgs(argv) {
   const options = {
@@ -31,7 +37,7 @@ function parseArgs(argv) {
     maxInstructions: defaultMaxInstructions,
     maxCycles: defaultMaxCycles,
     budgetFile: defaultBudgetFile,
-    mode: "permanent-ready",
+    mode: "permanent",
     permanentRoot: defaultPermanentRoot,
     regeneratePermanentRoot: false,
     json: false,
@@ -70,9 +76,9 @@ function parseArgs(argv) {
     } else if (arg === "--no-budget-file") {
       options.budgetFile = undefined;
     } else if (arg === "--mode") {
-      options.mode = argv[++index];
-      if (!["preview", "permanent-ready"].includes(options.mode)) {
-        throw new Error("--mode must be preview or permanent-ready");
+      options.mode = normalizeMode(argv[++index]);
+      if (!["preview", "permanent"].includes(options.mode)) {
+        throw new Error("--mode must be preview or permanent");
       }
     } else if (arg === "--permanent-root") {
       options.permanentRoot = path.resolve(argv[++index] ?? "");
@@ -111,8 +117,9 @@ Options:
                        packages/nucleus/proofs/atom-migration-preview-budgets.json
                        when present.
   --no-budget-file     Ignore the default per-manifest budget file.
-  --mode MODE          permanent-ready or preview. Defaults to permanent-ready.
-  --permanent-root DIR Source-controlled Atom tree for permanent-ready mode.
+  --mode MODE          permanent or preview. Defaults to permanent.
+                       permanent-ready is accepted as a compatibility alias.
+  --permanent-root DIR Source-controlled Atom tree for permanent mode.
                        Defaults to packages/nucleus/atom-asm.
   --regenerate-permanent-root
                        Generate permanent Atom source in a temporary directory
@@ -225,7 +232,7 @@ async function runOne({
     });
   }
 
-  if (mode === "permanent-ready") {
+  if (mode === "permanent") {
     const row = proofMatrix.get(proof.name);
     if (row?.status !== "atom-permanent-ready") {
       return Object.freeze({
@@ -311,13 +318,13 @@ async function main() {
     proofRoot: options.proofRoot,
   });
   const proofMatrix = proofMatrixByManifest(migrationReport);
-  const generatedPermanentRoot = options.mode === "permanent-ready" && options.regeneratePermanentRoot
+  const generatedPermanentRoot = permanentModes.has(options.mode) && options.regeneratePermanentRoot
     ? mkdtempSync(path.join(os.tmpdir(), "nucleus-atom-permanent-run-"))
     : undefined;
   if (generatedPermanentRoot !== undefined) {
     writeTranslatedTree(migrationReport, generatedPermanentRoot, { symbols: "permanent" });
   }
-  const permanentRoot = options.mode === "permanent-ready"
+  const permanentRoot = options.mode === "permanent"
     ? generatedPermanentRoot ?? options.permanentRoot
     : undefined;
   const budgets = readBudgetFile(options.budgetFile);

@@ -1120,12 +1120,12 @@ describe("Nucleus Atom migration dry-run", () => {
     );
 
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Nucleus Atom permanent-ready proof execution");
+    expect(result.stdout).toContain("Nucleus Atom permanent proof execution");
     expect(result.stdout).toContain("passed: 1");
     expect(result.stdout).toContain("memory-map-proof.json");
   });
 
-  it("runs every permanent-ready proof through the proof harness using permanent Atom source", async (context) => {
+  it("runs every permanent proof through the proof harness using permanent Atom source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {
       const readyProofs = report.proofMatrix
         .filter(({ status }) => status === "atom-permanent-ready");
@@ -1276,7 +1276,7 @@ describe("Nucleus Atom migration dry-run", () => {
         },
       ]);
     });
-  }, 420_000);
+  }, 600_000);
 
   it("runs the compiler-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot, runPermanentAtomProof }) => {

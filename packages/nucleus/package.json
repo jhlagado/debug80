@@ -49,7 +49,8 @@
     "atom:migration:proof-compare:permanent": "npm run atom:migration:proof-compare -- --mode permanent",
     "atom:migration:proof-compare:preview": "npm run atom:migration:proof-compare -- --mode preview",
     "atom:migration:proof-run": "npm run build --silent && node scripts/atom-migration-proof-run.mjs",
-    "atom:migration:proof-run:permanent-ready": "npm run atom:migration:proof-run -- --mode permanent-ready",
+    "atom:migration:proof-run:permanent": "npm run build --silent && node scripts/atom-migration-proof-run.mjs --mode permanent",
+    "atom:migration:proof-run:permanent-ready": "npm run build --silent && node scripts/atom-migration-proof-run.mjs --mode permanent-ready",
     "atom:migration:proof-run:preview": "npm run atom:migration:proof-run -- --mode preview",
     "atom:migration:proof:permanent-gate": "npm run atom:migration:materialize:check && npm run atom:migration:proof-compare && npm run atom:migration:proof-run"
   },
