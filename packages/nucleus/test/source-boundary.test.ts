@@ -5,10 +5,6 @@ import { describe, expect, it } from "vitest";
 
 const packageRoot = path.resolve(import.meta.dirname, "..");
 const scannedRoots = ["src", "test"] as const;
-const allowedSourceManifestImporters = new Set([
-  "src/source-manifest.ts",
-  "test/source-manifest.test.ts",
-]);
 
 async function filesUnder(directory: string): Promise<string[]> {
   const files: string[] = [];
@@ -24,7 +20,7 @@ async function filesUnder(directory: string): Promise<string[]> {
 }
 
 describe("Nucleus source boundary architecture", () => {
-  it("keeps the flat source-manifest helper confined to compatibility code", async () => {
+  it("keeps the retired flat source-manifest helper out of source and tests", async () => {
     const offenders: string[] = [];
     for (const root of scannedRoots) {
       for (const file of await filesUnder(path.join(packageRoot, root))) {
@@ -33,10 +29,7 @@ describe("Nucleus source boundary architecture", () => {
         const importsSourceManifest =
           /from\s+["'][^"']*source-manifest\.js["']/.test(text) ||
           /import\(["'][^"']*source-manifest\.js["']\)/.test(text);
-        if (
-          importsSourceManifest &&
-          !allowedSourceManifestImporters.has(relative)
-        ) {
+        if (importsSourceManifest || relative === "src/source-manifest.ts") {
           offenders.push(relative);
         }
       }

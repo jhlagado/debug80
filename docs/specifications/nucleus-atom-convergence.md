@@ -37,9 +37,8 @@ Nucleus has now started moving onto that boundary:
 - Nucleus depends on `@jhlagado/z80-tool-services`, `atom-z80`,
   `@jhlagado/azm`, and `@jhlagado/debug80-runtime` while the migration is
   incomplete.
-- `packages/nucleus/src/source-manifest.ts` still exists as a low-level
-  compatibility helper. It is not the desired user-facing or package-root
-  project model.
+- The old flat source-manifest helper has no production role; source
+  preparation is now through entry-source leading imports.
 
 That state is useful migration progress. It should not be treated as the final
 shape: the remaining work is to make the shared preparation, service, CLI, and
@@ -82,10 +81,9 @@ Because `//% import` is already a Nucleus comment, the compiler reads the origin
 
 Atom differs deliberately. Atom uses `%` host directives and masks preprocessor-only ranges with spaces while preserving byte offsets. Nucleus should not pay for Atom's conditional source-elision machinery unless a later Nucleus design explicitly admits host conditions.
 
-The old flat source-manifest implementation should remain available only while
-existing proof and package callers still need it. It should not reappear as a
-native command format. Nucleus source composition should be expressed by the
-entry source file's leading imports, resolved by the host or native harness
+The old flat source-manifest implementation is retired. It should not reappear
+as a native command format. Nucleus source composition should be expressed by
+the entry source file's leading imports, resolved by the host or native harness
 before the resident compiler starts.
 
 ## Harness and service convergence
@@ -168,7 +166,8 @@ That gives the migration direct access to:
 
 A standalone Nucleus repository can be reconsidered only after these facts are true:
 
-- Nucleus source preparation no longer depends on the old flat source-manifest path, and that helper is not exported from the package root;
+- Nucleus source preparation has no old flat source-manifest implementation in
+  production source or package-root exports;
 - the shared service boundary is stable enough to consume as a package;
 - the Nucleus host API and CLI are stable;
 - an Atom-built Nucleus compiler image is proven against the old image;
@@ -181,8 +180,8 @@ Until then, moving Nucleus out would add release and dependency friction without
 
 1. Keep this convergence specification current as the migration authority.
 2. Keep the Nucleus source-preparation profile on
-   `@jhlagado/z80-tool-services/source-preparation` and remove production
-   dependence on the old flat source-manifest helper.
+   `@jhlagado/z80-tool-services/source-preparation`; do not restore the old
+   flat source-manifest helper as a production path.
 3. Move Nucleus source and output access behind shared-service adapters while
    preserving the compiler vector.
 4. Define the Nucleus Node API and CLI v1 on top of leading-import source

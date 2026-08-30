@@ -95,10 +95,9 @@ Nucleus's source profile owns:
 - dependency ordering through the shared resolver; and
 - conversion into the existing `SourcePart` shape.
 
-The older `source-manifest.ts` still exists. It parses a flat ordered manifest
-and builds source parts directly. It is now confined to explicit low-level
-compatibility tests, not the desired high-level project model or the package
-root API.
+The older flat source-manifest helper has been retired. Source preparation now
+enters through `resolveNucleusProject` and `prepareNucleusSourceParts`, using
+the shared resolver and Nucleus's leading-import profile.
 
 Nucleus's target boundary is richer than Atom's assembler boundary. It needs:
 
@@ -336,8 +335,9 @@ outside the resident compiler.
 Deliverables:
 
 - this document;
-- tests proving Nucleus still resolves source through the shared resolver;
-- tests proving the flat manifest adapter remains compatible; and
+- tests proving Nucleus resolves source through the shared resolver;
+- tests proving no source or test code imports the retired flat manifest
+  helper; and
 - the permanent Atom proof matrix at 26 byte-identical proof images and 3
   skipped measurement artifacts.
 
@@ -349,17 +349,17 @@ Completion evidence:
 
 ### Phase 2: make Nucleus consume prepared projects directly
 
-Replace internal use of flat manifest strings in high-level Nucleus callers with
-`resolveNucleusProject`. Keep `buildSourceParts` for explicit low-level
-compatibility tests only; new embedded callers should use prepared source parts
-from the resolver boundary.
+Keep high-level Nucleus callers on `resolveNucleusProject` and
+`prepareNucleusSourceParts`. New embedded callers should use prepared source
+parts from the resolver boundary rather than reintroducing flat manifest
+strings.
 
 Completion evidence:
 
 - source-preparation tests prove dependency order, identity, and byte
   preservation;
 - proof harnesses consume the same ordered parts as the resolver; and
-- existing flat-manifest tests still pass as compatibility tests.
+- source-boundary tests reject imports of the retired flat manifest helper.
 
 ### Phase 3: extract the shared generation sink contract
 

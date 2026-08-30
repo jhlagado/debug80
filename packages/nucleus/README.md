@@ -45,7 +45,7 @@ type-metadata model covers every Nucleus type, including arrays of records and
 bounded strings, without turning aggregate aliases into runtime types.
 The source-preparation boundary preserves ordered source-part identities and
 diagnostic names outside the compiler core. The older flat-manifest adapter
-remains as a compatibility path for low-level tests and legacy callers.
+has been retired; source composition is through entry-source leading imports.
 
 The host NOBJ boundary encodes, validates, and materializes the strict
 append-only object stream. Image and patch records use independent sequential
