@@ -197,11 +197,12 @@ profile acceptance.
 Status: active. Nucleus now uses the shared source-preparation resolver for
 high-level source preparation, the shared assembler-flavour selector for
 proof-image assembly, and the shared positive-output selector for publication
-CLIs. The checked-in permanent Atom translation has no compatibility-lowering
-issues, no late includes, and no source drift. The permanent proof gate
-currently checks 29 proof manifests: 26 assemble byte-identically with Atom
-and execute successfully, while 3 measurement artifacts are intentionally
-skipped.
+CLIs. The host-backed runtime stream adapter uses the shared runtime-stream
+I/O operation vocabulary for its stub/service-name mapping. The checked-in
+permanent Atom translation has no compatibility-lowering issues, no late
+includes, and no source drift. The permanent proof gate currently checks 29
+proof manifests: 26 assemble byte-identically with Atom and execute
+successfully, while 3 measurement artifacts are intentionally skipped.
 
 Remaining Nucleus convergence work is implementation, not a source-format
 blocker: finish retiring compatibility-only proof paths after all proof images

@@ -1,6 +1,7 @@
 import {
   createRuntimeStreamIoHandlers,
   createRuntimeStreamIoStubBytes,
+  runtimeStreamIoOperationName,
   type RuntimeByteStreams,
   type RuntimeStreamIoHandlers,
 } from "@jhlagado/z80-tool-services";
@@ -75,20 +76,13 @@ export interface NucleusHostRuntimeStreamLink {
 const streamServiceName = (
   service: NucleusRuntimeStreamServiceOrdinal,
 ): RuntimeServiceName => {
-  switch (service) {
-    case Service.readInputByte:
-      return "readInputByte";
-    case Service.writeOutputByte:
-      return "writeOutputByte";
-    case Service.readStorageByte:
-      return "readStorageByte";
-    case Service.rewindStorageInput:
-      return "rewindStorageInput";
-    case Service.writeStorageByte:
-      return "writeStorageByte";
-    case Service.seekStorageOutput:
-      return "seekStorageOutput";
+  const name = runtimeStreamIoOperationName(
+    NUCLEUS_RUNTIME_STREAM_IO_OPERATION[service],
+  );
+  if (name === undefined) {
+    throw new RangeError(`runtime stream service ${service} has no operation`);
   }
+  return name as RuntimeServiceName;
 };
 
 const checkedAddress = (name: string, value: number): number => {
@@ -132,7 +126,9 @@ export const createNucleusHostRuntimeStreamAdapter = ({
       NUCLEUS_RUNTIME_STREAM_IO_OPERATION[service],
     );
     if (bytes.length > stubSpacing) {
-      throw new RangeError(`${streamServiceName(service)} stub exceeds spacing`);
+      throw new RangeError(
+        `${streamServiceName(service)} stub exceeds spacing`,
+      );
     }
     streamServiceAddresses.set(streamServiceName(service), address);
     stubs.push({ service, address, bytes });
