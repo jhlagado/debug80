@@ -1,15 +1,15 @@
 # Nucleus AZM-to-Atom assembly migration census
 
-Status: measured compatibility census
-Date: 2026-08-30
+Status: measured permanent-source census
+Date: 2026-08-31
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `b81696bc`
+Last checked input HEAD: `0790d60c`
 
 ## Purpose
 
-This census measures the handwritten Nucleus Z80 assembly under `packages/nucleus/asm`, plus transitive assembly includes reached from that tree, before any move from AZM source syntax to Atom source syntax. The result is a migration input, not an implementation step.
+This census measures the handwritten Nucleus Z80 assembly under `packages/nucleus/asm`, plus transitive assembly includes reached from that tree, and verifies the checked-in permanent Atom source tree under `packages/nucleus/atom-asm`. The result is now both a migration ledger and a gate for keeping the Atom route current.
 
 The migration target is:
 
@@ -110,8 +110,10 @@ npm run atom:migration:materialize:check -w nucleus
 The check command regenerates the permanent Atom source into a temporary tree
 and compares it with `packages/nucleus/atom-asm`. It fails on missing, changed,
 or extra files. The write command replaces that tree from the current AZM
-source and migration ledger. Keep the AZM source as the fallback authority until
-the Nucleus compiler and proof runner explicitly select Atom by default.
+source and migration ledger. The default comparison and proof-run commands now
+use the checked-in permanent Atom source. The legacy source tree remains as an
+explicit fallback while external callers and release gates are still being
+unified.
 
 Generated permanent Atom source hoists top-level feature definitions into the
 entry definition header before `%INCLUDE`, `%IF`, `ORG`, labels, code, data, and
@@ -343,10 +345,11 @@ The dry-run intentionally reports two readiness states:
   two symbols that are already defined at the statement that uses them; Atom can
   assemble those expressions in one pass.
 
-Compatibility lowering is now the formal bridge for existing Nucleus proof
-assembly. It preserves the current textual insertion points while producing
-Atom-preview source for byte comparison. It is not the preferred shape for new
-Nucleus assembly source.
+Compatibility lowering remains available only as a diagnostic bridge. It
+preserves old textual insertion points while producing Atom-preview source for
+byte comparison. The default Nucleus proof migration path now uses checked-in
+permanent Atom source, and new Nucleus assembly source should follow that
+shape.
 
 ### Atom expression policy
 
@@ -387,7 +390,9 @@ translated Atom source tree and does not flatten late textual includes.
 
 ## Include-after-header conversion status
 
-The late emitted-content include batch is now clear. Current measured grouping:
+The late emitted-content include batch is now clear. The current census reports
+zero include-after-header violations and zero proof manifests blocked by late
+emitted-content includes.
 
 | Batch                    | Files | Late includes | Risk    | Recommendation                                                                                                                           |
 | ------------------------ | ----: | ------------: | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -435,8 +440,8 @@ after each batch.
 
 The current safe convention is therefore:
 
-1. keep compatibility lowering for any file until its section ownership has
-   been made explicit;
+1. require explicit section ownership before moving emitted-content includes
+   into a header;
 2. allow permanent source to use header-only `%INCLUDE` only when dependency
    order does not affect placement, or when the included module owns its own
    `ORG` and extent labels; and
@@ -871,10 +876,10 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | Ordinary Z80 instructions                | Direct or near-direct                                                      | Atom already targets byte-identical Z80 encoding                                                                                     |
 | `.DB`, `.DS`, `.DW`, `.ORG`              | Mechanical                                                                 | Atom has equivalent directive forms                                                                                                  |
 | `.END`                                   | Terminal metadata                                                          | Current instances can be omitted in preview source after recording `;@AZM-END`                                                       |
-| `.INCLUDE`                               | Header-only for permanent source; compatibility-lowered for current proofs | Current emitted-content include-after-header cases are preserved by the lowering bridge                                              |
+| `.INCLUDE`                               | Header-only for permanent source; preview-lowered only for diagnostics     | The current source set has no include-after-header blockers; future emitted-content includes should use explicit section ownership    |
 | `.IF`, `.ELSE`, `.ENDIF`                 | Mechanical for current source set                                          | Current expressions are simple flags                                                                                                 |
 | `.ROUTINE`                               | Mapped as proof metadata                                                   | Atom source uses `;@ROUTINE`; the generated contract map ties each contract to the target routine label                              |
-| Long labels                              | Classified                                                                 | 787 can become dot-local labels; the rest have generated permanent global abbreviations                                              |
+| Long labels                              | Classified                                                                 | 792 can become dot-local labels; the rest have generated permanent global abbreviations                                              |
 | Proof JSON symbol references             | Mapped                                                                     | The dry-run emits a proof-symbol map from existing proof names to preview and permanent Atom names                                   |
 | `$10000` limit constants                 | Mapped as proof metadata                                                   | Atom source lowers these to `EQU 0` plus `;@ATOM-PROOF-LIMIT`, and the proof-limit map carries `65536`                               |
 | Leading grouped immediates               | Mechanical                                                                 | Current `LD rr,(A<<8)                                                                                                                | B`forms translate safely to`LD rr,A<<8 | B` for Atom |
@@ -882,17 +887,20 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 
 ## Required next implementation checks
 
-Before converting source:
+The permanent source conversion gate is now active for every non-measurement
+proof manifest. The remaining checks have moved from proof-image conversion to
+system integration:
 
 1. Keep extending the converter dry-run ledger and error report for any newly discovered unmapped construct.
 2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
-3. Feed an Atom-built proof image into `runProofManifest` using the migration
-   metadata symbol view instead of only byte-comparing it externally.
-4. Integrate the contract map into the strict register-contract proof path that
-   consumes Atom-built images.
-5. Expand permanent source conversion beyond the small memory-map proof pilot.
-6. Keep emitted-content include lowering as a compatibility path for older proof
-   assembly until those files are reorganized around explicit section ownership.
+3. Keep `packages/nucleus/atom-asm` synchronized with the source tree through
+   `npm run atom:migration:materialize:check -w nucleus`.
+4. Keep the permanent proof comparison and proof execution gate green through
+   `npm run atom:migration:proof:permanent-gate -w nucleus`.
+5. Consolidate the shared Atom/Nucleus host boundary for source preparation,
+   source-part iteration, NOBJ/output publication, and platform services.
+6. Preserve the explicit legacy assembly route until replacement gates cover
+   every caller outside the proof matrix.
 
 ## Pilot results
 
@@ -1029,7 +1037,7 @@ Focused follow-up measurement after that change:
 
 The seven other proof manifests that use
 `vertical-slice/flat-target-z80-slice-proof.asm` now share the same measured
-Atom-preview account as `flat-target-z80-slice-proof.json` and are
+permanent Atom account as `flat-target-z80-slice-proof.json` and are
 byte-identical under the same 700,000,000-instruction / 7,000,000,000-cycle
 budget.
 
@@ -1053,7 +1061,8 @@ The proof harness now runs every non-measurement proof manifest that has a
 permanent Atom layout, and Nucleus publication selects that Atom route by
 default. The remaining migration work is to keep the checked-in Atom source
 tree current, preserve the explicit legacy assembly route until replacement
-gates exist for every caller, then curate the human-facing permanent symbol
-names.
+gates exist for every caller, consolidate the shared host boundary with Atom
+and Debug80, and then curate the human-facing permanent symbol names.
 
-The migration should therefore start with tooling, not manual source edits.
+Further migration work should therefore start with integration gates and
+tooling, not manual source edits.
