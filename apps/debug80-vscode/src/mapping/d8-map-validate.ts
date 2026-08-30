@@ -96,8 +96,11 @@ export function validateD8DebugMap(value: unknown): string | undefined {
     ) {
       return 'Segment confidence is invalid.';
     }
-    if (!Number.isFinite(segment.lstLine)) {
+    if (segment.lstLine !== undefined && !Number.isFinite(segment.lstLine)) {
       return 'Segment lstLine must be a number.';
+    }
+    if (segment.line === undefined && segment.lstLine === undefined) {
+      return 'Segment line or lstLine must be present.';
     }
     if (segment.lstText !== undefined && typeof segment.lstText !== 'string') {
       return 'Segment lstText must be a string.';

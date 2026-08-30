@@ -72,14 +72,14 @@ success only. These forms lower to ordinary Z80 conditional control flow, not
 exceptions or stack unwinding.
 
 ```bash
-npm run cli -w nucleus -- src/main.nu --root path/to/project build/program.nobj build/program.bin build/program.hex build/program.d8.json
-npm run cli -w nucleus -- prepare --root path/to/project src/main.nu
-npm run cli -w nucleus -- publish --root path/to/project src/main.nu build/program.nobj build/program.bin build/program.hex build/program.d8.json
-npm run source:prepare -w nucleus -- --root path/to/project src/main.nu
-npm run proof -w nucleus
-npm run measure -w nucleus
-npm run atom:migration:materialize:check -w nucleus
-npm test -w nucleus
+npm run cli -w @jhlagado/nucleus -- src/main.nu --root path/to/project build/program.nobj build/program.bin build/program.hex build/program.d8.json
+npm run cli -w @jhlagado/nucleus -- prepare --root path/to/project src/main.nu
+npm run cli -w @jhlagado/nucleus -- publish --root path/to/project src/main.nu build/program.nobj build/program.bin build/program.hex build/program.d8.json
+npm run source:prepare -w @jhlagado/nucleus -- --root path/to/project src/main.nu
+npm run proof -w @jhlagado/nucleus
+npm run measure -w @jhlagado/nucleus
+npm run atom:migration:materialize:check -w @jhlagado/nucleus
+npm test -w @jhlagado/nucleus
 ```
 
 `nucleus prepare` is the Node-hosted preparation boundary. It resolves leading
@@ -104,14 +104,14 @@ for Nucleus.
 The older direct npm scripts remain compatibility shortcuts while the command
 surface converges.
 
-`npm run atom:migration:materialize -w nucleus` regenerates the permanent Atom
+`npm run atom:migration:materialize -w @jhlagado/nucleus` regenerates the permanent Atom
 translation under `atom-asm/`. The matching check command compares that tree
 with a fresh temporary translation and fails on drift. Nucleus publication now
 uses the checked-in Atom tree by default. The source in `asm/` remains available
 for explicit legacy assembly while the wider Atom-only cleanup is still in
 progress.
 
-`npm run atom:migration:proof-run:permanent-ready -w nucleus` reads the
+`npm run atom:migration:proof-run:permanent-ready -w @jhlagado/nucleus` reads the
 checked-in `atom-asm/` tree by default. Pass `--regenerate-permanent-root` only
 when testing the generator itself rather than the source-controlled Atom tree.
 The current measured set has 26 permanent-ready proof manifests and 3

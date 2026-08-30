@@ -242,8 +242,8 @@ jobs:
       - run: npm run build -w @jhlagado/debug80-runtime
       - run: npm run build -w @jhlagado/z80-tool-services
       - run: npm run build -w atom-z80
-      - run: npm run typecheck -w nucleus
-      - run: npm run test -w nucleus
+      - run: npm run typecheck -w @jhlagado/nucleus
+      - run: npm run test -w @jhlagado/nucleus
       - run: npm run package:nucleus
 
   # Single required status; fails if any triggered job failed.

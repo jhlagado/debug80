@@ -20,7 +20,19 @@ const locatePackageRoot = (moduleUrl: string): string => {
   }
 };
 
-const packageRoot = locatePackageRoot(import.meta.url);
+const locatePackageRootFromCwd = (): string | undefined => {
+  let current = process.cwd();
+  while (true) {
+    const candidate = path.join(current, "packages", "nucleus");
+    if (existsSync(path.join(candidate, "package.json"))) return candidate;
+    const parent = path.dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
+};
+
+const packageRoot =
+  locatePackageRootFromCwd() ?? locatePackageRoot(import.meta.url);
 
 export const NUCLEUS_DEFAULT_ASM_ROOT = path.join(packageRoot, "asm");
 export const NUCLEUS_DEFAULT_PERMANENT_ATOM_ROOT = path.join(

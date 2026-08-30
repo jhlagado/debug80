@@ -10,11 +10,11 @@
     "integration/*"
   ],
   "scripts": {
-    "build": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime && npm run build -w @jhlagado/z80-tool-services && npm run build -w atom-z80 && npm run build -w @jhlagado/glimmer && npm run build -w nucleus && npm run build -w debug80",
-    "typecheck": "npm run typecheck -w @jhlagado/azm && npm run typecheck -w @jhlagado/glimmer && npm run typecheck -w @jhlagado/debug80-runtime && npm run typecheck -w @jhlagado/z80-tool-services && npm run typecheck -w @jhlagado/azm-headless-integration && npm run typecheck -w @jhlagado/glimmer-headless-integration && npm run typecheck -w debug80 && npm run typecheck:webview -w debug80 && npm run typecheck -w nucleus",
+    "build": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime && npm run build -w @jhlagado/z80-tool-services && npm run build -w atom-z80 && npm run build -w @jhlagado/glimmer && npm run build -w @jhlagado/nucleus && npm run build -w debug80",
+    "typecheck": "npm run typecheck -w @jhlagado/azm && npm run typecheck -w @jhlagado/glimmer && npm run typecheck -w @jhlagado/debug80-runtime && npm run typecheck -w @jhlagado/z80-tool-services && npm run typecheck -w @jhlagado/azm-headless-integration && npm run typecheck -w @jhlagado/glimmer-headless-integration && npm run typecheck -w debug80 && npm run typecheck:webview -w debug80 && npm run typecheck -w @jhlagado/nucleus",
     "lint": "npm run lint --workspaces --if-present",
     "format:check": "npm run format:check --workspaces --if-present",
-    "test": "npm run test -w @jhlagado/azm && npm run test -w @jhlagado/glimmer && npm run test -w @jhlagado/debug80-runtime && npm run test -w @jhlagado/z80-tool-services && npm run test -w atom-z80 && npm run test -w @jhlagado/azm-headless-integration && npm run test -w @jhlagado/glimmer-headless-integration && npm run test -w debug80 && npm run test -w nucleus",
+    "test": "npm run test -w @jhlagado/azm && npm run test -w @jhlagado/glimmer && npm run test -w @jhlagado/debug80-runtime && npm run test -w @jhlagado/z80-tool-services && npm run test -w atom-z80 && npm run test -w @jhlagado/azm-headless-integration && npm run test -w @jhlagado/glimmer-headless-integration && npm run test -w debug80 && npm run test -w @jhlagado/nucleus",
     "format": "npm run format --workspaces --if-present",
     "check:links": "node scripts/check-links.mjs",
     "check:links:external": "node scripts/check-links.mjs --external",
@@ -40,7 +40,7 @@
     "package:runtime": "npm run test:package -w @jhlagado/debug80-runtime",
     "package:z80-tool-services": "npm run test:package -w @jhlagado/z80-tool-services",
     "package:atom": "npm run test:package -w atom-z80",
-    "package:nucleus": "npm run test:package -w nucleus && npm run check:atom -w nucleus",
+    "package:nucleus": "npm run test:package -w @jhlagado/nucleus && npm run check:atom -w @jhlagado/nucleus",
     "package:debug80": "npm run package:check -w debug80"
   },
   "engines": {

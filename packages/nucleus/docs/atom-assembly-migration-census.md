@@ -60,19 +60,19 @@ evicts pending private-label references at the next global label.
 Regenerate the dry-run report with:
 
 ```bash
-npm run atom:migration:census -w nucleus
+npm run atom:migration:census -w @jhlagado/nucleus
 ```
 
 Run the same tool without `--report-only` when the ledger becomes complete and the migration should fail CI on any remaining unmapped construct:
 
 ```bash
-npm run atom:migration:dry-run -w nucleus
+npm run atom:migration:dry-run -w @jhlagado/nucleus
 ```
 
 The tool can also write machine-readable outputs for the next migration stage:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --ledger-out build/nucleus-atom-ledger.json \
   --issues-out build/nucleus-atom-issues.json \
   --include-report-out build/nucleus-atom-includes.json
@@ -81,7 +81,7 @@ npm run atom:migration:census -w nucleus -- \
 It can also write a generated Atom-preview assembly tree without modifying the source tree:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --translated-root build/nucleus-atom-preview
 ```
 
@@ -90,7 +90,7 @@ header-include source that is being prepared as permanent Atom source, select
 the permanent abbreviation/local-label names explicitly:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --translated-root build/nucleus-atom-permanent \
   --translated-symbols permanent
 ```
@@ -103,8 +103,8 @@ The named permanent-source materialization command writes and checks the
 source-controlled Atom tree:
 
 ```bash
-npm run atom:migration:materialize -w nucleus
-npm run atom:migration:materialize:check -w nucleus
+npm run atom:migration:materialize -w @jhlagado/nucleus
+npm run atom:migration:materialize:check -w @jhlagado/nucleus
 ```
 
 The check command regenerates the permanent Atom source into a temporary tree
@@ -161,7 +161,7 @@ unknown, malformed, and symbol-capacity cases.
 It can also write the proof-manifest symbol join needed by the proof harness:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --proof-symbol-map-out build/nucleus-atom-proof-symbols.json
 ```
 
@@ -173,7 +173,7 @@ different Atom-safe name.
 It can also write the proof-limit map for one-past-address-space constants:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --proof-limit-map-out build/nucleus-atom-proof-limits.json
 ```
 
@@ -187,7 +187,7 @@ manifest joins.
 It can also write the routine-contract map for the proof checker:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --contract-map-out build/nucleus-atom-contracts.json
 ```
 
@@ -200,7 +200,7 @@ tool consumes the generated contract map.
 It can also write the proof selection matrix:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --proof-matrix-out build/nucleus-atom-proof-matrix.json
 ```
 
@@ -221,18 +221,18 @@ known `$10000` proof-boundary constants are restored from the proof-limit map.
 The current AZM proof route remains unchanged; this is the join point for
 Atom-built proof images.
 
-`npm run atom:migration:proof-run:permanent -w nucleus` now reads
+`npm run atom:migration:proof-run:permanent -w @jhlagado/nucleus` now reads
 `packages/nucleus/atom-asm` by default. Use
 `--regenerate-permanent-root` only for experiments that need a temporary
 translation from the current AZM tree. The checked-in Atom tree should be
-validated first with `npm run atom:migration:materialize:check -w nucleus`.
-`npm run atom:migration:proof-compare:permanent -w nucleus` compares the
+validated first with `npm run atom:migration:materialize:check -w @jhlagado/nucleus`.
+`npm run atom:migration:proof-compare:permanent -w @jhlagado/nucleus` compares the
 checked-in permanent Atom tree directly with the current AZM-built proof images.
 The full permanent gate runs materialization check, permanent byte comparison,
 and permanent proof execution:
 
 ```bash
-npm run atom:migration:proof:permanent-gate -w nucleus
+npm run atom:migration:proof:permanent-gate -w @jhlagado/nucleus
 ```
 
 The target runtime link entry now also has a permanent Atom layout. Its entry
@@ -289,7 +289,7 @@ For integration work, prefer one consolidated bundle instead of several loose
 files:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --migration-bundle-out build/nucleus-atom-migration.json
 ```
 
@@ -302,7 +302,7 @@ For proof images that still depend on AZM-style textual includes, the tool can
 also lower a single entry into one generated Atom-preview source file:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --flatten-entry vertical-slice/compiler-slice-proof.asm \
   --flatten-out build/nucleus-atom-preview/compiler-slice-proof.atom.asm
 ```
@@ -310,25 +310,25 @@ npm run atom:migration:census -w nucleus -- \
 The permanent Atom proof-image byte comparison can be rerun with:
 
 ```bash
-npm run atom:migration:proof-compare -w nucleus
+npm run atom:migration:proof-compare -w @jhlagado/nucleus
 ```
 
 To compare generated preview source for migration diagnostics, run:
 
 ```bash
-npm run atom:migration:diagnose-preview -w nucleus
+npm run atom:migration:diagnose-preview -w @jhlagado/nucleus
 ```
 
 Run the executable permanent Atom proof gate with:
 
 ```bash
-npm run atom:migration:proof-run -w nucleus
+npm run atom:migration:proof-run -w @jhlagado/nucleus
 ```
 
 To execute generated preview source for migration diagnostics, run:
 
 ```bash
-npm run atom:migration:diagnose-preview-run -w nucleus
+npm run atom:migration:diagnose-preview-run -w @jhlagado/nucleus
 ```
 
 The dry-run intentionally reports two readiness states:
@@ -733,7 +733,7 @@ inherits the emitted-content class of its nested includes. Generate the report
 with:
 
 ```bash
-npm run atom:migration:census -w nucleus -- \
+npm run atom:migration:census -w @jhlagado/nucleus -- \
   --include-report-out build/nucleus-atom-includes.json
 ```
 
@@ -894,9 +894,9 @@ system integration:
 1. Keep extending the converter dry-run ledger and error report for any newly discovered unmapped construct.
 2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
 3. Keep `packages/nucleus/atom-asm` synchronized with the source tree through
-   `npm run atom:migration:materialize:check -w nucleus`.
+   `npm run atom:migration:materialize:check -w @jhlagado/nucleus`.
 4. Keep the permanent proof comparison and proof execution gate green through
-   `npm run atom:migration:proof:permanent-gate -w nucleus`.
+   `npm run atom:migration:proof:permanent-gate -w @jhlagado/nucleus`.
 5. Consolidate the shared Atom/Nucleus host boundary for source preparation,
    source-part iteration, NOBJ/output publication, and platform services.
 6. Preserve the explicit legacy assembly route until replacement gates cover

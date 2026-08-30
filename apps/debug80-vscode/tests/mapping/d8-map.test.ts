@@ -291,6 +291,46 @@ describe('d8-map', () => {
     expect(rebuilt.segments[0]?.context.line).toBe(42);
   });
 
+  it('uses the source line as context when lstLine is omitted', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {
+        'src/main.asm': {
+          segments: [{ start: 0, end: 1, line: 10 }],
+        },
+      },
+    };
+
+    const { map: parsed, error } = parseD8DebugMap(JSON.stringify(map));
+    expect(error).toBeUndefined();
+    const rebuilt = buildMappingFromD8DebugMap(parsed!);
+    expect(rebuilt.segments[0]?.loc.line).toBe(10);
+    expect(rebuilt.segments[0]?.context.line).toBe(10);
+  });
+
+  it('rejects source segments without either line field', () => {
+    const map = {
+      format: 'd8-debug-map',
+      version: 1,
+      arch: 'z80',
+      addressWidth: 16,
+      endianness: 'little',
+      files: {
+        'src/main.asm': {
+          segments: [{ start: 0, end: 1 }],
+        },
+      },
+    };
+
+    expect(parseD8DebugMap(JSON.stringify(map)).error).toBe(
+      'Segment line or lstLine must be present.'
+    );
+  });
+
   it('keeps the source line unknown when both line and lstLine are absent', () => {
     const map = {
       format: 'd8-debug-map',

@@ -137,6 +137,11 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+function findBundledAtomNamespace(bundle) {
+  const match = /var (index(?:\$\d+)?) = [\s\S]*?assembleAtomProject: assembleAtomProject/.exec(bundle);
+  return match?.[1];
+}
+
 function verifyBundledAtomRuntime(stage) {
   const extensionBundlePath = path.join(stage, 'out', 'extension', 'extension.js');
   const nativeCorePath = path.resolve(
@@ -148,8 +153,9 @@ function verifyBundledAtomRuntime(stage) {
   );
   const bundle = fs.readFileSync(extensionBundlePath, 'utf8');
   const failures = [];
+  const atomNamespace = findBundledAtomNamespace(bundle);
 
-  if (!bundle.includes('return await Promise.resolve().then(function () { return index; });')) {
+  if (atomNamespace === undefined || !bundle.includes('assembleAtomProject')) {
     failures.push('Atom compiler API is not bundled into the extension output');
   }
   if (bundle.includes('import("atom-z80")') || bundle.includes("import('atom-z80')")) {
@@ -222,12 +228,15 @@ async function smokeBundledAtomAssembly(stage) {
   const extensionBundlePath = path.join(stage, 'out', 'extension', 'extension.js');
   const smokeBundlePath = path.join(stage, 'out', 'extension', 'extension-smoke.js');
   const projectRoot = path.join(stage, 'atom-smoke-project');
-  const source = fs
-    .readFileSync(extensionBundlePath, 'utf8')
-    .replace(
-      'export { activate, deactivate };',
-      'export { activate, deactivate, index as __debug80BundledAtomForSmoke };'
-    );
+  const bundle = fs.readFileSync(extensionBundlePath, 'utf8');
+  const atomNamespace = findBundledAtomNamespace(bundle);
+  if (atomNamespace === undefined) {
+    return ['temporary bundled Atom smoke export could not locate the Atom namespace'];
+  }
+  const source = bundle.replace(
+    'export { activate, deactivate };',
+    `export { activate, deactivate, ${atomNamespace} as __debug80BundledAtomForSmoke };`
+  );
   if (!source.includes('__debug80BundledAtomForSmoke')) {
     return ['temporary bundled Atom smoke export could not be installed'];
   }

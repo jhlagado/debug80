@@ -9,7 +9,8 @@ const { stdout: help } = await execFileAsync(
   process.execPath,
   ["dist/src/cli/nucleus.js", "--help"],
 );
-assert.match(help, /^Usage: nucleus <command> \[options\]/);
+assert.match(help, /^Usage: nucleus <entry\.nu> \[output\.\.\.\]/);
+assert.match(help, /^       nucleus <command> \[options\]/m);
 assert.match(help, /proof:publish/);
 
 const { stdout: packJson } = await execFileAsync("npm", [
@@ -22,7 +23,7 @@ const [pack] = JSON.parse(packJson);
 const files = new Set(pack.files.map((file) => file.path));
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 
-assert.equal(pack.name, "nucleus");
+assert.equal(pack.name, "@jhlagado/nucleus");
 assert.equal(packageJson.bin.nucleus, "dist/src/cli/nucleus.js");
 assert(files.has("dist/src/cli/nucleus.js"));
 assert(files.has("dist/src/index.js"));

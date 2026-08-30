@@ -104,7 +104,7 @@ export interface D8Segment {
   /** Mapping confidence */
   confidence?: D8Confidence;
   /** Assembler source-context line number */
-  lstLine: number;
+  lstLine?: number;
   /** Assembler source-context text (inline) */
   lstText?: string;
   /** Index into lstText table (for deduplication) */
@@ -328,7 +328,7 @@ function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
       const line = resolveD8SegmentLine(segment);
       const confidence = segment.confidence ?? defaultConfidence;
 
-      const lstLine = segment.lstLine;
+      const lstLine = segment.lstLine ?? segment.line ?? 0;
       let lstTextValue = segment.lstText ?? '';
       if (segment.lstTextId !== undefined) {
         lstTextValue = lstText[segment.lstTextId] ?? '';

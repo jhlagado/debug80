@@ -41,12 +41,26 @@ const locatePackageRoot = (moduleUrl: string): string => {
   }
 };
 
-const packageRoot = locatePackageRoot(import.meta.url);
-const defaultFlatCompilerProofManifest = path.join(
-  packageRoot,
-  "proofs",
-  "flat-target-z80-slice-proof.json",
-);
+const locatePackageRootFromCwd = (): string | undefined => {
+  let current = process.cwd();
+  while (true) {
+    const candidate = path.join(current, "packages", "nucleus");
+    if (existsSync(path.join(candidate, "package.json"))) return candidate;
+    const parent = path.dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
+};
+
+const nucleusPackageRoot = (): string =>
+  locatePackageRootFromCwd() ?? locatePackageRoot(import.meta.url);
+
+const defaultFlatCompilerProofManifest = (): string =>
+  path.join(
+    nucleusPackageRoot(),
+    "proofs",
+    "flat-target-z80-slice-proof.json",
+  );
 const NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE = 0x5000;
 const NUCLEUS_DEFAULT_RESIDENT_SOURCE_CAPACITY = 0x0800;
 
@@ -297,7 +311,7 @@ export async function publishNucleusPreparedSourceTarget(
   const root = options.root ?? ".";
   const entry = options.entry;
   const compilerManifest =
-    options.compilerManifest ?? defaultFlatCompilerProofManifest;
+    options.compilerManifest ?? defaultFlatCompilerProofManifest();
   const compilerEntry =
     options.compilerEntry ?? NUCLEUS_FLAT_TARGET_COMPILER_ENTRY;
   const target = options.target ?? NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR;

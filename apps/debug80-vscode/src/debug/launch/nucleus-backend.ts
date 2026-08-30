@@ -1,40 +1,36 @@
 /**
- * @fileoverview In-process standalone Nucleus compiler backend.
+ * @fileoverview In-process Nucleus compiler backend.
  *
- * The package executes the authoritative Z80 compiler and returns NOBJ, flat
- * Intel HEX and D8 artifacts in memory. Debug80 validates the D8 map before the
- * package publishes the complete artifact set as one transaction.
+ * Debug80 runs the Nucleus resident compiler through the package's prepared
+ * source publication API. Nucleus owns source resolution, Atom-selected proof
+ * assembly, NOBJ publication, flat binary materialization, Intel HEX rendering
+ * and D8 rendering. Debug80 validates the D8 map before publishing the launch
+ * artifacts as one filesystem transaction.
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import {
-  createNucleusCompiler,
-  formatNucleusDiagnostic,
-  parseNucleusProject,
-  parseNucleusTargetProfile,
-  publishNucleusBuildOutputs,
-  type NucleusBuildRequest,
-  type NucleusBuildResult,
-  type NucleusSourcePart,
+import type {
+  NucleusPreparedSourceArtifactBuild,
+  NucleusPreparedSourceTargetPublicationOptions,
 } from '@jhlagado/nucleus';
+import { publishOutputFiles } from '@jhlagado/z80-tool-services';
 import { parseD8DebugMap } from '../../mapping/d8-map';
-import type { AssemblyDiagnostic, AssembleResult } from './assembler';
+import type { AssembleResult } from './assembler';
 import type { AssembleOptions, AssemblerBackend } from './assembler-backend';
 
 export interface NucleusCompilerApi {
-  readonly build: (request: NucleusBuildRequest) => Promise<NucleusBuildResult>;
+  readonly buildPreparedSourceArtifacts: (
+    options: NucleusPreparedSourceTargetPublicationOptions
+  ) => Promise<NucleusPreparedSourceArtifactBuild>;
 }
 
-const defaultCompiler = (): NucleusCompilerApi => createNucleusCompiler();
-
-function sourceLine(filePath: string, line: number): string | undefined {
-  try {
-    return fs.readFileSync(filePath, 'utf8').split(/\r?\n/)[line - 1];
-  } catch {
-    return undefined;
-  }
-}
+const defaultCompiler = (): NucleusCompilerApi => ({
+  async buildPreparedSourceArtifacts(options) {
+    const { buildNucleusPreparedSourceArtifacts } = await import('@jhlagado/nucleus');
+    return buildNucleusPreparedSourceArtifacts(options);
+  },
+});
 
 function sourcePath(root: string, name: string): string {
   const resolved = path.resolve(root, name);
@@ -50,39 +46,42 @@ function sourcePath(root: string, name: string): string {
   return resolved;
 }
 
-function sourceDiagnostic(
-  result: Extract<NucleusBuildResult, { success: false; kind: 'source' }>,
-  root: string
-): AssemblyDiagnostic {
-  const diagnosticPath =
-    result.diagnostic.sourceName === undefined
-      ? ''
-      : sourcePath(root, result.diagnostic.sourceName);
-  const lineText =
-    diagnosticPath === '' ? undefined : sourceLine(diagnosticPath, result.diagnostic.line);
-  return {
-    path: diagnosticPath,
-    line: result.diagnostic.line,
-    column: result.diagnostic.column,
-    message: `${result.message} [N${result.diagnostic.code}]`,
-    ...(lineText === undefined ? {} : { sourceLine: lineText }),
-  };
-}
-
-function configurationMessage(result: Exclude<NucleusBuildResult, { success: true }>): string {
-  if (result.kind !== 'configuration') {
-    return result.message;
-  }
-  return [
-    result.message,
-    ...result.issues.map((issue) => `  ${issue.path}: ${issue.message}`),
-  ].join('\n');
-}
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 interface LoadedNucleusBuild {
   readonly root: string;
-  readonly sources: readonly NucleusSourcePart[];
-  readonly targetProfilePath: string;
+  readonly entry: string;
+  readonly targetFile: string;
+}
+
+function readProjectFile(projectPath: string): { readonly root: string; readonly entry: string; readonly target?: string } {
+  const parsed = JSON.parse(fs.readFileSync(projectPath, 'utf8')) as unknown;
+  if (!isObject(parsed)) {
+    throw new Error('Nucleus project file must contain a JSON object');
+  }
+  const root = typeof parsed.root === 'string' && parsed.root.length > 0 ? parsed.root : '.';
+  if (typeof parsed.entry === 'string' && parsed.entry.length > 0) {
+    return {
+      root,
+      entry: parsed.entry,
+      ...(typeof parsed.target === 'string' && parsed.target.length > 0
+        ? { target: parsed.target }
+        : {}),
+    };
+  }
+  if (Array.isArray(parsed.sources) && parsed.sources.length === 1 && typeof parsed.sources[0] === 'string') {
+    return {
+      root,
+      entry: parsed.sources[0],
+      ...(typeof parsed.target === 'string' && parsed.target.length > 0
+        ? { target: parsed.target }
+        : {}),
+    };
+  }
+  throw new Error(
+    'Nucleus project files must name one entry source; source ordering now comes from leading //% import directives'
+  );
 }
 
 function loadNucleusBuild(options: AssembleOptions): LoadedNucleusBuild {
@@ -97,15 +96,13 @@ function loadNucleusBuild(options: AssembleOptions): LoadedNucleusBuild {
         : undefined;
 
   if (projectPath !== undefined) {
-    const project = parseNucleusProject(fs.readFileSync(projectPath, 'utf8'));
-    const root = path.resolve(path.dirname(projectPath), project.root ?? '.');
+    const project = readProjectFile(projectPath);
+    const root = path.resolve(path.dirname(projectPath), project.root);
+    const target = options.nucleus?.targetProfile ?? project.target ?? 'nucleus-target.json';
     return {
       root,
-      sources: project.sources.map((name) => ({
-        name: name.split(path.sep).join('/'),
-        source: fs.readFileSync(sourcePath(root, name)),
-      })),
-      targetProfilePath: path.resolve(root, options.nucleus?.targetProfile ?? project.target),
+      entry: project.entry,
+      targetFile: path.resolve(root, target),
     };
   }
 
@@ -113,14 +110,13 @@ function loadNucleusBuild(options: AssembleOptions): LoadedNucleusBuild {
   const absoluteSource = sourcePath(root, path.relative(root, options.asmPath));
   return {
     root,
-    sources: [
-      {
-        name: path.relative(root, absoluteSource).split(path.sep).join('/'),
-        source: fs.readFileSync(absoluteSource),
-      },
-    ],
-    targetProfilePath: path.resolve(root, options.nucleus?.targetProfile ?? 'nucleus-target.json'),
+    entry: path.relative(root, absoluteSource).split(path.sep).join('/'),
+    targetFile: path.resolve(root, options.nucleus?.targetProfile ?? 'nucleus-target.json'),
   };
+}
+
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export class NucleusBackend implements AssemblerBackend {
@@ -135,77 +131,47 @@ export class NucleusBackend implements AssemblerBackend {
     } catch (error) {
       return {
         success: false,
-        error: `Nucleus project could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
+        error: `Nucleus project could not be loaded: ${formatError(error)}`,
       };
     }
-    if (!fs.existsSync(loaded.targetProfilePath)) {
+    if (!fs.existsSync(loaded.targetFile)) {
       return {
         success: false,
-        error: `Nucleus target profile not found at "${loaded.targetProfilePath}"; define real service destinations before launching`,
+        error: `Nucleus target descriptor not found at "${loaded.targetFile}"; define a launchable target publication descriptor before launching`,
       };
     }
 
-    let target;
+    let build: NucleusPreparedSourceArtifactBuild;
     try {
-      target = parseNucleusTargetProfile(fs.readFileSync(loaded.targetProfilePath, 'utf8'), {
-        requireServices: true,
-        sourcePartCount: loaded.sources.length,
+      build = await this.compiler.buildPreparedSourceArtifacts({
+        root: loaded.root,
+        entry: loaded.entry,
+        targetFile: loaded.targetFile,
       });
     } catch (error) {
-      return {
-        success: false,
-        error: `Nucleus target profile is invalid: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-    if ('bankCount' in target && target.bankCount > 1) {
-      return {
-        success: false,
-        error:
-          `Debug80 Nucleus launch requires a flat target; profile "${loaded.targetProfilePath}" declares bankCount ${target.bankCount}. ` +
-          'Use the standalone Nucleus API or CLI for banked NOBJ and per-bank D8 output.',
-      };
+      const message = `Nucleus build failed: ${formatError(error)}`;
+      options.onOutput?.(`${message}\n`);
+      return { success: false, error: message };
     }
 
-    const result = await this.compiler.build({
-      sources: loaded.sources,
-      target,
-      artifacts: { hex: true, d8: true },
-    });
-    if (!result.success) {
-      if (result.kind === 'source') {
-        const diagnostic = sourceDiagnostic(result, loaded.root);
-        const error = formatNucleusDiagnostic(result.diagnostic);
-        options.onOutput?.(`${error}\n`);
-        return { success: false, error, diagnostic };
-      }
-      const error = configurationMessage(result);
-      options.onOutput?.(`${error}\n`);
-      return { success: false, error };
-    }
-
-    if (result.artifacts.hex === undefined || result.artifacts.d8 === undefined) {
-      return { success: false, error: 'Nucleus compiler omitted requested HEX or D8 artifacts' };
-    }
-    for (const artifact of result.artifacts.d8) {
-      const parsed = parseD8DebugMap(artifact.json);
-      if (parsed.map === undefined) {
-        return {
-          success: false,
-          error: `Nucleus compiler produced an invalid D8 artifact: ${parsed.error ?? 'unknown validation failure'}`,
-        };
-      }
+    const parsedD8 = parseD8DebugMap(build.artifacts.d8);
+    if (parsedD8.map === undefined) {
+      return {
+        success: false,
+        error: `Nucleus compiler produced an invalid D8 artifact: ${parsedD8.error ?? 'unknown validation failure'}`,
+      };
     }
 
     const extension = path.extname(options.hexPath);
     const artifactBase =
       extension.length === 0 ? options.hexPath : options.hexPath.slice(0, -extension.length);
-    const published = await publishNucleusBuildOutputs(
-      {
-        nobj: `${artifactBase}.nobj`,
-        hex: options.hexPath,
-        d8: `${artifactBase}.d8.json`,
-      },
-      result.artifacts
+    const published = await publishOutputFiles(
+      [
+        { path: `${artifactBase}.nobj`, bytes: build.artifacts.nobj },
+        { path: options.hexPath, bytes: build.artifacts.hex },
+        { path: `${artifactBase}.d8.json`, bytes: build.artifacts.d8 },
+      ],
+      { tagPrefix: 'nucleus' }
     );
     const message = `Nucleus wrote ${published.length} build artifacts\n`;
     options.onOutput?.(message);

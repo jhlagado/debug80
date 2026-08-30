@@ -1,5 +1,5 @@
 {
-  "name": "nucleus",
+  "name": "@jhlagado/nucleus",
   "version": "0.0.0",
   "private": true,
   "description": "Nucleus: a small typed language with a direct compiler for 16K Z80 systems",
@@ -55,9 +55,9 @@
     "atom:migration:proof:permanent-gate": "npm run atom:migration:materialize:check && npm run atom:migration:proof-compare && npm run atom:migration:proof-run"
   },
   "dependencies": {
-    "@jhlagado/azm": "^0.3.8",
-    "@jhlagado/debug80-runtime": "^0.1.0",
-    "@jhlagado/z80-tool-services": "^0.1.0",
+    "@jhlagado/azm": "file:../azm",
+    "@jhlagado/debug80-runtime": "file:../debug80-runtime",
+    "@jhlagado/z80-tool-services": "file:../z80-tool-services",
     "atom-z80": "file:../atom"
   },
   "devDependencies": {

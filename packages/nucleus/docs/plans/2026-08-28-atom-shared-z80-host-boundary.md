@@ -369,9 +369,9 @@ Deliverables:
 
 Completion evidence:
 
-- `npm run typecheck -w nucleus`;
-- `npm test -w nucleus`;
-- `npm run atom:migration:proof-compare -w nucleus -- --report-only`.
+- `npm run typecheck -w @jhlagado/nucleus`;
+- `npm test -w @jhlagado/nucleus`;
+- `npm run atom:migration:proof-compare -w @jhlagado/nucleus -- --report-only`.
 
 ### Phase 2: make Nucleus consume prepared projects directly
 
@@ -662,8 +662,8 @@ terminal, trap, far-call, and far-jump services remain unchanged.
 The first development command now uses that application boundary:
 
 ```text
-npm run source:prepare -w nucleus -- --root path/to/project src/main.nu
-npm run source:prepare -w nucleus -- --runtime-services host-streams --stub-base 0x4100 --json src/main.nu
+npm run source:prepare -w @jhlagado/nucleus -- --root path/to/project src/main.nu
+npm run source:prepare -w @jhlagado/nucleus -- --runtime-services host-streams --stub-base 0x4100 --json src/main.nu
 ```
 
 This command resolves `//% import` dependencies and reports the prepared
@@ -777,17 +777,17 @@ continues to own the resident-code discrimination.
 The first file-producing publication commands are now available:
 
 ```text
-npm run cli -w nucleus -- publish --root path/to/project --target target.json --output build/program.nobj src/main.nu
-npm run cli -w nucleus -- publish --root path/to/project src/main.nu build/program.nobj build/program.bin build/program.hex build/program.d8.json
-npm run publish:nobj -w nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
-npm run cli -w nucleus -- proof:publish --output build/program.nobj proofs/flat-target-z80-slice-proof.json
-npm run proof:publish -w nucleus -- --output build/program.nobj proofs/flat-target-z80-slice-proof.json
-npm run proof:publish -w nucleus -- --root path/to/project --output build/program.nobj src/main.nu
-npm run proof:publish -w nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
+npm run cli -w @jhlagado/nucleus -- publish --root path/to/project --target target.json --output build/program.nobj src/main.nu
+npm run cli -w @jhlagado/nucleus -- publish --root path/to/project src/main.nu build/program.nobj build/program.bin build/program.hex build/program.d8.json
+npm run publish:nobj -w @jhlagado/nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
+npm run cli -w @jhlagado/nucleus -- proof:publish --output build/program.nobj proofs/flat-target-z80-slice-proof.json
+npm run proof:publish -w @jhlagado/nucleus -- --output build/program.nobj proofs/flat-target-z80-slice-proof.json
+npm run proof:publish -w @jhlagado/nucleus -- --root path/to/project --output build/program.nobj src/main.nu
+npm run proof:publish -w @jhlagado/nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
 ```
 
 The selected Node-hosted command shape is a dispatcher: `nucleus <command>`.
-Its current development script is `npm run cli -w nucleus -- <command>`.
+Its current development script is `npm run cli -w @jhlagado/nucleus -- <command>`.
 `nucleus prepare` resolves source parts, `nucleus publish` is the normal
 entry-source publication path, and `nucleus proof:publish` remains the
 compatibility/debug command for proof manifests. Publication commands accept
