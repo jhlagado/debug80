@@ -143,6 +143,14 @@ The source-part byte limit belongs to the consuming compiler ABI rather than
 the graph resolver. Atom uses a 16-bit source offset, so each part may contain
 at most 65,535 logical bytes.
 
+The byte-level source-read ABI has a wider ordinal byte than any one resident
+driver normally exposes. Atom's native driver uses source-part ordinals
+0 through 254 for its 255 ordered parts and leaves byte value 255 available to
+lower parser and diagnostic records. Nucleus's resident source descriptors use
+ordinals 1 through 255 so byte value zero can mean no part at that boundary.
+Both shapes preserve the same 255-part resident capacity; the resolver result
+is adapted to the selected driver before compiler entry.
+
 ## Result
 
 Each ordered part contains:
