@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { compile } from "@jhlagado/azm/compile";
 import {
+  assembleAtomProject,
   assembleResolvedAtomProject,
   ATOM_HOST_SINK_STATUS,
   materializeAtomGeneration,
@@ -19,6 +20,7 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDirectory, "..");
 const defaultAsmRoot = path.join(packageRoot, "asm");
 const defaultProofRoot = path.join(packageRoot, "proofs");
+const defaultPermanentRoot = path.join(packageRoot, "atom-asm");
 const defaultBudgetFile = path.join(defaultProofRoot, "atom-migration-preview-budgets.json");
 const defaultMaxInstructions = 200_000_000;
 const defaultMaxCycles = 2_000_000_000;
@@ -40,6 +42,8 @@ function parseArgs(argv) {
     reportOnly: false,
     out: undefined,
     entry: undefined,
+    mode: "preview",
+    permanentRoot: defaultPermanentRoot,
     maxPartBytes: 0xffff,
     maxInstructions: defaultMaxInstructions,
     maxCycles: defaultMaxCycles,
@@ -55,6 +59,13 @@ function parseArgs(argv) {
     } else if (arg === "--entry") {
       options.entry = argv[++index];
       if (options.entry === undefined) throw new Error("--entry requires a proof manifest name or source entry");
+    } else if (arg === "--mode") {
+      options.mode = argv[++index];
+      if (!["preview", "permanent"].includes(options.mode)) {
+        throw new Error("--mode must be preview or permanent");
+      }
+    } else if (arg === "--permanent-root") {
+      options.permanentRoot = path.resolve(argv[++index] ?? "");
     } else if (arg === "--max-part-bytes") {
       const value = Number.parseInt(argv[++index] ?? "", 10);
       if (!Number.isInteger(value) || value < 1 || value > 0xffff) {
@@ -104,6 +115,9 @@ Options:
   --asm-root DIR       Assembly tree. Defaults to packages/nucleus/asm.
   --proof-root DIR     Proof manifest tree. Defaults to packages/nucleus/proofs.
   --entry NAME         Compare one proof manifest basename or asm-root-relative entry.
+  --mode MODE          preview or permanent. Defaults to preview.
+  --permanent-root DIR Source-controlled Atom tree for permanent mode.
+                       Defaults to packages/nucleus/atom-asm.
   --max-part-bytes N   Maximum generated Atom-preview bytes per source part.
                        Defaults to 65535.
   --max-instructions N Maximum native Atom instructions per preview assembly.
@@ -199,6 +213,10 @@ function selectedProofs(proofs, asmRoot, entry) {
     const proofEntry = entryForManifest(asmRoot, proof);
     return proof.name === entry || path.basename(proof.name, ".json") === entry || proofEntry === entry;
   });
+}
+
+function proofMatrixByManifest(report) {
+  return new Map(report.proofMatrix.map((row) => [row.proof, row]));
 }
 
 function contentBase(generation) {
@@ -585,7 +603,33 @@ function previewPartsForEntry(report, entry, symbolValues, { maxPartBytes }) {
   return previewPartsFromText(entry, lowered, { maxPartBytes });
 }
 
-async function compareOne({ report, proof, asmRoot, maxPartBytes, budget, legacyOutputOrder }) {
+async function assembleAtomForComparison({ report, current, entry, mode, permanentRoot, maxPartBytes, budget, legacyOutputOrder }) {
+  const sink = legacyOutputOrder ? createLegacyUnorderedMemoryAtomSink() : undefined;
+  if (mode === "permanent") {
+    const assembled = await assembleAtomProject({
+      root: permanentRoot,
+      entry,
+      target: { start: 0, capacity: 0xffff },
+      maxInstructions: budget.maxInstructions,
+      maxCycles: budget.maxCycles,
+      ...(sink === undefined ? {} : { sink }),
+    });
+    return Object.freeze({ assembled, partCount: assembled.project.parts.length });
+  }
+  const symbolValues = symbolValuesFromCurrentAssembly(current, report.ledger);
+  const parts = previewPartsForEntry(report, entry, symbolValues, { maxPartBytes });
+  const atomProject = Object.freeze({ parts });
+  const assembled = await assembleResolvedAtomProject(atomProject, {
+    target: { start: 0, capacity: 0xffff },
+    maxInstructions: budget.maxInstructions,
+    maxCycles: budget.maxCycles,
+    nativeMemoryLayout: nucleusPreviewMemoryLayout,
+    ...(sink === undefined ? {} : { sink }),
+  });
+  return Object.freeze({ assembled, partCount: parts.length });
+}
+
+async function compareOne({ report, proof, asmRoot, mode, permanentRoot, proofMatrix, maxPartBytes, budget, legacyOutputOrder }) {
   const entry = entryForManifest(asmRoot, proof);
   if (budget.skip !== undefined) {
     return Object.freeze({
@@ -608,6 +652,18 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, budget, legacy
       reason: "measurement artifact",
       budget: budgetResult,
     });
+  }
+  if (mode === "permanent") {
+    const row = proofMatrix.get(proof.name);
+    if (row?.status !== "atom-permanent-ready") {
+      return Object.freeze({
+        manifest: proof.name,
+        entry,
+        status: "skipped",
+        reason: row?.status ?? "not in Atom migration proof matrix",
+        budget: budgetResult,
+      });
+    }
   }
 
   try {
@@ -632,18 +688,18 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, budget, legacy
         budget: budgetResult,
       });
     }
-    const symbolValues = symbolValuesFromCurrentAssembly(current, report.ledger);
-    const parts = previewPartsForEntry(report, entry, symbolValues, { maxPartBytes });
-    const atomProject = Object.freeze({ parts });
-    const atomAssembled = await assembleResolvedAtomProject(atomProject, {
-      target: { start: 0, capacity: 0xffff },
-      maxInstructions: budget.maxInstructions,
-      maxCycles: budget.maxCycles,
-      nativeMemoryLayout: nucleusPreviewMemoryLayout,
-      ...(legacyOutputOrder ? { sink: createLegacyUnorderedMemoryAtomSink() } : {}),
+    const atom = await assembleAtomForComparison({
+      report,
+      current,
+      entry,
+      mode,
+      permanentRoot,
+      maxPartBytes,
+      budget,
+      legacyOutputOrder,
     });
-    const atomMaterialized = materializeAtomGeneration(atomAssembled.generation, {
-      base: contentBase(atomAssembled.generation),
+    const atomMaterialized = materializeAtomGeneration(atom.assembled.generation, {
+      base: contentBase(atom.assembled.generation),
     });
     const equal = Buffer.compare(
       Buffer.from(atomMaterialized.bytes),
@@ -655,9 +711,10 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, budget, legacy
       status: equal ? "byte-identical" : "different",
       atomBytes: atomMaterialized.bytes.length,
       currentBytes: currentBin.length,
-      atomPreviewParts: parts.length,
-      atomInstructions: atomAssembled.execution.instructions,
-      atomCycles: atomAssembled.execution.cycles,
+      atomSource: mode,
+      atomParts: atom.partCount,
+      atomInstructions: atom.assembled.execution.instructions,
+      atomCycles: atom.assembled.execution.cycles,
       budget: budgetResult,
       outputOrder: legacyOutputOrder ? "legacy-unordered" : "strict-append-only",
       ...(equal ? {} : { firstDifference: firstDifference(atomMaterialized.bytes, currentBin) }),
@@ -666,7 +723,7 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, budget, legacy
     return Object.freeze({
       manifest: proof.name,
       entry,
-      status: "atom-preview-error",
+      status: mode === "permanent" ? "atom-permanent-error" : "atom-preview-error",
       message: error?.message ?? String(error),
       category: error?.category,
       code: error?.code,
@@ -691,9 +748,11 @@ function summarize(results) {
   return Object.freeze(counts);
 }
 
-function comparisonCacheKey({ proof, asmRoot, maxPartBytes, budget, legacyOutputOrder }) {
+function comparisonCacheKey({ proof, asmRoot, mode = "preview", permanentRoot, maxPartBytes, budget, legacyOutputOrder }) {
   return JSON.stringify({
     entry: entryForManifest(asmRoot, proof),
+    mode,
+    permanentRoot: mode === "permanent" ? permanentRoot : undefined,
     maxPartBytes,
     budget,
     legacyOutputOrder,
@@ -709,7 +768,7 @@ function cachedResultForProof(cached, proof) {
 }
 
 function printText(report) {
-  console.log("Nucleus Atom-preview proof comparison");
+  console.log(`Nucleus Atom-${report.mode} proof comparison`);
   console.log("");
   console.log(`Proof manifests checked: ${report.results.length}`);
   for (const [status, count] of Object.entries(report.summary)) {
@@ -718,7 +777,7 @@ function printText(report) {
   console.log("");
   for (const result of report.results) {
     const detail = result.status === "byte-identical"
-      ? `${result.atomBytes} bytes, ${result.atomPreviewParts} preview part(s)`
+      ? `${result.atomBytes} bytes, ${result.atomParts ?? result.atomPreviewParts} Atom part(s)`
       : result.reason ?? result.message ?? JSON.stringify(result.firstDifference ?? {});
     console.log(`${result.status}\t${result.manifest}\t${result.entry}\t${detail}`);
   }
@@ -727,6 +786,7 @@ function printText(report) {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const report = scanAssembly({ asmRoot: options.asmRoot, proofRoot: options.proofRoot });
+  const proofMatrix = proofMatrixByManifest(report);
   const budgets = readBudgetFile(options.budgetFile);
   const proofs = selectedProofs(proofManifests(options.proofRoot), options.asmRoot, options.entry);
   if (options.entry !== undefined && proofs.length === 0) {
@@ -744,6 +804,8 @@ async function main() {
       ? comparisonCacheKey({
         proof,
         asmRoot: options.asmRoot,
+        mode: options.mode,
+        permanentRoot: options.permanentRoot,
         maxPartBytes: options.maxPartBytes,
         budget,
         legacyOutputOrder: options.legacyOutputOrder,
@@ -766,6 +828,9 @@ async function main() {
       report,
       proof,
       asmRoot: options.asmRoot,
+      mode: options.mode,
+      permanentRoot: options.permanentRoot,
+      proofMatrix,
       maxPartBytes: options.maxPartBytes,
       budget,
       legacyOutputOrder: options.legacyOutputOrder,
@@ -778,8 +843,10 @@ async function main() {
   }
   const comparison = Object.freeze({
     status: results.every(({ status }) => status === "byte-identical" || status === "skipped") ? "ready" : "blocked",
+    mode: options.mode,
     asmRoot: options.asmRoot,
     proofRoot: options.proofRoot,
+    permanentRoot: options.mode === "permanent" ? options.permanentRoot : undefined,
     maxPartBytes: options.maxPartBytes,
     maxInstructions: options.maxInstructions,
     maxCycles: options.maxCycles,

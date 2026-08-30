@@ -5,7 +5,7 @@ Date: 2026-08-30
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `4aaa0996`
+Current reusable-transform baseline HEAD: `b81696bc`
 
 ## Purpose
 
@@ -25,11 +25,11 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 291 |
-| Source lines | 30,192 |
-| Defined assembler symbols detected | 4,154 |
-| Defined assembler symbols longer than eight characters | 3,906 |
+| Source lines | 30,400 |
+| Defined assembler symbols detected | 4,164 |
+| Defined assembler symbols longer than eight characters | 3,916 |
 | Long labels classed as dot-local candidates | 792 |
-| Long symbols still needing global treatment | 3,114 |
+| Long symbols still needing global treatment | 3,124 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 0 |
@@ -43,7 +43,7 @@ Measured files:
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
-| Routine contract metadata mappings | 709 |
+| Routine contract metadata mappings | 714 |
 | Proof manifests classified | 29 |
 | Atom permanent-ready proof manifests | 26 |
 | Atom-preview-only proof manifests | 0 |
@@ -189,7 +189,7 @@ npm run atom:migration:census -w nucleus -- \
   --contract-map-out build/nucleus-atom-contracts.json
 ```
 
-Current measurement: 709 `.ROUTINE` metadata lines are mapped to the following
+Current measurement: 714 `.ROUTINE` metadata lines are mapped to the following
 routine label, and every entry has a target. Conditional contract variants stay
 as separate entries for the same target label. Atom source represents the
 contract line as `;@ROUTINE ...`; the assembler ignores it, and the host proof
@@ -224,6 +224,14 @@ Atom-built proof images.
 `--regenerate-permanent-root` only for experiments that need a temporary
 translation from the current AZM tree. The checked-in Atom tree should be
 validated first with `npm run atom:migration:materialize:check -w nucleus`.
+`npm run atom:migration:proof-compare:permanent -w nucleus` compares the
+checked-in permanent Atom tree directly with the current AZM-built proof images.
+The full permanent gate runs materialization check, permanent byte comparison,
+and permanent proof execution:
+
+```bash
+npm run atom:migration:proof:permanent-gate -w nucleus
+```
 
 The target runtime link entry now also has a permanent Atom layout. Its entry
 source owns the target-runtime feature definitions, includes the link context in
@@ -282,6 +290,13 @@ The proof-image byte comparison can be rerun with:
 
 ```bash
 npm run atom:migration:proof-compare -w nucleus
+```
+
+To compare the source-controlled permanent Atom tree rather than the generated
+preview source, run:
+
+```bash
+npm run atom:migration:proof-compare:permanent -w nucleus
 ```
 
 Run the executable Atom-preview proof gate with:
@@ -573,7 +588,7 @@ preview lowering can still prove their bytes from the comparison symbol table.
 | `.IF` | 233 | Mechanical to host conditional assembly syntax |
 | `.ELSE` | 138 | Mechanical to host conditional assembly syntax |
 | `.ENDIF` | 233 | Mechanical to host conditional assembly syntax |
-| `.ROUTINE` | 709 | Contract-only; translate to comment-form contract metadata for the proof runner |
+| `.ROUTINE` | 714 | Contract-only; translate to comment-form contract metadata for the proof runner |
 
 The ordinary data and origin directives are low risk. The migration blockers are contract metadata, symbol length, and include placement.
 
@@ -820,7 +835,7 @@ important.
 
 ## Contract metadata
 
-The 709 `.ROUTINE` lines are not assembler semantics. They are proof metadata.
+The 714 `.ROUTINE` lines are not assembler semantics. They are proof metadata.
 
 Atom should not implement the AZM contract language inside the Z80 assembler. The migration should instead use comment-form metadata such as:
 

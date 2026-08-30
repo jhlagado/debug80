@@ -31,6 +31,7 @@ const asmRoot = path.join(packageRoot, "asm");
 const proofRoot = path.join(packageRoot, "proofs");
 const dryRunScript = path.join(packageRoot, "scripts", "atom-migration-dry-run.mjs");
 const materializeScript = path.join(packageRoot, "scripts", "atom-migration-materialize.mjs");
+const proofCompareScript = path.join(packageRoot, "scripts", "atom-migration-proof-compare.mjs");
 
 async function withTree(files, run) {
   const root = await mkdtemp(path.join(tmpdir(), "nucleus-atom-migration-"));
@@ -1069,6 +1070,28 @@ describe("Nucleus Atom migration dry-run", () => {
 
       expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
     });
+  });
+
+  it("compares one permanent Atom proof image byte-identically from the CLI", () => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        proofCompareScript,
+        "--mode",
+        "permanent",
+        "--entry",
+        "memory-map-proof.json",
+      ],
+      {
+        cwd: packageRoot,
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Nucleus Atom-permanent proof comparison");
+    expect(result.stdout).toContain("byte-identical: 1");
+    expect(result.stdout).toContain("memory-map-proof.json");
   });
 
   it("runs every permanent-ready proof through the proof harness using permanent Atom source", async (context) => {

@@ -1,7 +1,7 @@
 ; Permanent Atom layout for the aggregate z80 proof.
             %DEFINE SegmentedOutput 0
             %DEFINE TargetStreamingOutput 0
-            %DEFINE LegacyCompilerSlices 1
+            %DEFINE LegacyCompilerSlices 0
             %DEFINE AggregateCallSlices 0
             %DEFINE LegacyEncoders 0
             %DEFINE HybridLL1Full 0
