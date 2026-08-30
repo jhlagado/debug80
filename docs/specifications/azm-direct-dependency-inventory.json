@@ -129,12 +129,6 @@
       "retirement": "Remove after the migration bridge and AZM comparison path are retired."
     },
     {
-      "file": "scripts/cpm22/build-image.mjs",
-      "classification": "cpm22-development-tooling",
-      "owner": "CP/M 2.2 disk image build",
-      "retirement": "Remove after AZM strict-contract sidecars and byte-identity checks are no longer required for CP/M development builds; Atom already supplies the packaged bytes and active D8 maps."
-    },
-    {
       "file": "scripts/cpm22/azm-strict-sidecar.mjs",
       "classification": "cpm22-development-tooling",
       "owner": "Shared CP/M strict-contract sidecar validation",

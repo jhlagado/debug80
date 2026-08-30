@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
 import { installCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
 import {
   assembleConvertedWithAtom,
@@ -14,6 +13,7 @@ import {
   converted8080Candidates,
   projectOwnedCandidates,
 } from "./atom-projection.mjs";
+import { compileAzmStrictSidecar } from "./azm-strict-sidecar.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..");
@@ -42,39 +42,13 @@ async function assemble(
   registerContracts = "off",
   registerContractsInterfaces = [],
 ) {
-  const result = await compile(
+  return compileAzmStrictSidecar({
+    label: source,
     source,
-    {
-      emitBin: true,
-      emitHex: false,
-      emitD8m: includeDebugMap,
-      emitLst: false,
-      emitAsm80: false,
-      registerContracts,
-      registerContractsInterfaces,
-    },
-    { formats: defaultFormatWriters },
-  );
-  const errors = result.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === "error",
-  );
-  if (errors.length !== 0) {
-    fail(
-      errors
-        .map(
-          (diagnostic) =>
-            `${diagnostic.sourceName}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}`,
-        )
-        .join("\n"),
-    );
-  }
-  const binary = result.artifacts.find((artifact) => artifact.kind === "bin");
-  if (binary?.kind !== "bin") fail(`AZM did not emit a binary for ${source}`);
-  const debugMap = result.artifacts.find((artifact) => artifact.kind === "d8m");
-  return {
-    bytes: binary.bytes,
-    debugMap: debugMap?.kind === "d8m" ? debugMap.json : undefined,
-  };
+    emitD8m: includeDebugMap,
+    registerContracts,
+    registerContractsInterfaces,
+  });
 }
 
 function copyExact(destination, offset, source, maximum, label) {
