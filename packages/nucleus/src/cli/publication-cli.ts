@@ -1,12 +1,13 @@
 import { realpathSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
+  publishOutputFiles,
   selectConcreteZ80AssemblerFlavour,
   validatePositiveOutputSelections,
   type OutputFormatSuffix,
+  type PublishOutputFilesOptions,
 } from "@jhlagado/z80-tool-services";
 
 import { materializeNobj } from "../nobj.js";
@@ -278,17 +279,16 @@ const selectedOutputBytes = (
 export async function writeNucleusPublicationOutputs(
   publication: NucleusPublication,
   selections: readonly NucleusPublicationOutputSelection[],
+  options: PublishOutputFilesOptions = {},
 ): Promise<readonly string[]> {
-  const committed: string[] = [];
-  for (const selection of selections) {
-    await mkdir(path.dirname(selection.path), { recursive: true });
-    await writeFile(
-      selection.path,
-      selectedOutputBytes(publication, selection),
-    );
-    committed.push(selection.path);
-  }
-  return Object.freeze(committed);
+  if (selections.length === 0) return Object.freeze([]);
+  return publishOutputFiles(
+    selections.map((selection) => ({
+      path: selection.path,
+      bytes: selectedOutputBytes(publication, selection),
+    })),
+    { ...options, tagPrefix: options.tagPrefix ?? "nucleus" },
+  );
 }
 
 export function publicationJsonSummary(

@@ -27,6 +27,8 @@ Nucleus has now started moving onto that boundary:
   leading-import source profile.
 - `prepareNucleusSourceParts()` and `resolveNucleusProject()` are exported from
   the package root.
+- Nucleus publication CLIs use the shared positive-output selector and
+  transactional output publisher.
 - The source profile recognizes only leading `//% import "path.nu"` directives
   and passes compiler bytes through unchanged.
 - The permanent Atom translation under `packages/nucleus/atom-asm` has no

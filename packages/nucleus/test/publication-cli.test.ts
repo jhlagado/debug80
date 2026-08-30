@@ -1,3 +1,6 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import * as fs from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -5,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseNucleusPublicationOptions,
   validateNucleusPublicationOutputs,
+  writeNucleusPublicationOutputs,
 } from "../src/cli/publication-cli.js";
 import { runNucleusProofPublishCli } from "../src/cli/proof-publish.js";
 import { runNucleusPublishCli } from "../src/cli/publish.js";
@@ -126,5 +130,36 @@ describe("Nucleus publication CLI contract", () => {
       .toThrow("Nucleus COM output is not implemented");
     expect(() => validateNucleusPublicationOutputs(["build/program.lst"]))
       .toThrow("Nucleus listing output is not implemented");
+  });
+
+  it("publishes selected outputs through the shared transaction boundary", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "nucleus-output-"));
+    try {
+      const first = path.join(directory, "first.nobj");
+      const second = path.join(directory, "second.nobj");
+      const publication = {
+        nobj: { serialized: Uint8Array.of(1, 2, 3) },
+      } as Parameters<typeof writeNucleusPublicationOutputs>[0];
+
+      await expect(writeNucleusPublicationOutputs(publication, [
+        { format: "nobj", path: first },
+        { format: "nobj", path: second },
+      ], {
+        filesystem: {
+          ...fs,
+          async rename(source: string, target: string) {
+            if (source.endsWith(".tmp") && target === second) {
+              throw Object.assign(new Error("injected"), { code: "EIO" });
+            }
+            return fs.rename(source, target);
+          },
+        },
+      })).rejects.toMatchObject({ code: "output-transaction" });
+
+      await expect(readFile(first)).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(readFile(second)).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });
