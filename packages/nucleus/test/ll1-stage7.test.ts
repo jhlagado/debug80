@@ -11,10 +11,20 @@ import {
   stage7ActionLayout,
   validateStage7PhysicalHandlers,
 } from "../grammar/generate-stage7.js";
+import { nucleusPermanentAtomProofOptions } from "../src/atom-proof-options.js";
 import { runProofManifest } from "../src/proof.js";
 
 const proof = (name: string): string =>
   path.resolve(import.meta.dirname, "..", "proofs", `${name}.json`);
+
+const runPermanentAtomProof = async (
+  name: string,
+  options: Parameters<typeof runProofManifest>[1] = {},
+) =>
+  runProofManifest(proof(name), {
+    ...(await nucleusPermanentAtomProofOptions(proof(name))),
+    ...options,
+  });
 
 describe("Stage 7 packed LL(1)", () => {
   it("keeps generated grammar artifacts reproducible and conflict-free", () => {
@@ -188,7 +198,7 @@ describe("Stage 7 packed LL(1)", () => {
   });
 
   it("executes the packed engine at its exact stack boundary", async () => {
-    const outcome = await runProofManifest(proof("stage7-ll1-engine-proof"));
+    const outcome = await runPermanentAtomProof("stage7-ll1-engine-proof");
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.extents).toContainEqual({
       name: "ll1-engine",
@@ -198,11 +208,11 @@ describe("Stage 7 packed LL(1)", () => {
       name: "ll1-workspace",
       bytes: 65,
     });
-  });
+  }, 30_000);
 
   it("runs the Stage 7 parser through the complete packed grammar", async () => {
-    const outcome = await runProofManifest(
-      proof("stage7-ll1-aggregate-call-z80-slice-proof"),
+    const outcome = await runPermanentAtomProof(
+      "stage7-ll1-aggregate-call-z80-slice-proof",
     );
     const extents = new Map(
       outcome.extents.map(({ name, bytes }) => [name, bytes]),
@@ -249,11 +259,11 @@ describe("Stage 7 packed LL(1)", () => {
         (extents.get("ll1-tables") ?? -1) -
         (extents.get("ll1-actions") ?? -1),
     ).toBe(5_382);
-  }, 30_000);
+  }, 90_000);
 
   it("executes every retained Stage 7 action family", async () => {
-    const outcome = await runProofManifest(
-      proof("stage7-ll1-parser-coverage-proof"),
+    const outcome = await runPermanentAtomProof(
+      "stage7-ll1-parser-coverage-proof",
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);

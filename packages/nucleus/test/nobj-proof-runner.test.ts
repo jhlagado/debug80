@@ -11,6 +11,7 @@ import {
   defaultRuntimeLinkContext,
   loadCanonicalRuntimeProvider,
 } from "../src/nucleus-runtime.js";
+import { nucleusPermanentAtomProofOptions } from "../src/atom-proof-options.js";
 import { createNucleusHostRuntimeStreamLink } from "../src/runtime-stream-adapter.js";
 import {
   NobjGenerationSink,
@@ -23,6 +24,15 @@ import {
 
 const proof = (name: string): string =>
   new URL(`../proofs/${name}.json`, import.meta.url).pathname;
+
+const runPermanentAtomProof = async (
+  name: string,
+  options: Parameters<typeof runProofManifest>[1] = {},
+) =>
+  runProofManifest(proof(name), {
+    ...(await nucleusPermanentAtomProofOptions(proof(name))),
+    ...options,
+  });
 
 const emptyProvider: RuntimeImageProvider = { get: () => undefined };
 
@@ -56,7 +66,7 @@ const targetManifest = (name: string): TargetProofManifest =>
 
 describe("the NOBJ-aware proof runner", () => {
   it("runs a Z80 producer, commits its adapter calls, and executes fresh flat memory", async () => {
-    const outcome = await runProofManifest(proof("nobj-runner-proof"));
+    const outcome = await runPermanentAtomProof("nobj-runner-proof");
     expect(outcome.nobj).toBeDefined();
     expect(outcome.nobj?.parsed.commit.recordCount).toBe(5);
     expect(outcome.nobj?.serialized).toHaveLength(92);
@@ -286,9 +296,7 @@ describe("the NOBJ-aware proof runner", () => {
   });
 
   it("keeps compiled A current after divergent late B output, then commits and executes compiled C", async () => {
-    const producer = await runProofManifest(
-      proof("flat-target-z80-slice-proof"),
-    );
+    const producer = await runPermanentAtomProof("flat-target-z80-slice-proof");
     const success = targetManifest("flat-target-z80-slice-proof").nobj;
     const trap = targetManifest("flat-target-trap-z80-slice-proof").nobj;
     const chapter21 = targetManifest("chapter21-target-z80-slice-proof").nobj;
@@ -364,5 +372,5 @@ describe("the NOBJ-aware proof runner", () => {
       observations: chapter21.observations,
     });
     expect(outcome.memory[0x7300]).toBe("Y".charCodeAt(0));
-  }, 30_000);
+  }, 90_000);
 });
