@@ -2,6 +2,7 @@
 
 import process from "node:process";
 
+import { readCliOptionValue } from "@jhlagado/z80-tool-services";
 import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-preparation";
 
 import { prepareNucleusCompilation } from "../application.js";
@@ -29,12 +30,6 @@ interface Options {
   readonly stubBase?: number;
   readonly json: boolean;
   readonly help: boolean;
-}
-
-function optionValue(arguments_: readonly string[], index: number, name: string): string {
-  const value = arguments_[index + 1];
-  if (value === undefined) throw new Error(`${name} requires a value`);
-  return value;
 }
 
 function parseWord(value: string, name: string): number {
@@ -66,12 +61,12 @@ function parseArguments(arguments_: readonly string[]): Options {
       continue;
     }
     if (argument === "--root") {
-      root = optionValue(arguments_, index, argument);
+      root = readCliOptionValue(arguments_, index, argument);
       index += 1;
       continue;
     }
     if (argument === "--runtime-services") {
-      const value = optionValue(arguments_, index, argument);
+      const value = readCliOptionValue(arguments_, index, argument);
       if (value !== "resident" && value !== "host-streams") {
         throw new Error("--runtime-services must be resident or host-streams");
       }
@@ -80,7 +75,7 @@ function parseArguments(arguments_: readonly string[]): Options {
       continue;
     }
     if (argument === "--stub-base") {
-      stubBase = parseWord(optionValue(arguments_, index, argument), argument);
+      stubBase = parseWord(readCliOptionValue(arguments_, index, argument), argument);
       index += 1;
       continue;
     }

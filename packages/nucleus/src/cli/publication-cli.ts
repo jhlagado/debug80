@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   publishOutputFiles,
+  readCliOptionValue,
   selectConcreteZ80AssemblerFlavour,
   splitPositiveOutputArguments,
   validatePositiveOutputSelections,
@@ -95,16 +96,6 @@ export function writeNucleusIntelHex(
 
 export const writeNucleusD8 = renderNucleusD8;
 
-const optionValue = (
-  arguments_: readonly string[],
-  index: number,
-  name: string,
-): string => {
-  const value = arguments_[index + 1];
-  if (value === undefined) throw new Error(`${name} requires a value`);
-  return value;
-};
-
 const parseNumber = (value: string, name: string): number => {
   const parsed = /^0x[0-9a-f]+$/i.test(value)
     ? Number.parseInt(value.slice(2), 16)
@@ -156,33 +147,33 @@ export function parseNucleusPublicationOptions(
       continue;
     }
     if (argument === "-o" || argument === "--output") {
-      optionOutputs.push(optionValue(arguments_, index, argument));
+      optionOutputs.push(readCliOptionValue(arguments_, index, argument));
       index += 1;
       continue;
     }
     if (argument === "--assembler") {
-      assembler = parseAssembler(optionValue(arguments_, index, argument));
+      assembler = parseAssembler(readCliOptionValue(arguments_, index, argument));
       index += 1;
       continue;
     }
     if (argument === "--root") {
-      root = optionValue(arguments_, index, argument);
+      root = readCliOptionValue(arguments_, index, argument);
       index += 1;
       continue;
     }
     if (argument === "--target") {
-      targetFile = optionValue(arguments_, index, argument);
+      targetFile = readCliOptionValue(arguments_, index, argument);
       index += 1;
       continue;
     }
     if (argument === "--compiler-proof") {
-      compilerProof = optionValue(arguments_, index, argument);
+      compilerProof = readCliOptionValue(arguments_, index, argument);
       index += 1;
       continue;
     }
     if (argument === "--source-base") {
       sourceBase = parseNumber(
-        optionValue(arguments_, index, argument),
+        readCliOptionValue(arguments_, index, argument),
         argument,
       );
       index += 1;
@@ -190,7 +181,7 @@ export function parseNucleusPublicationOptions(
     }
     if (argument === "--source-capacity") {
       sourceCapacity = parseNumber(
-        optionValue(arguments_, index, argument),
+        readCliOptionValue(arguments_, index, argument),
         argument,
       );
       index += 1;
