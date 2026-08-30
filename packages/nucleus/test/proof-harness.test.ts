@@ -1113,19 +1113,12 @@ describe("source-prepared Atom, AZM, and Debug80 proofs", () => {
   }, z80ProofExecutionTimeout);
 
   it("measures dense semantic dispatch against a comparison chain", async () => {
-    // Measurement artifacts remain on the legacy proof assembler unless they
-    // are promoted to permanent Atom measurement fixtures.
-    const outcome = await runProofManifest(
-      proof("dispatcher-measurement"),
-      legacyAzmCompatibilityProofOptions,
+    const outcome = await runPermanentAtomProof("dispatcher-measurement");
+    const direct = await runPermanentAtomProof(
+      "dispatcher-offset-direct-measurement",
     );
-    const direct = await runProofManifest(
-      proof("dispatcher-offset-direct-measurement"),
-      legacyAzmCompatibilityProofOptions,
-    );
-    const trampoline = await runProofManifest(
-      proof("dispatcher-offset-trampoline-measurement"),
-      legacyAzmCompatibilityProofOptions,
+    const trampoline = await runPermanentAtomProof(
+      "dispatcher-offset-trampoline-measurement",
     );
     expect(outcome.extents.slice(0, 2)).toEqual([
       { name: "table-dispatch-selection", bytes: 37 },
