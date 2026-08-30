@@ -135,6 +135,12 @@
       "retirement": "Convert the CP/M build pipeline to Atom once bootstrap, BIOS, smoke, and editor sources assemble byte-identically with Atom or have explicit blockers recorded."
     },
     {
+      "file": "scripts/cpm22/check-atom-assembly-candidates.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M 2.2 Atom migration candidate check",
+      "retirement": "Remove after the CP/M build pipeline has been converted to Atom or all remaining CP/M assembly blockers are tracked by a stronger migration gate."
+    },
+    {
       "file": "scripts/cpm22/import-nucleus.mjs",
       "classification": "cpm22-development-tooling",
       "owner": "CP/M 2.2 Nucleus import utility",

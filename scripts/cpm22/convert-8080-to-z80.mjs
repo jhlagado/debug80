@@ -3,7 +3,10 @@ import fs from "node:fs";
 const [inputPath, outputPath, originText, dialect = "azm"] =
   process.argv.slice(2);
 if (!inputPath || !outputPath || !originText) {
-  throw new Error("usage: node cpm22-convert.mjs input.asm output.asm origin");
+  throw new Error("usage: node cpm22-convert.mjs input.asm output.asm origin [azm|sjasm|atom]");
+}
+if (!["azm", "sjasm", "atom"].includes(dialect)) {
+  throw new Error("dialect must be azm, sjasm, or atom");
 }
 
 const knownSymbols = new Map([
@@ -360,14 +363,20 @@ for (let index = 0; index < input.length; index += 1) {
 
 if (conditionalStack.length !== 0) throw new Error("unterminated conditional");
 const rendered =
-  dialect === "sjasm"
-    ? output.map((line) =>
-        line
-          .replace(/^(\s*[A-Za-z_][A-Za-z0-9_]*) \.equ /, "$1 EQU ")
+  dialect === "sjasm" || dialect === "atom"
+    ? output.map((line) => {
+        const bare = line
+          .replace(/^(\s*[A-Za-z_][A-Za-z0-9_]*)(\s+)\.equ\b/i, "$1$2EQU")
           .replace(
             /^(\s*(?:[A-Za-z_][A-Za-z0-9_]*:\s*)?)\.(org|db|dw|ds)\b/i,
             "$1$2",
-          ),
-      )
+          );
+        return dialect === "atom"
+          ? bare.replace(
+              /^(\s*(?:[A-Za-z_][A-Za-z0-9_]*:\s*)?)(org|db|dw|ds)\b/i,
+              (_match, prefix, directive) => `${prefix}${directive.toUpperCase()}`,
+            )
+          : bare;
+      })
     : output;
 fs.writeFileSync(outputPath, rendered.join("\n"));
