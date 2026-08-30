@@ -476,8 +476,9 @@ runtime link path:
 - `RuntimeLinkContext.services` is a table of Z80 addresses.
 - `nucleusRuntimeServiceVectorBytes` publishes those addresses as 3-byte
   vector slots: `JP serviceAddress`.
-- `loadCanonicalRuntimeImage` prepends those vector bytes to the runtime
-  initial image and requires `vectorBase === writableBase`,
+- `loadCanonicalRuntimeImage` assembles the canonical runtime link with Atom by
+  default, keeps AZM as an explicit legacy option, prepends those vector bytes
+  to the runtime initial image, and requires `vectorBase === writableBase`,
   `writableStateBase === vectorBase + vectorLength`, and
   `programDataBase === writableStateBase + stateLength`.
 - The proof runtime's stream services are ordinary Z80 routines that read and

@@ -1283,13 +1283,15 @@ and publishes only after the record count, duplicated entry pair, and
 CRC-16/CCITT-FALSE pass. Aborts, truncation, unavailable or mismatched runtime
 images, and late map failures leave the preceding committed generation current.
 
-The Stage 1 operating-layer runtime provider assembles the selected 596-byte
-helper image in the proof layout from the same AZM source used by the
-executable proofs. Stage 3 replaces that fixed proof context with the complete
-validated target link context. Its identity is
-the machine-readable `NucleusRuntimeIdentity` assembly symbol; TypeScript reads
-that symbol rather than maintaining a second numeric table or a copied runtime
-blob.
+The operating-layer runtime provider now assembles the selected helper image
+with Atom by default from the permanent Atom runtime-link source, while keeping
+AZM as an explicit legacy option. For each target layout, TypeScript writes a
+context-specific Atom link context into a temporary assembly root, assembles the
+runtime link entry, maps the generated Atom labels back through `;@NUC-GLOBAL`
+comments, and verifies the same identity, length, vector layout, state offsets,
+and helper offsets before publishing runtime bytes. Its identity is the
+machine-readable `NucleusRuntimeIdentity` assembly symbol; TypeScript reads that
+symbol rather than maintaining a second numeric table or a copied runtime blob.
 
 Measured Stage 1 compiler accounts are unchanged from the approved baseline:
 13,811 code bytes plus 393 immutable bytes, for a 14,204-byte compiler core;
