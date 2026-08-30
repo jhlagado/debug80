@@ -12,10 +12,11 @@ import {
   type PublishOutputFilesOptions,
 } from "@jhlagado/z80-tool-services";
 
-import { materializeNobj } from "../nobj.js";
 import {
+  materializedNucleusFlatBytes,
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
+  writeNucleusIntelHex,
 } from "../publication.js";
 import { renderNucleusD8 } from "../source-provenance.js";
 
@@ -66,33 +67,7 @@ export type NucleusPreparedSourcePublication = Awaited<
   ReturnType<typeof publishNucleusPreparedSourceTarget>
 >;
 
-const hex2 = (value: number): string =>
-  value.toString(16).toUpperCase().padStart(2, "0");
-
-const intelRecord = (
-  address: number,
-  type: number,
-  bytes: readonly number[],
-): string => {
-  const values = [bytes.length, address >>> 8, address & 0xff, type, ...bytes];
-  const checksum = -values.reduce((sum, byte) => sum + byte, 0) & 0xff;
-  return `:${values.map(hex2).join("")}${hex2(checksum)}`;
-};
-
-export function writeNucleusIntelHex(
-  base: number,
-  bytes: Uint8Array,
-  { lineEnding = "\n" }: { readonly lineEnding?: string } = {},
-): string {
-  const lines: string[] = [];
-  for (let offset = 0; offset < bytes.length; offset += 16) {
-    lines.push(
-      intelRecord(base + offset, 0, [...bytes.slice(offset, offset + 16)]),
-    );
-  }
-  lines.push(":00000001FF");
-  return `${lines.join(lineEnding)}${lineEnding}`;
-}
+export { writeNucleusIntelHex } from "../publication.js";
 
 export const writeNucleusD8 = renderNucleusD8;
 
@@ -240,16 +215,6 @@ export function validateNucleusPublicationOutputs(
   });
 }
 
-const materializedFlatBytes = (publication: NucleusPublication): Uint8Array => {
-  const materialized = materializeNobj(publication.nobj.parsed);
-  const flat = materialized.flatImage;
-  const bank = publication.nobj.parsed.map.banks[0];
-  if (flat === undefined || bank === undefined) {
-    throw new Error("BIN/HEX output requires a flat NOBJ target");
-  }
-  return flat.slice(0, bank.usedLength);
-};
-
 const selectedOutputBytes = (
   publication: NucleusPublication,
   selection: NucleusPublicationOutputSelection,
@@ -258,11 +223,11 @@ const selectedOutputBytes = (
     case "nobj":
       return publication.nobj.serialized;
     case "bin":
-      return materializedFlatBytes(publication);
+      return materializedNucleusFlatBytes(publication);
     case "hex":
       return writeNucleusIntelHex(
         publication.nobj.parsed.begin.imageBase,
-        materializedFlatBytes(publication),
+        materializedNucleusFlatBytes(publication),
       );
     case "d8":
       return writeNucleusD8(publication);

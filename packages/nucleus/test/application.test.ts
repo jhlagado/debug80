@@ -11,6 +11,7 @@ import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-prepa
 import {
   prepareNucleusCompilation,
   prepareNucleusRuntimeLink,
+  buildNucleusPreparedSourceArtifacts,
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
   buildNucleusResidentSourceImage,
@@ -22,8 +23,8 @@ import {
   NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
   resolveNucleusResidentCompilerEntry,
   validateNucleusResidentSourceForEntry,
+  writeNucleusIntelHex,
 } from "../src/index.js";
-import { writeNucleusIntelHex } from "../src/cli/publication-cli.js";
 import { materializeNobj, parseNobj } from "../src/nobj.js";
 import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
 import { renderNucleusD8 } from "../src/source-provenance.js";
@@ -594,6 +595,53 @@ describe("Nucleus application boundary", () => {
         } finally {
           await rm(outputDirectory, { recursive: true, force: true });
         }
+      },
+    );
+  }, 180_000);
+
+  it("builds Debug80-ready prepared source artifacts in memory", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const { publication, artifacts } =
+          await buildNucleusPreparedSourceArtifacts({
+            root,
+            entry: "src/main.nu",
+          });
+
+        expect(publication.sourcePartIdentities).toEqual(["src/main.nu"]);
+        expect(artifacts.nobj).toEqual(publication.nobj.serialized);
+
+        const materialized = materializeNobj(publication.nobj.parsed);
+        const flatImage = materialized.flatImage;
+        const usedLength = publication.nobj.parsed.map.banks[0]?.usedLength;
+        expect(flatImage).toBeDefined();
+        expect(usedLength).toBeDefined();
+        const expectedBin = flatImage!.slice(0, usedLength);
+        expect(artifacts.bin).toEqual(expectedBin);
+        expect(artifacts.hex).toBe(
+          writeNucleusIntelHex(
+            publication.nobj.parsed.begin.imageBase,
+            expectedBin,
+          ),
+        );
+
+        const d8Map = JSON.parse(artifacts.d8);
+        expect(d8Map.fileList).toEqual(["src/main.nu"]);
+        expect(d8Map.generator).toMatchObject({
+          name: "nucleus",
+          tool: "nucleus",
+          inputs: { entry: "src/main.nu" },
+        });
       },
     );
   }, 180_000);

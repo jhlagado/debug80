@@ -8,6 +8,7 @@ import {
   type ConcreteZ80AssemblerFlavour,
 } from "@jhlagado/z80-tool-services";
 
+import { materializeNobj } from "./nobj.js";
 import {
   prepareNucleusCompilation,
   type NucleusResidentSourcePreparationOptions,
@@ -23,7 +24,10 @@ import {
   loadNucleusTargetPublicationDescriptor,
   type NucleusTargetPublicationDescriptor,
 } from "./target-publication.js";
-import type { NucleusGeneratedSourceSegment } from "./source-provenance.js";
+import {
+  renderNucleusD8,
+  type NucleusGeneratedSourceSegment,
+} from "./source-provenance.js";
 
 const locatePackageRoot = (moduleUrl: string): string => {
   let current = path.dirname(fileURLToPath(moduleUrl));
@@ -184,6 +188,74 @@ export interface NucleusPreparedSourceTargetPublication {
   readonly sourceProvenance?: readonly NucleusGeneratedSourceSegment[];
 }
 
+export type NucleusPublication =
+  | NucleusProofTargetPublication
+  | NucleusPreparedSourceTargetPublication;
+
+export interface NucleusMaterializedArtifacts {
+  readonly nobj: Uint8Array;
+  readonly bin: Uint8Array;
+  readonly hex: string;
+  readonly d8: string;
+}
+
+export interface NucleusPreparedSourceArtifactBuild {
+  readonly publication: NucleusPreparedSourceTargetPublication;
+  readonly artifacts: NucleusMaterializedArtifacts;
+}
+
+const hex2 = (value: number): string =>
+  value.toString(16).toUpperCase().padStart(2, "0");
+
+const intelRecord = (
+  address: number,
+  type: number,
+  bytes: readonly number[],
+): string => {
+  const values = [bytes.length, address >>> 8, address & 0xff, type, ...bytes];
+  const checksum = -values.reduce((sum, byte) => sum + byte, 0) & 0xff;
+  return `:${values.map(hex2).join("")}${hex2(checksum)}`;
+};
+
+export function writeNucleusIntelHex(
+  base: number,
+  bytes: Uint8Array,
+  { lineEnding = "\n" }: { readonly lineEnding?: string } = {},
+): string {
+  const lines: string[] = [];
+  for (let offset = 0; offset < bytes.length; offset += 16) {
+    lines.push(
+      intelRecord(base + offset, 0, [...bytes.slice(offset, offset + 16)]),
+    );
+  }
+  lines.push(":00000001FF");
+  return `${lines.join(lineEnding)}${lineEnding}`;
+}
+
+export const materializedNucleusFlatBytes = (
+  publication: NucleusPublication,
+): Uint8Array => {
+  const materialized = materializeNobj(publication.nobj.parsed);
+  const flat = materialized.flatImage;
+  const bank = publication.nobj.parsed.map.banks[0];
+  if (flat === undefined || bank === undefined) {
+    throw new Error("BIN/HEX output requires a flat NOBJ target");
+  }
+  return flat.slice(0, bank.usedLength);
+};
+
+export function buildNucleusMaterializedArtifacts(
+  publication: NucleusPublication,
+): NucleusMaterializedArtifacts {
+  const bin = materializedNucleusFlatBytes(publication);
+  return Object.freeze({
+    nobj: publication.nobj.serialized,
+    bin,
+    hex: writeNucleusIntelHex(publication.nobj.parsed.begin.imageBase, bin),
+    d8: renderNucleusD8(publication),
+  });
+}
+
 export async function publishNucleusProofTarget({
   manifest,
   output,
@@ -306,5 +378,15 @@ export async function publishNucleusPreparedSourceTarget(
     ...(outcome.sourceProvenance === undefined
       ? {}
       : { sourceProvenance: outcome.sourceProvenance }),
+  });
+}
+
+export async function buildNucleusPreparedSourceArtifacts(
+  options: NucleusPreparedSourceTargetPublicationOptions,
+): Promise<NucleusPreparedSourceArtifactBuild> {
+  const publication = await publishNucleusPreparedSourceTarget(options);
+  return Object.freeze({
+    publication,
+    artifacts: buildNucleusMaterializedArtifacts(publication),
   });
 }
