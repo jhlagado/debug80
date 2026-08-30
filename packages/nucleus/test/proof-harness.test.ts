@@ -49,6 +49,18 @@ const symbolValue = (
   expect.fail(`${name} must be retained by the assembled proof`);
 };
 
+const sourceTextBetween = (
+  outcome: Awaited<ReturnType<typeof runProofManifest>>,
+  start: string,
+  end: string,
+): string =>
+  new TextDecoder().decode(
+    outcome.memory.slice(
+      symbolValue(outcome.symbols, start),
+      symbolValue(outcome.symbols, end),
+    ),
+  );
+
 const flatTargetCompilerEntry = {
   executionEntry: "ProofStart",
   sourceDescriptorBase: "FlatTargetParts",
@@ -851,13 +863,7 @@ describe("source-prepared Atom, AZM, and Debug80 proofs", () => {
   }, z80ProofExecutionTimeout);
 
   it("executes a forward-declared recursive scalar value call", async () => {
-    // These checks intentionally inspect source-local marker labels by their
-    // original names. Permanent Atom source makes those markers private, so the
-    // original label names are only present in the explicit legacy proof view.
-    const outcome = await runProofManifest(
-      proof("call-z80-slice-proof"),
-      legacyAzmProofOptions,
-    );
+    const outcome = await runPermanentAtomProof("call-z80-slice-proof");
     expect(outcome.instructions).toBe(79_305);
     expect(outcome.cycles).toBe(758_715);
     expect(outcome.extents).toEqual([
@@ -907,28 +913,29 @@ describe("source-prepared Atom, AZM, and Debug80 proofs", () => {
       emitUpdateExitFixup + 2 <= tokenStartOffset ||
         emitUpdateExitFixup >= tokenStartEnd,
     ).toBe(true);
-    expect(
-      (outcome.symbols.CallProofRecursiveCall ?? -1) -
-        (outcome.symbols.CallProofSource ?? -1),
-    ).toBe(outcome.symbols.CallCapacityOffset);
-    expect(
-      (outcome.symbols.CallProofOutputCall ?? -1) -
-        (outcome.symbols.CallProofSource ?? -1),
-    ).toBe(outcome.symbols.CallFailureOffset);
-    expect(
-      new Set(
-        [
-          "CallLiteral",
-          "CallWriteLocal",
-          "CallBeginForward",
-          "CallIfParameterZero",
-          "CallReturnParameter",
-          "CallEndIf",
-          "CallReturnSelfMinus",
-          "CallEndRoutine",
-        ].map((name) => outcome.symbols[name] ?? -1),
-      ).size,
-    ).toBe(8);
+    const source = sourceTextBetween(
+      outcome,
+      "CallProofSource",
+      "CallProofSourceEnd",
+    );
+    const recursiveCallOffset = source.indexOf("descend(value - 1)");
+    const outputCallOffset = source.indexOf("writeOutputByte(result)");
+    expect(recursiveCallOffset).toBeGreaterThanOrEqual(0);
+    expect(outputCallOffset).toBeGreaterThanOrEqual(0);
+    expect(recursiveCallOffset).toBe(outcome.symbols.CallCapacityOffset);
+    expect(outputCallOffset).toBe(outcome.symbols.CallFailureOffset);
+    const sourceMarkerOffsets = [
+      "var result as u8",
+      "writeOutputByte(result)",
+      "forward sub descend",
+      "if value = 0",
+      "return value",
+      "end\n    return",
+      "return descend(value - 1)",
+      "end\n",
+    ].map((text) => source.indexOf(text));
+    expect(sourceMarkerOffsets).not.toContain(-1);
+    expect(new Set(sourceMarkerOffsets).size).toBe(8);
   }, z80ProofExecutionTimeout);
 
   it("executes general scalar symbols and precedence as direct Z80", async () => {
@@ -997,12 +1004,8 @@ describe("source-prepared Atom, AZM, and Debug80 proofs", () => {
   }, z80ProofExecutionTimeout);
 
   it("executes typed structured control as direct Z80", async () => {
-    // These checks intentionally inspect source-local marker labels by their
-    // original names. Permanent Atom source makes those markers private, so the
-    // original label names are only present in the explicit legacy proof view.
-    const outcome = await runProofManifest(
-      proof("structured-control-z80-slice-proof"),
-      legacyAzmProofOptions,
+    const outcome = await runPermanentAtomProof(
+      "structured-control-z80-slice-proof",
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1035,24 +1038,36 @@ describe("source-prepared Atom, AZM, and Debug80 proofs", () => {
     expect(outcome.memory[outcome.symbols.ActiveObservedDiagnostic ?? -1]).toBe(
       36,
     );
-    expect(readWord("ActiveObservedOffset")).toBe(
-      (outcome.symbols.StructuredActiveCounterName ?? 0) -
-        (outcome.symbols.StructuredActiveCounterSource ?? 0),
+    const activeCounterSource = sourceTextBetween(
+      outcome,
+      "StructuredActiveCounterSource",
+      "StructuredActiveCounterSourceEnd",
     );
+    const activeCounterOffset = activeCounterSource.indexOf("i = i + 1");
+    expect(activeCounterOffset).toBeGreaterThanOrEqual(0);
+    expect(readWord("ActiveObservedOffset")).toBe(activeCounterOffset);
     expect(outcome.memory[outcome.symbols.ExitObservedDiagnostic ?? -1]).toBe(
       72,
     );
-    expect(readWord("ExitObservedOffset")).toBe(
-      (outcome.symbols.StructuredExitOutsidePoint ?? 0) -
-        (outcome.symbols.StructuredExitOutsideSource ?? 0),
+    const exitOutsideSource = sourceTextBetween(
+      outcome,
+      "StructuredExitOutsideSource",
+      "StructuredExitOutsideSourceEnd",
     );
+    const exitOutsideOffset = exitOutsideSource.indexOf("exit");
+    expect(exitOutsideOffset).toBeGreaterThanOrEqual(0);
+    expect(readWord("ExitObservedOffset")).toBe(exitOutsideOffset);
     expect(outcome.memory[outcome.symbols.StepObservedDiagnostic ?? -1]).toBe(
       74,
     );
-    expect(readWord("StepObservedOffset")).toBe(
-      (outcome.symbols.StructuredZeroStepPoint ?? 0) -
-        (outcome.symbols.StructuredZeroStepSource ?? 0),
+    const zeroStepSource = sourceTextBetween(
+      outcome,
+      "StructuredZeroStepSource",
+      "StructuredZeroStepSourceEnd",
     );
+    const zeroStepOffset = zeroStepSource.indexOf("step 0");
+    expect(zeroStepOffset).toBeGreaterThanOrEqual(0);
+    expect(readWord("StepObservedOffset")).toBe(zeroStepOffset + "step ".length);
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
