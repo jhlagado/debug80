@@ -160,6 +160,29 @@ rules, and the decision about which artifact formats to publish. Both packages
 use the shared output publisher once they have selected and serialized those
 artifacts.
 
+## Current Z80 primitive ownership
+
+Raw Z80 byte and word constants should not be removed mechanically. Some are
+host-boundary validation rules that belong in `@jhlagado/z80-tool-services`;
+others are wire-format, checksum, or proof-harness details that should remain
+where the owning format or proof lives.
+
+The current ownership split is:
+
+| Area | Current owner | Reason |
+| ---- | ------------- | ------ |
+| Source descriptor words, part ordinals, source-image capacity, resident compiler entry addresses, target-publication bounds, runtime link addresses, host-stream stub addresses, and `nucleus prepare --stub-base` parsing | Shared Z80 range helpers in `@jhlagado/z80-tool-services` | These checks describe ordinary Z80 byte, word, and address-space limits at a host/resident boundary. Atom, Nucleus, Debug80, and a Z80-native harness can use the same predicates. |
+| NOBJ record framing, payload lengths, map bank counts, CRC arithmetic, little-endian writes, and committed-image parsing | Nucleus NOBJ module | These values are part of the Nucleus object wire format, not a generic Z80 range API. Shared helpers may validate component words, but the record limits and checksum algorithm stay with NOBJ. |
+| Intel HEX byte splitting and checksum arithmetic in the publication CLI | Nucleus publication CLI | This is artifact serialization after Nucleus has selected an output. It should move only if a later shared artifact-publisher package owns Intel HEX for both projects. |
+| Proof memory size, initial `SP` checks, proof memory profiles, bank-switch port masks, and diagnostic hex formatting | Nucleus proof harness | These values define the proof machine and its diagnostics. Keep them out of the product host-service contract. |
+| Type metadata byte and word field limits | Nucleus type-metadata module for now | The representation is Nucleus-specific, but the remaining range predicates are good candidates for a small follow-up migration to shared Z80 byte/word helpers. That migration should preserve the existing metadata diagnostics. |
+| Publication defaults such as `imageFill: 0xff` | Nucleus publication policy | This is a selected artifact-fill policy, not a host-boundary range rule. |
+
+This ledger is the filter for the next extraction pass. Move a constant only
+when it expresses a reusable Z80 boundary. Leave constants in place when they
+define a Nucleus record format, proof fixture, artifact encoding, or selected
+publication policy.
+
 ## Public shapes to converge
 
 ### Prepared source project
