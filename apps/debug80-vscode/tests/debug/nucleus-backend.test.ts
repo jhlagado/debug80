@@ -99,6 +99,28 @@ describe('Nucleus backend', () => {
     );
   });
 
+  it('publishes positive output paths while retaining required Debug80 HEX and D8 artifacts', async () => {
+    const project = workspace();
+    const api = compiler(success());
+    const outputs = [
+      path.join(project.root, 'out', 'program.nobj'),
+      path.join(project.root, 'out', 'program.bin'),
+      path.join(project.root, 'maps', 'program.d8.json'),
+    ];
+    const result = await new NucleusBackend(api).assemble({
+      asmPath: project.source,
+      hexPath: project.hex,
+      outputPaths: outputs,
+      sourceRoot: project.root,
+    });
+
+    expect(result.success).toBe(true);
+    expect(fs.readFileSync(outputs[0], 'utf8')).toBe('NOBJ');
+    expect(fs.readFileSync(outputs[1], 'utf8')).toBe('BIN');
+    expect(fs.readFileSync(outputs[2], 'utf8')).toContain('d8-debug-map');
+    expect(fs.readFileSync(project.hex, 'utf8')).toBe(':00000001FF\n');
+  });
+
   it('executes the in-repo Nucleus package in process', async () => {
     const project = workspace();
     const result = await new NucleusBackend().assemble({

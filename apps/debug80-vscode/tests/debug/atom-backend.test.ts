@@ -31,6 +31,7 @@ function fakeCompiler(overrides: Partial<AtomCompilerApi> = {}): AtomCompilerApi
       listing: '0100  00  main.asm:1  NOP\n',
       d8Text: `${JSON.stringify(validD8)}\n`,
       d8: validD8,
+      nobj: Uint8Array.of(0x41),
     })),
     publishAtomOutputFiles: vi.fn((outputs) =>
       Promise.resolve(outputs.map((output) => path.resolve(output.path)))
@@ -47,6 +48,30 @@ describe('Atom backend', () => {
       fs.rmSync(directory, { recursive: true, force: true });
     }
     temporaryDirectories.length = 0;
+  });
+
+  it('publishes positive output paths while retaining required Debug80 HEX and D8 artifacts', async () => {
+    const project = workspace();
+    const compiler = fakeCompiler();
+    const outputs = [
+      path.join(project.root, 'out', 'program.bin'),
+      path.join(project.root, 'out', 'program.nobj'),
+      path.join(project.root, 'maps', 'program.d8.json'),
+    ];
+    const result = await new AtomBackend(compiler).assemble({
+      asmPath: project.source,
+      hexPath: project.hex,
+      outputPaths: outputs,
+      sourceRoot: project.root,
+    });
+
+    expect(result.success).toBe(true);
+    expect(compiler.publishAtomOutputFiles).toHaveBeenCalledWith([
+      { path: outputs[0], bytes: Uint8Array.of(0x00) },
+      { path: outputs[1], bytes: Uint8Array.of(0x41) },
+      { path: outputs[2], bytes: `${JSON.stringify(validD8)}\n` },
+      { path: project.hex, bytes: ':00000001FF\n' },
+    ]);
   });
 
   function workspace(): { root: string; source: string; hex: string } {

@@ -350,12 +350,14 @@ export function assertValidPlatform(platform: string): asserts platform is Valid
  */
 export function assertHasSourcePaths(args: LaunchRequestArguments): void {
   const hasAsm = args.asm !== undefined && args.asm !== '';
-  const hasHex = args.hex !== undefined && args.hex !== '';
+  const hasHex =
+    (args.hex !== undefined && args.hex !== '') ||
+    args.outputs?.some((output) => output.toLowerCase().endsWith('.hex')) === true;
 
   if (!hasAsm && !hasHex) {
     throw new MissingConfigError(
-      'No source files specified. Provide "asm" (assembly source) or "hex" paths.',
-      ['asm', 'hex']
+      'No source files specified. Provide "asm" (assembly source), "hex", or a HEX path in "outputs".',
+      ['asm', 'hex', 'outputs']
     );
   }
 }
@@ -369,6 +371,7 @@ function collectLaunchValidationResults(args: LaunchRequestArguments): Validatio
     validateAssembler(args.assembler),
     validateStringArray(args.sourceRoots, 'sourceRoots'),
     validateStringArray(args.debugMaps, 'debugMaps'),
+    validateStringArray(args.outputs, 'outputs'),
     ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) => validateInstructionLimit(args[field], field)),
     validateTerminalConfig(args.terminal),
     validateGlimmerConfig(args.glimmer),

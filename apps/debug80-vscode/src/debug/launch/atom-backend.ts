@@ -40,6 +40,7 @@ interface AtomArtifacts {
   listing: string;
   d8Text: string;
   d8: unknown;
+  nobj?: Uint8Array;
 }
 
 export interface AtomCompilerApi {
@@ -74,6 +75,37 @@ function contentBase(generation: AtomGeneration): number {
 
 function binPathFromHexPath(hexPath: string): string {
   return path.join(path.dirname(hexPath), `${path.basename(hexPath, path.extname(hexPath))}.bin`);
+}
+
+function pathHasSuffix(filePath: string, suffix: string): boolean {
+  return filePath.toLowerCase().endsWith(suffix);
+}
+
+function uniqueOutputPaths(paths: readonly string[]): string[] {
+  const result: string[] = [];
+  for (const candidate of paths) {
+    if (!result.some((existing) => path.resolve(existing) === path.resolve(candidate))) {
+      result.push(candidate);
+    }
+  }
+  return result;
+}
+
+function selectDebugMapPath(outputPaths: readonly string[] | undefined, fallback: string): string {
+  return outputPaths?.find((output) => pathHasSuffix(output, '.d8.json')) ?? fallback;
+}
+
+function atomOutputBytes(
+  filePath: string,
+  artifacts: AtomArtifacts,
+  binBytes: Uint8Array
+): Uint8Array | string {
+  if (pathHasSuffix(filePath, '.hex')) return artifacts.hex;
+  if (pathHasSuffix(filePath, '.bin')) return binBytes;
+  if (pathHasSuffix(filePath, '.d8.json')) return artifacts.d8Text;
+  if (pathHasSuffix(filePath, '.lst')) return artifacts.listing;
+  if (pathHasSuffix(filePath, '.nobj') && artifacts.nobj !== undefined) return artifacts.nobj;
+  throw new Error(`Atom cannot publish unsupported Debug80 output path "${filePath}"`);
 }
 
 function renderBinaryRange(
@@ -181,12 +213,17 @@ export class AtomBackend implements AssemblerBackend {
           error: `Atom produced an invalid D8 artifact: ${parsed.error ?? 'unknown validation failure'}`,
         };
       }
-      const published = await compiler.publishAtomOutputFiles([
-        { path: options.hexPath, bytes: artifacts.hex },
-        { path: `${artifactBase}.bin`, bytes: binBytes },
-        { path: `${artifactBase}.d8.json`, bytes: artifacts.d8Text },
-        { path: `${artifactBase}.lst`, bytes: artifacts.listing },
-      ]);
+      const debugMapPath = selectDebugMapPath(options.outputPaths, `${artifactBase}.d8.json`);
+      const outputPaths =
+        options.outputPaths === undefined
+          ? [options.hexPath, `${artifactBase}.bin`, debugMapPath, `${artifactBase}.lst`]
+          : uniqueOutputPaths([...options.outputPaths, options.hexPath, debugMapPath]);
+      const published = await compiler.publishAtomOutputFiles(
+        outputPaths.map((outputPath) => ({
+          path: outputPath,
+          bytes: atomOutputBytes(outputPath, artifacts, binBytes),
+        }))
+      );
       const message = `Atom wrote ${published.length} build artifacts\n`;
       options.onOutput?.(message);
       return { success: true, stdout: message, stderr: '' };

@@ -850,6 +850,13 @@
                 "type": "string",
                 "description": "Path to a Z80 Intel HEX file (optional if asm is provided)"
               },
+              "outputs": {
+                "type": "array",
+                "description": "Positive list of generated artifact paths. HEX and D8 remain required for debugging; if omitted, Debug80 derives them from outputDir/artifactBase.",
+                "items": {
+                  "type": "string"
+                }
+              },
               "entry": {
                 "type": "number",
                 "description": "Override entry point (defaults to start of HEX data)"

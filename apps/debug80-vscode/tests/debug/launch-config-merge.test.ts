@@ -86,6 +86,27 @@ describe('launch-config-merge', () => {
     expect(mergeForTarget(projectConfig, 'legacy').assembler).toBe('azm');
   });
 
+  it('merges positive output paths in root, target and launch order', () => {
+    const projectConfig: LaunchProjectConfig = {
+      outputs: ['build/root.hex'],
+      targets: {
+        app: {
+          asm: 'src/main.asm',
+          outputs: ['build/app.hex', 'build/app.d8.json'],
+        },
+      },
+      defaultTarget: 'app',
+    };
+
+    expect(mergeForTarget(projectConfig, 'app').outputs).toEqual([
+      'build/app.hex',
+      'build/app.d8.json',
+    ]);
+    expect(mergeForTarget(projectConfig, 'app', launchArgs({ outputs: ['tmp/debug.hex'] })).outputs).toEqual([
+      'tmp/debug.hex',
+    ]);
+  });
+
   it('applies root config, target config, then explicit launch args in order', () => {
     const projectConfig: LaunchProjectConfig = {
       platform: 'tec1g',

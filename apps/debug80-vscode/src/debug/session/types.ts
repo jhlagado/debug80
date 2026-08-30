@@ -108,6 +108,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   sourceFile?: string;
   /** Path to the Intel HEX file */
   hex?: string;
+  /** Positive list of generated artifact paths. Debug80 still requires HEX and D8 for launch. */
+  outputs?: string[];
   /** Output directory for build artifacts */
   outputDir?: string;
   /** Base name for output artifacts (default: derived from asm filename) */
@@ -179,6 +181,7 @@ export interface ProjectConfig {
   sourceFile?: string;
   source?: string;
   hex?: string;
+  outputs?: string[];
   outputDir?: string;
   artifactBase?: string;
   entry?: number;

@@ -163,7 +163,7 @@ export async function handleWarmRebuildRequest(
 
   try {
     const baseDir = deps.sessionState.baseDir || resolveBaseDir(launchArgs);
-    const { asmPath, hexPath } = resolveArtifacts(launchArgs, baseDir);
+    const { asmPath, hexPath, outputPaths } = resolveArtifacts(launchArgs, baseDir);
     const backend = resolveAssemblerBackend(launchArgs.assembler, asmPath);
     const platformProvider = await resolvePlatformProvider(launchArgs);
 
@@ -172,6 +172,7 @@ export async function handleWarmRebuildRequest(
       args: launchArgs,
       asmPath,
       hexPath,
+      ...(outputPaths !== undefined ? { outputPaths } : {}),
       sourceRoot: baseDir,
       platform: platformProvider.id,
       ...(platformProvider.simpleConfig !== undefined

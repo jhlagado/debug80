@@ -49,7 +49,9 @@ are available at [debug80.com](https://debug80.com/).
   with the extension and called in-process, so users do not need global
   compiler installs. Assembly targets use Atom by default. Set
   `"assembler": "azm"` only for source that still requires the AZM
-  compatibility backend.
+  compatibility backend. Targets can name generated artifacts with an
+  `outputs` list, while Debug80 still creates the HEX and D8 files required for
+  launch and source mapping.
 - **Register, symbol, stack, and memory visibility**: inspect CPU registers,
   source-map symbols and constants, best-effort symbolic stack entries, flags,
   program counter state, memory regions, RAM contents, ROM-protected ranges, and

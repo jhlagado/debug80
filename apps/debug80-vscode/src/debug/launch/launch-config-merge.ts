@@ -517,6 +517,7 @@ function applyArtifactLaunchFields(
   args: LaunchRequestArguments
 ): void {
   setIfDefined(merged, 'hex', firstPresent(args.hex, targetCfg?.hex, cfg.hex));
+  setIfDefined(merged, 'outputs', firstPresent(args.outputs, targetCfg?.outputs, cfg.outputs));
   setIfDefined(
     merged,
     'outputDir',

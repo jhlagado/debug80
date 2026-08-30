@@ -27,6 +27,8 @@ export interface ResolvedArtifacts {
   hexPath: string;
   /** Path to the assembly source file (if known) */
   asmPath?: string;
+  /** Positive generated artifact paths requested by the launch configuration. */
+  outputPaths?: string[];
 }
 
 /**
@@ -121,6 +123,20 @@ export function resolveAsmPath(asm: string | undefined, baseDir: string): string
   return path.resolve(baseDir, asm);
 }
 
+function resolveOutputPaths(outputs: readonly string[] | undefined, baseDir: string): string[] | undefined {
+  if (outputs === undefined) {
+    return undefined;
+  }
+  return outputs.map((output) => resolveRelative(output, baseDir));
+}
+
+function findOutputBySuffix(
+  outputs: readonly string[] | undefined,
+  suffix: string
+): string | undefined {
+  return outputs?.find((output) => output.toLowerCase().endsWith(suffix));
+}
+
 /**
  * Resolves build artifact paths from launch arguments.
  *
@@ -131,8 +147,18 @@ export function resolveAsmPath(asm: string | undefined, baseDir: string): string
  */
 export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string): ResolvedArtifacts {
   const asmPath = resolveAsmPath(args.asm, baseDir);
+  const outputPaths = resolveOutputPaths(args.outputs, baseDir);
+  const outputHexPath = findOutputBySuffix(outputPaths, '.hex');
 
-  let hexPath = args.hex;
+  let hexPath = args.hex === undefined || args.hex === '' ? outputHexPath : args.hex;
+  if (args.hex !== undefined && args.hex !== '' && outputHexPath !== undefined) {
+    const resolvedHex = resolveRelative(args.hex, baseDir);
+    if (path.resolve(resolvedHex) !== path.resolve(outputHexPath)) {
+      throw new FileResolutionError(
+        `Conflicting HEX outputs: "hex" resolves to "${resolvedHex}" but outputs includes "${outputHexPath}".`
+      );
+    }
+  }
   const hexMissing = hexPath === undefined || hexPath === '';
 
   if (hexMissing) {
@@ -155,6 +181,9 @@ export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string):
   const result: ResolvedArtifacts = { hexPath: hexAbs };
   if (asmPath !== undefined) {
     result.asmPath = asmPath;
+  }
+  if (outputPaths !== undefined) {
+    result.outputPaths = outputPaths;
   }
   return result;
 }
@@ -186,6 +215,10 @@ export function resolveDebugMapPath(
   asmPath: string | undefined,
   hexPath: string
 ): string {
+  const outputD8Path = findOutputBySuffix(resolveOutputPaths(args.outputs, baseDir), D8_DEBUG_MAP_EXT);
+  if (outputD8Path !== undefined) {
+    return outputD8Path;
+  }
   const artifactBase =
     args.artifactBase ??
     (asmPath === undefined

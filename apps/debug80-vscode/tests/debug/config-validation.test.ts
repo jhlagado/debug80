@@ -1116,6 +1116,15 @@ describe('config-validation', () => {
       ]);
     });
 
+    it('should reject malformed positive output lists', () => {
+      expect(validateLaunchArgs({ outputs: 'build/main.hex' }).errors).toEqual([
+        'outputs must be an array, got string',
+      ]);
+      expect(validateLaunchArgs({ outputs: ['build/main.hex', 42] }).errors).toEqual([
+        'outputs[1] must be a string, got number',
+      ]);
+    });
+
     it('preserves nested platform and terminal field names in collected errors', () => {
       const result = validateLaunchArgs({
         terminal: { txPort: 300, interrupt: 'yes' },
@@ -1170,6 +1179,10 @@ describe('config-validation', () => {
 
     it('should not throw when hex is provided', () => {
       expect(() => assertHasSourcePaths({ hex: 'main.hex' })).not.toThrow();
+    });
+
+    it('should not throw when positive outputs provide the launch HEX artifact', () => {
+      expect(() => assertHasSourcePaths({ outputs: ['build/main.hex'] })).not.toThrow();
     });
 
     it('should throw MissingConfigError when no source paths', () => {

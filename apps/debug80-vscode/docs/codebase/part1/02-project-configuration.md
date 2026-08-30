@@ -55,6 +55,7 @@ interface ProjectConfig {
   azm?: AzmLaunchOptions;
   nucleus?: NucleusLaunchOptions;
   hex?: string;
+  outputs?: string[];
   outputDir?: string;
   artifactBase?: string;
   entry?: number;
@@ -425,7 +426,32 @@ interface Tec1gPlatformConfig extends Tec1PlatformConfig {
 }
 ```
 
-`romArtifacts` is the new ROM-first launch path for TEC-1G monitor and expansion images. Each entry declares a role (`'monitor'` or `'expansion'`), either a single source-backed build (`sourceFile`, `outputBin`, optional `outputDebugMap`), a multibank expansion build (`outputBin` plus `banks` and optional `outputs`), or an inactive binary placeholder, and fixed geometry that matches the current Phase 2 hardware model. Validation in `src/debug/launch/config-validation.ts` currently enforces:
+`outputs` is the preferred way to name generated app artifacts when a target
+needs explicit paths:
+
+```json
+{
+  "targets": {
+    "app": {
+      "sourceFile": "src/main.asm",
+      "assembler": "atom",
+      "outputs": [
+        "build/main.hex",
+        "build/main.bin",
+        "build/main.d8.json",
+        "build/main.lst"
+      ]
+    }
+  }
+}
+```
+
+Debug80 still needs a HEX file to load the program and a D8 map for source
+debugging. If `outputs` omits either one, the launch path derives the missing
+internal artifact from `hex`, `outputDir`, and `artifactBase`. Existing configs
+that use only `hex`, `outputDir`, and `artifactBase` remain valid.
+
+`romArtifacts` is the ROM-first launch path for TEC-1G monitor and expansion images. Each entry declares a role (`'monitor'` or `'expansion'`), either a single source-backed build (`sourceFile`, `outputBin`, optional `outputDebugMap`), a multibank expansion build (`outputBin` plus `banks` and optional `outputs`), or an inactive binary placeholder, and fixed geometry that matches the current Phase 2 hardware model. Validation in `src/debug/launch/config-validation.ts` currently enforces:
 
 - at most one active monitor artifact and one active expansion artifact
 - monitor artifacts at `address: 0xC000` and `size: 0x4000`

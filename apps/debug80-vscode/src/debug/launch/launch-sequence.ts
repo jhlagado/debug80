@@ -247,7 +247,7 @@ export async function buildLaunchSession(
   context.emitDapEvent('debug80/platform', platformProvider.payload);
 
   const hasAppInput = hasAppLaunchInputs(merged);
-  const { hexPath, asmPath } = hasAppInput
+  const { hexPath, asmPath, outputPaths } = hasAppInput
     ? resolveArtifacts(merged, baseDir)
     : createRomOnlyAppArtifact(baseDir);
   const assemblerBackend = resolveAssemblerBackend(merged.assembler, asmPath);
@@ -257,6 +257,7 @@ export async function buildLaunchSession(
     args: merged,
     asmPath,
     hexPath,
+    ...(outputPaths !== undefined ? { outputPaths } : {}),
     sourceRoot: baseDir,
     platform,
     ...(simpleConfig !== undefined ? { simpleConfig } : {}),
@@ -382,7 +383,11 @@ function existsSync(filePath: string): boolean {
   return filePath.length > 0 && fs.existsSync(filePath);
 }
 
-function createRomOnlyAppArtifact(baseDir: string): { hexPath: string; asmPath?: string } {
+function createRomOnlyAppArtifact(baseDir: string): {
+  hexPath: string;
+  asmPath?: string;
+  outputPaths?: string[];
+} {
   const hexPath = resolveRelative('build/debug80-empty-app.hex', baseDir);
   fs.mkdirSync(path.dirname(hexPath), { recursive: true });
   fs.writeFileSync(hexPath, ':00000001FF\n');

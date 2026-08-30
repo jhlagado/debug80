@@ -44,7 +44,7 @@ export function buildSourceIdentityArgs(options: {
 }
 
 export function buildSourceMapArgs(
-  args: Pick<LaunchRequestArguments, 'artifactBase' | 'outputDir'>
+  args: Pick<LaunchRequestArguments, 'artifactBase' | 'outputDir' | 'outputs'>
 ): BuildSourceStateArgs['mapArgs'] {
   return {
     ...(args.artifactBase !== undefined && args.artifactBase.length > 0
@@ -53,6 +53,7 @@ export function buildSourceMapArgs(
     ...(args.outputDir !== undefined && args.outputDir.length > 0
       ? { outputDir: args.outputDir }
       : {}),
+    ...(args.outputs !== undefined ? { outputs: args.outputs } : {}),
   };
 }
 

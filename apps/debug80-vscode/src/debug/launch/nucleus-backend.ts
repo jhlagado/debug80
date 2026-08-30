@@ -138,6 +138,35 @@ function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function pathHasSuffix(filePath: string, suffix: string): boolean {
+  return filePath.toLowerCase().endsWith(suffix);
+}
+
+function uniqueOutputPaths(paths: readonly string[]): string[] {
+  const result: string[] = [];
+  for (const candidate of paths) {
+    if (!result.some((existing) => path.resolve(existing) === path.resolve(candidate))) {
+      result.push(candidate);
+    }
+  }
+  return result;
+}
+
+function selectDebugMapPath(outputPaths: readonly string[] | undefined, fallback: string): string {
+  return outputPaths?.find((output) => pathHasSuffix(output, '.d8.json')) ?? fallback;
+}
+
+function nucleusOutputBytes(
+  filePath: string,
+  artifacts: NucleusPreparedSourceArtifactBuild['artifacts']
+): Uint8Array | string {
+  if (pathHasSuffix(filePath, '.nobj')) return artifacts.nobj;
+  if (pathHasSuffix(filePath, '.hex')) return artifacts.hex;
+  if (pathHasSuffix(filePath, '.bin')) return artifacts.bin;
+  if (pathHasSuffix(filePath, '.d8.json')) return artifacts.d8;
+  throw new Error(`Nucleus cannot publish unsupported Debug80 output path "${filePath}"`);
+}
+
 export class NucleusBackend implements AssemblerBackend {
   public readonly id = 'nucleus';
 
@@ -186,12 +215,16 @@ export class NucleusBackend implements AssemblerBackend {
     const extension = path.extname(options.hexPath);
     const artifactBase =
       extension.length === 0 ? options.hexPath : options.hexPath.slice(0, -extension.length);
+    const debugMapPath = selectDebugMapPath(options.outputPaths, `${artifactBase}.d8.json`);
+    const outputPaths =
+      options.outputPaths === undefined
+        ? [`${artifactBase}.nobj`, options.hexPath, debugMapPath]
+        : uniqueOutputPaths([...options.outputPaths, options.hexPath, debugMapPath]);
     const published = await publishOutputFiles(
-      [
-        { path: `${artifactBase}.nobj`, bytes: build.artifacts.nobj },
-        { path: options.hexPath, bytes: build.artifacts.hex },
-        { path: `${artifactBase}.d8.json`, bytes: build.artifacts.d8 },
-      ],
+      outputPaths.map((outputPath) => ({
+        path: outputPath,
+        bytes: nucleusOutputBytes(outputPath, build.artifacts),
+      })),
       { tagPrefix: 'nucleus' }
     );
     const message = `Nucleus wrote ${published.length} build artifacts\n`;

@@ -75,6 +75,38 @@ describe('path-resolver', () => {
     expect(resolved.asmPath).toBe(asmPath);
   });
 
+  it('uses positive outputs for launch HEX and D8 paths', () => {
+    const asmPath = tempPath('demo.asm');
+    writeFixtureFile(asmPath, 'NOP\n');
+    const args = launchArgs({
+      asm: asmPath,
+      outputs: ['artifacts/demo.bin', 'artifacts/demo.hex', 'maps/demo.d8.json'],
+    });
+
+    const resolved = resolveArtifacts(args, tmpDir);
+    expect(resolved.hexPath).toBe(tempPath('artifacts', 'demo.hex'));
+    expect(resolved.outputPaths).toEqual([
+      tempPath('artifacts', 'demo.bin'),
+      tempPath('artifacts', 'demo.hex'),
+      tempPath('maps', 'demo.d8.json'),
+    ]);
+    expect(resolveDebugMapPath(args, tmpDir, asmPath, resolved.hexPath)).toBe(
+      tempPath('maps', 'demo.d8.json')
+    );
+  });
+
+  it('rejects conflicting legacy HEX and positive HEX outputs', () => {
+    const asmPath = tempPath('demo.asm');
+    writeFixtureFile(asmPath, 'NOP\n');
+    const args = launchArgs({
+      asm: asmPath,
+      hex: 'legacy.hex',
+      outputs: ['artifacts/demo.hex'],
+    });
+
+    expect(() => resolveArtifacts(args, tmpDir)).toThrow(/Conflicting HEX outputs/);
+  });
+
   it('resolves debug map beside the build artifact without creating a project cache', () => {
     const baseDir = tempPath('project');
     const hexPath = path.join(baseDir, 'demo.hex');

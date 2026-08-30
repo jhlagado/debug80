@@ -24,6 +24,7 @@ const assemblySourceExtensions = new Set(['.asm', '.inc', '.z80']);
 export interface AssembleOptions {
   asmPath: string;
   hexPath: string;
+  outputPaths?: string[];
   sourceRoot?: string;
   binaryRange?: {
     binFrom: number;

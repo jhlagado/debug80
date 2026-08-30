@@ -16,7 +16,7 @@ export interface SourceManagerOptions {
   resolveMappedPath: (filePath: string) => string | undefined;
   relativeIfPossible: (filePath: string, baseDir: string) => string;
   resolveDebugMapPath: (
-    args: { artifactBase?: string; outputDir?: string },
+    args: { artifactBase?: string; outputDir?: string; outputs?: string[] },
     baseDir: string,
     asmPath: string | undefined,
     hexPath: string
@@ -40,7 +40,7 @@ export interface BuildSourceStateArgs {
   debugMaps?: string[];
   debugMapAddressSpaces?: Record<string, SourceAddressSpace>;
   debugMapAddressTransforms?: Record<string, SourceAddressTransform>;
-  mapArgs: { artifactBase?: string; outputDir?: string };
+  mapArgs: { artifactBase?: string; outputDir?: string; outputs?: string[] };
 }
 
 export class SourceManager {
@@ -50,7 +50,7 @@ export class SourceManager {
   private resolveMappedPath: (filePath: string) => string | undefined;
   private relativeIfPossible: (filePath: string, baseDir: string) => string;
   private resolveDebugMapPath: (
-    args: { artifactBase?: string; outputDir?: string },
+    args: { artifactBase?: string; outputDir?: string; outputs?: string[] },
     baseDir: string,
     asmPath: string | undefined,
     hexPath: string
@@ -107,7 +107,7 @@ export class SourceManager {
     hexPath: string;
     asmPath?: string;
     sourceFile?: string;
-    mapArgs: { artifactBase?: string; outputDir?: string };
+    mapArgs: { artifactBase?: string; outputDir?: string; outputs?: string[] };
     auxiliaryDebugMaps: string[];
     debugMapAddressSpaces: Record<string, SourceAddressSpace>;
     debugMapAddressTransforms: Record<string, SourceAddressTransform>;
