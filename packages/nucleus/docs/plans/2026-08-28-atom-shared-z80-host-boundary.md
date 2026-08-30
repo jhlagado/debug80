@@ -149,13 +149,16 @@ own the language-neutral contracts:
 - append-only image spool;
 - patch spool;
 - named binary object provider;
+- transactional output-file publisher;
 - console services;
 - bounded error/status codes; and
 - conformance tests for every shared contract.
 
 Atom keeps Atom syntax and Atom artifact policy. Nucleus keeps Nucleus syntax,
-runtime linking, target profiles, NOBJ map semantics, and generated-code proof
-rules.
+runtime linking, target profiles, NOBJ map semantics, generated-code proof
+rules, and the decision about which artifact formats to publish. Both packages
+use the shared output publisher once they have selected and serialized those
+artifacts.
 
 ## Public shapes to converge
 

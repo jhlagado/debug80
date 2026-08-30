@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  publishOutputFiles,
   selectConcreteZ80AssemblerFlavour,
   type ConcreteZ80AssemblerFlavour,
 } from "@jhlagado/z80-tool-services";
@@ -198,14 +198,16 @@ export async function publishNucleusProofTarget({
   if (outcome.nobj === undefined) {
     throw new Error("proof manifest did not publish NOBJ");
   }
-  if (output !== undefined) {
-    const outputPath = path.resolve(output);
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, outcome.nobj.serialized);
+  const outputPath = output === undefined ? undefined : path.resolve(output);
+  if (outputPath !== undefined) {
+    await publishOutputFiles(
+      [{ path: outputPath, bytes: outcome.nobj.serialized }],
+      { tagPrefix: "nucleus" },
+    );
   }
   return Object.freeze({
     manifest: manifestPath,
-    output: output === undefined ? undefined : path.resolve(output),
+    output: outputPath,
     assembler: selectedAssembler,
     nobj: outcome.nobj,
     ...(outcome.sourceProvenance === undefined
@@ -278,10 +280,12 @@ export async function publishNucleusPreparedSourceTarget(
   if (outcome.nobj === undefined) {
     throw new Error("resident compiler did not publish NOBJ");
   }
-  if (output !== undefined) {
-    const outputPath = path.resolve(output);
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, outcome.nobj.serialized);
+  const outputPath = output === undefined ? undefined : path.resolve(output);
+  if (outputPath !== undefined) {
+    await publishOutputFiles(
+      [{ path: outputPath, bytes: outcome.nobj.serialized }],
+      { tagPrefix: "nucleus" },
+    );
   }
 
   return Object.freeze({
@@ -291,7 +295,7 @@ export async function publishNucleusPreparedSourceTarget(
       : entry,
     compilerManifest: compilerManifestPath,
     targetFile: targetFile === undefined ? undefined : path.resolve(targetFile),
-    output: output === undefined ? undefined : path.resolve(output),
+    output: outputPath,
     assembler,
     sourceParts: prepared.sourceParts.length,
     sourcePartIdentities: prepared.project.parts.map(

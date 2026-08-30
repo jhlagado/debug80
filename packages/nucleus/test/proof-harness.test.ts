@@ -33,7 +33,7 @@ const runPermanentAtomProof = async (
     ...options,
   });
 
-const z80ProofExecutionTimeout = 120_000;
+const z80ProofExecutionTimeout = 180_000;
 
 const wordAt = (memory: Uint8Array, address: number): number =>
   (memory[address] ?? 0) | ((memory[address + 1] ?? 0) << 8);

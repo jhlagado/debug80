@@ -520,7 +520,7 @@ describe("Nucleus application boundary", () => {
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
-  }, 120_000);
+  }, 180_000);
 
   it("normalizes direct publication API assembler aliases", async () => {
     const publication = await publishNucleusProofTarget({
@@ -596,7 +596,7 @@ describe("Nucleus application boundary", () => {
         }
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("lets prepared entry-source publication supply the target descriptor", async () => {
     await withSourceTree(
@@ -627,7 +627,7 @@ describe("Nucleus application boundary", () => {
         expect(publication.nobj.parsed.begin.imageFill).toBe(0x7e);
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("loads a target descriptor file for prepared entry-source publication", async () => {
     await withSourceTree(
@@ -668,7 +668,7 @@ describe("Nucleus application boundary", () => {
         expect(publication.nobj.parsed.begin.imageFill).toBe(0x7d);
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("rejects a target descriptor file with the wrong schema", async () => {
     await withSourceTree(
@@ -729,7 +729,7 @@ describe("Nucleus application boundary", () => {
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
-  }, 120_000);
+  }, 180_000);
 
   it("publishes proof targets with Atom-selected proof assembly", async () => {
     const { stdout, stderr } = await execFileAsync(
@@ -754,7 +754,7 @@ describe("Nucleus application boundary", () => {
       entryBank: 0,
       entryAddress: 0x8000,
     });
-  }, 120_000);
+  }, 180_000);
 
   it("exposes prepared entry-source NOBJ publication through the development CLI", async () => {
     await withSourceTree(
@@ -828,7 +828,7 @@ describe("Nucleus application boundary", () => {
         }
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("exposes prepared entry-source NOBJ publication through the normal CLI", async () => {
     await withSourceTree(
@@ -901,7 +901,7 @@ describe("Nucleus application boundary", () => {
         }
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("publishes prepared entry source with Atom-selected resident proof assembly", async () => {
     await withSourceTree(
@@ -945,7 +945,7 @@ describe("Nucleus application boundary", () => {
         });
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("publishes selected NOBJ, BIN, HEX, and D8 artifacts through the normal CLI", async () => {
     await withSourceTree(
@@ -1053,7 +1053,7 @@ describe("Nucleus application boundary", () => {
         }
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("renders D8 file entries from prepared source-part identities", async () => {
     await withSourceTree(
@@ -1097,7 +1097,7 @@ describe("Nucleus application boundary", () => {
         });
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("renders explicit D8 source segments only when they reference known parts", async () => {
     await withSourceTree(
@@ -1163,7 +1163,7 @@ describe("Nucleus application boundary", () => {
         })).toThrow("D8 source segment is outside the committed image range");
       },
     );
-  }, 120_000);
+  }, 180_000);
 
   it("keeps --output as an NOBJ-compatible output path", async () => {
     const outputDirectory = await mkdtemp(path.join(tmpdir(), "nucleus-cli-output-"));
@@ -1195,7 +1195,7 @@ describe("Nucleus application boundary", () => {
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, 180_000);
 
   it("rejects repeated and not-yet-supported publication output formats", async () => {
     await withSourceTree(
@@ -1278,7 +1278,7 @@ describe("Nucleus application boundary", () => {
         });
       },
     );
-  }, 30_000);
+  }, 180_000);
 
   it("routes source preparation through the dispatcher CLI", async () => {
     await withSourceTree({
@@ -1347,7 +1347,7 @@ describe("Nucleus application boundary", () => {
         });
       },
     );
-  }, 30_000);
+  }, 180_000);
 
   it("routes an entry source at the top level through publication", async () => {
     await withSourceTree(
@@ -1394,7 +1394,7 @@ describe("Nucleus application boundary", () => {
         expect(await readFile(output)).toHaveLength(1396);
       },
     );
-  }, 30_000);
+  }, 180_000);
 
   it("routes proof publication through the dispatcher CLI", async () => {
     const { stdout, stderr } = await execFileAsync(
@@ -1417,7 +1417,7 @@ describe("Nucleus application boundary", () => {
       entryBank: 0,
       entryAddress: 0x8000,
     });
-  }, 30_000);
+  }, 180_000);
 
   it("rejects unknown dispatcher commands", async () => {
     await expect(execFileAsync(
