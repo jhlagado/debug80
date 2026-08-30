@@ -107,9 +107,10 @@ async function main() {
       await Promise.all([
         readFile(join(atomDirectory, "assets", "atom-cpm22.com")),
         readFile(join(scriptDirectory, "atom-example.asm")),
-        readFile(join(atomDirectory, "proofs", "cpm22-census.json"), "utf8").then(
-          JSON.parse,
-        ),
+        readFile(
+          join(atomDirectory, "proofs", "cpm22-census.json"),
+          "utf8",
+        ).then(JSON.parse),
         readFile(join(nucleusDirectory, "NUCLEUS.COM")),
         readFile(join(nucleusDirectory, "PROVENANCE.json"), "utf8").then(
           JSON.parse,
@@ -195,23 +196,17 @@ async function main() {
         );
     }
 
-    const [
-      bootstrapAzm,
-      ccpAzm,
-      bdosAzm,
-      biosAzm,
-      smokeAzm,
-      editorAzm,
-    ] = await Promise.all([
-      assemble(join(outputDirectory, "bootstrap.asm")),
-      assemble(convertedCcp),
-      assemble(convertedBdos),
-      assemble(join(outputDirectory, "bios.asm"), true),
-      assemble(join(outputDirectory, "smoke.asm")),
-      assemble(join(outputDirectory, "editor.asm"), true, "strict", [
-        join(outputDirectory, "editor-bdos.asmi"),
-      ]),
-    ]);
+    const [bootstrapAzm, ccpAzm, bdosAzm, biosAzm, smokeAzm, editorAzm] =
+      await Promise.all([
+        assemble(join(outputDirectory, "bootstrap.asm")),
+        assemble(convertedCcp),
+        assemble(convertedBdos),
+        assemble(join(outputDirectory, "bios.asm"), true),
+        assemble(join(outputDirectory, "smoke.asm")),
+        assemble(join(outputDirectory, "editor.asm"), true, "strict", [
+          join(outputDirectory, "editor-bdos.asmi"),
+        ]),
+      ]);
     const convertedByName = new Map(
       converted8080Candidates.map((candidate) => [candidate.name, candidate]),
     );
@@ -259,12 +254,14 @@ async function main() {
         candidate: projectOwnedByName.get("smoke.asm"),
         azmBytes: smokeAzm.bytes,
       }).then((bytes) => withDebugMap(bytes, smokeAzm)),
-      assembleProjectOwnedWithAtom({
+      assembleProjectOwnedAtomArtifacts({
         outputDirectory,
         temporaryDirectory,
         candidate: projectOwnedByName.get("editor.asm"),
         azmBytes: editorAzm.bytes,
-      }).then((bytes) => withDebugMap(bytes, editorAzm)),
+        base: 0x0100,
+        entryAddress: 0x0100,
+      }),
     ]);
 
     if (bootstrap.bytes.length !== 256)
@@ -301,7 +298,7 @@ async function main() {
     await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
     await writeFile(join(outputDirectory, "cpm22.img"), image);
     if (bios.debugMap === undefined)
-      fail("AZM did not emit the BIOS debug map");
+      fail("Atom did not emit the BIOS debug map");
     const biosMapBytes = Buffer.from(
       `${JSON.stringify(bios.debugMap, undefined, 2)}\n`,
       "utf8",

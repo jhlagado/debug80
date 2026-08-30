@@ -132,7 +132,8 @@ function fail(message) {
 export function parseFixedNumber(text) {
   const value = text.trim();
   if (/^\$[0-9a-f]+$/i.test(value)) return Number.parseInt(value.slice(1), 16);
-  if (/^[0-9a-f]+h$/i.test(value)) return Number.parseInt(value.slice(0, -1), 16);
+  if (/^[0-9a-f]+h$/i.test(value))
+    return Number.parseInt(value.slice(0, -1), 16);
   if (/^[0-9]+$/.test(value)) return Number.parseInt(value, 10);
   fail(`unsupported fixed numeric value ${text}`);
 }
@@ -152,7 +153,8 @@ function rewriteCodeOutsideText(line, rewrite) {
       if (character === quote) quote = "";
       continue;
     }
-    if (character === ";") return `${output}${rewrite(segment)}${line.slice(index)}`;
+    if (character === ";")
+      return `${output}${rewrite(segment)}${line.slice(index)}`;
     if (character === '"' || character === "'") {
       output += rewrite(segment);
       segment = "";
@@ -186,7 +188,7 @@ function shortSymbolCandidate(word, index) {
   return `${compact.slice(0, 8 - suffix.length)}${suffix}`;
 }
 
-export function projectShortSymbols(source, label) {
+function projectShortSymbolsWithMap(source, label) {
   const words = codeIdentifierWords(source);
   const occupied = new Set(
     words.filter((word) => word.length <= 8).map((word) => word.toUpperCase()),
@@ -207,7 +209,7 @@ export function projectShortSymbols(source, label) {
     occupied.add(replacement);
     replacements.set(word, replacement);
   }
-  return source
+  const projected = source
     .split(/\r\n|\n|\r/)
     .map((line) =>
       rewriteCodeOutsideText(line, (code) =>
@@ -222,6 +224,11 @@ export function projectShortSymbols(source, label) {
       ),
     )
     .join("\n");
+  return Object.freeze({ source: projected, replacements });
+}
+
+export function projectShortSymbols(source, label) {
+  return projectShortSymbolsWithMap(source, label).source;
 }
 
 export function projectConvertedStorageAliases(source) {
@@ -288,16 +295,24 @@ export function projectOutputRangeDirective(source) {
 }
 
 export function bintoEnd(source) {
-  const match = /^\s*\.binto\s+(\$[0-9A-Fa-f]+|[0-9]+[Hh]|[0-9]+)\s*$/im.exec(source);
+  const match = /^\s*\.binto\s+(\$[0-9A-Fa-f]+|[0-9]+[Hh]|[0-9]+)\s*$/im.exec(
+    source,
+  );
   return match === null ? undefined : parseFixedNumber(match[1]);
 }
 
 export function orgStart(source) {
-  const match = /^\s*\.org\s+(\$[0-9A-Fa-f]+|[0-9]+[Hh]|[0-9]+)\s*$/im.exec(source);
+  const match = /^\s*\.org\s+(\$[0-9A-Fa-f]+|[0-9]+[Hh]|[0-9]+)\s*$/im.exec(
+    source,
+  );
   return match === null ? undefined : parseFixedNumber(match[1]);
 }
 
-export async function expandProjectTextualIncludes(outputDirectory, name, includeStack = []) {
+export async function expandProjectTextualIncludes(
+  outputDirectory,
+  name,
+  includeStack = [],
+) {
   const source = await readFile(join(outputDirectory, name), "utf8");
   const lines = [];
   for (const line of source.split(/\r\n|\n|\r/)) {
@@ -311,25 +326,34 @@ export async function expandProjectTextualIncludes(outputDirectory, name, includ
       fail(`${name}: invalid textual include ${include[1]}`);
     }
     if (includeStack.includes(includeName)) {
-      fail(`${name}: textual include cycle ${[...includeStack, includeName].join(" -> ")}`);
+      fail(
+        `${name}: textual include cycle ${[...includeStack, includeName].join(" -> ")}`,
+      );
     }
     lines.push(
-      await expandProjectTextualIncludes(
-        outputDirectory,
+      await expandProjectTextualIncludes(outputDirectory, includeName, [
+        ...includeStack,
         includeName,
-        [...includeStack, includeName],
-      ),
+      ]),
     );
   }
   return lines.join("\n");
 }
 
-export async function projectOwnedAtomProjection(outputDirectory, name, source, projection) {
+async function projectOwnedAtomProjectionWithMap(
+  outputDirectory,
+  name,
+  source,
+  projection,
+) {
   let projected = source;
   if (projection === "inline-includes-and-short-symbols") {
-    projected = await expandProjectTextualIncludes(outputDirectory, name, [name]);
+    projected = await expandProjectTextualIncludes(outputDirectory, name, [
+      name,
+    ]);
   }
   const symbolMap = smallSourceSymbolMaps[name] ?? {};
+  const replacements = new Map(Object.entries(symbolMap));
   projected = projectOutputRangeDirective(projected)
     .split(/\r\n|\n|\r/)
     .map((line) =>
@@ -342,9 +366,29 @@ export async function projectOwnedAtomProjection(outputDirectory, name, source, 
     )
     .join("\n");
   if (projection === "inline-includes-and-short-symbols") {
-    projected = projectShortSymbols(projected, name);
+    const short = projectShortSymbolsWithMap(projected, name);
+    projected = short.source;
+    for (const [original, replacement] of short.replacements) {
+      replacements.set(original, replacement);
+    }
   }
-  return projected;
+  return Object.freeze({ source: projected, replacements });
+}
+
+export async function projectOwnedAtomProjection(
+  outputDirectory,
+  name,
+  source,
+  projection,
+) {
+  return (
+    await projectOwnedAtomProjectionWithMap(
+      outputDirectory,
+      name,
+      source,
+      projection,
+    )
+  ).source;
 }
 
 function assembleRange(generation, start, end) {
@@ -443,24 +487,33 @@ export async function assembleProjectOwnedWithAtom({
   const source = await readFile(join(outputDirectory, name), "utf8");
   const projected =
     typeof candidate === "object"
-      ? await projectOwnedAtomProjection(outputDirectory, name, source, candidate.projection)
+      ? await projectOwnedAtomProjection(
+          outputDirectory,
+          name,
+          source,
+          candidate.projection,
+        )
       : source;
   const atomSource = translateAzmSourceToAtom(projected, { sourceName: name });
   await writeFile(join(temporaryDirectory, name), atomSource, "utf8");
   const start = orgStart(source);
   const end = bintoEnd(source);
-  const atomBytes = start === undefined || end === undefined
-    ? await assembleAtomSource(temporaryDirectory, name)
-    : await assembleAtomSource(temporaryDirectory, name, {
-        start,
-        length: end - start + 1,
-      });
+  const atomBytes =
+    start === undefined || end === undefined
+      ? await assembleAtomSource(temporaryDirectory, name)
+      : await assembleAtomSource(temporaryDirectory, name, {
+          start,
+          length: end - start + 1,
+        });
   requireByteIdentity(name, azmBytes, atomBytes);
   return atomBytes;
 }
 
-function restoreProjectedSymbolNames(name, debugMap) {
-  const sourceMap = smallSourceSymbolMaps[name] ?? {};
+function restoreProjectedSymbolNames(name, debugMap, replacements = new Map()) {
+  const sourceMap = {
+    ...(smallSourceSymbolMaps[name] ?? {}),
+    ...Object.fromEntries(replacements),
+  };
   const reverseMap = new Map(
     Object.entries(sourceMap).map(([original, projected]) => [
       projected.toUpperCase(),
@@ -473,7 +526,11 @@ function restoreProjectedSymbolNames(name, debugMap) {
     const identity = symbol.identity?.endsWith(`:${symbol.name}`)
       ? `${symbol.identity.slice(0, -symbol.name.length)}${original}`
       : symbol.identity;
-    return Object.freeze({ ...symbol, name: original, ...(identity === undefined ? {} : { identity }) });
+    return Object.freeze({
+      ...symbol,
+      name: original,
+      ...(identity === undefined ? {} : { identity }),
+    });
   };
   const symbols = debugMap.symbols.map(restoreSymbol);
   const files = Object.fromEntries(
@@ -502,9 +559,16 @@ export async function assembleProjectOwnedAtomArtifacts({
   const source = await readFile(join(outputDirectory, name), "utf8");
   const projected =
     typeof candidate === "object"
-      ? await projectOwnedAtomProjection(outputDirectory, name, source, candidate.projection)
-      : source;
-  const atomSource = translateAzmSourceToAtom(projected, { sourceName: name });
+      ? await projectOwnedAtomProjectionWithMap(
+          outputDirectory,
+          name,
+          source,
+          candidate.projection,
+        )
+      : { source, replacements: new Map() };
+  const atomSource = translateAzmSourceToAtom(projected.source, {
+    sourceName: name,
+  });
   await writeFile(join(temporaryDirectory, name), atomSource, "utf8");
   const result = await assembleAtomProject({
     root: temporaryDirectory,
@@ -515,18 +579,23 @@ export async function assembleProjectOwnedAtomArtifacts({
   });
   const start = orgStart(source);
   const end = bintoEnd(source);
-  const atomBytes = start === undefined || end === undefined
-    ? materializeAtomGeneration(result.generation, {
-        base: result.generation.images.reduce(
-          (minimum, image) => Math.min(minimum, image.address),
-          0xffff,
-        ),
-      }).bytes
-    : assembleRange(result.generation, start, end);
+  const atomBytes =
+    start === undefined || end === undefined
+      ? materializeAtomGeneration(result.generation, {
+          base: result.generation.images.reduce(
+            (minimum, image) => Math.min(minimum, image.address),
+            0xffff,
+          ),
+        }).bytes
+      : assembleRange(result.generation, start, end);
   requireByteIdentity(name, azmBytes, atomBytes);
   const artifacts = renderAtomArtifacts(result, { base, entryAddress });
   return Object.freeze({
     bytes: atomBytes,
-    debugMap: restoreProjectedSymbolNames(name, artifacts.d8),
+    debugMap: restoreProjectedSymbolNames(
+      name,
+      artifacts.d8,
+      projected.replacements,
+    ),
   });
 }

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
 import { readCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
@@ -8,9 +10,14 @@ import {
   createCpm22Terminal,
 } from "@jhlagado/debug80-runtime/platforms/cpm22/terminal";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime/z80/runtime";
+import {
+  assembleProjectOwnedAtomArtifacts,
+  projectOwnedCandidates,
+} from "./atom-projection.mjs";
 
-const source = "apps/debug80-vscode/roms/cpm22/editor.asm";
-const interfaceSource = "apps/debug80-vscode/roms/cpm22/editor-bdos.asmi";
+const outputDirectory = "apps/debug80-vscode/roms/cpm22";
+const source = join(outputDirectory, "editor.asm");
+const interfaceSource = join(outputDirectory, "editor-bdos.asmi");
 const RETURN_ADDRESS = 0x0040;
 const ROUTINE_CALLER_SP = 0xe300;
 const ENTRY_CALLER_SP = 0xe900;
@@ -44,10 +51,35 @@ assert.deepEqual(
     )
     .join("\n"),
 );
-const binary = assembly.artifacts.find((artifact) => artifact.kind === "bin");
-const debugMap = assembly.artifacts.find((artifact) => artifact.kind === "d8m");
-assert.equal(binary?.kind, "bin", "editor proof requires an assembled binary");
-assert.equal(debugMap?.kind, "d8m", "editor proof requires an AZM debug map");
+const azmBinary = assembly.artifacts.find(
+  (artifact) => artifact.kind === "bin",
+);
+assert.equal(
+  azmBinary?.kind,
+  "bin",
+  "editor proof requires an AZM strict-contract binary",
+);
+const temporaryDirectory = await mkdtemp(
+  join(tmpdir(), "debug80-cpm22-editor-proof-"),
+);
+let atomArtifacts;
+try {
+  atomArtifacts = await assembleProjectOwnedAtomArtifacts({
+    outputDirectory,
+    temporaryDirectory,
+    candidate: projectOwnedCandidates.find(
+      (candidate) => candidate.name === "editor.asm",
+    ),
+    azmBytes: azmBinary.bytes,
+    base: 0x0100,
+    entryAddress: 0x0100,
+  });
+} finally {
+  await rm(temporaryDirectory, { recursive: true, force: true });
+}
+const binary = { kind: "bin", bytes: atomArtifacts.bytes };
+const debugMap = { kind: "d8m", json: atomArtifacts.debugMap };
+assert.equal(debugMap.kind, "d8m", "editor proof requires an Atom debug map");
 const symbols = Object.fromEntries(
   debugMap.json.symbols.flatMap((symbol) => {
     const value = symbol.address ?? symbol.value;
