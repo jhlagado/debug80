@@ -6,8 +6,40 @@ import {
   parseNucleusPublicationOptions,
   validateNucleusPublicationOutputs,
 } from "../src/cli/publication-cli.js";
+import { runNucleusProofPublishCli } from "../src/cli/proof-publish.js";
+import { runNucleusPublishCli } from "../src/cli/publish.js";
+
+const captureStdout = async (
+  action: () => Promise<number>,
+): Promise<{ readonly status: number; readonly stdout: string }> => {
+  const originalWrite = process.stdout.write;
+  let stdout = "";
+  process.stdout.write = ((chunk: string | Uint8Array, ...rest: unknown[]) => {
+    stdout += chunk instanceof Uint8Array ? Buffer.from(chunk).toString("utf8") : chunk;
+    const callback = rest.find((item): item is () => void => typeof item === "function");
+    callback?.();
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    const status = await action();
+    return { status, stdout };
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+};
 
 describe("Nucleus publication CLI contract", () => {
+  it("advertises positional positive outputs and hides legacy output flags", async () => {
+    for (const run of [runNucleusPublishCli, runNucleusProofPublishCli]) {
+      const result = await captureStdout(() => run(["--help"]));
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("[output...]");
+      expect(result.stdout).toContain("Name output paths after the input");
+      expect(result.stdout).toContain("Legacy -o/--output forms are still accepted");
+      expect(result.stdout).not.toContain("-o, --output FILE");
+    }
+  });
+
   it("accepts positive output paths after the input", () => {
     const options = parseNucleusPublicationOptions(
       [

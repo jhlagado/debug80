@@ -26,12 +26,13 @@ Options:
   --source-base N         Resident source byte base; default 0x5000.
   --source-capacity N     Resident source byte capacity; default 0x0800.
   --json                  Print machine-readable JSON.
-  -o, --output FILE        Compatibility form for adding an output path.
   -h, --help              Show this help.
 
 Output suffixes: .nobj .bin .hex .d8.json
 Name output paths after the input. Each suffix selects one output format.
 With no output path, the command publishes and summarizes without writing.
+Legacy -o/--output forms are still accepted for existing scripts, but new
+commands should name outputs positionally.
 
 This development command either runs an executable Nucleus proof manifest or
 prepares an entry .nu file, installs it into the current resident compiler proof
