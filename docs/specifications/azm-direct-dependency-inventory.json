@@ -105,9 +105,9 @@
       "retirement": "Remove with Glimmer AZM backend support."
     },
     {
-      "file": "packages/nucleus/scripts/atom-migration-proof-compare.mjs",
+      "file": "packages/nucleus/scripts/legacy-azm-comparison.mjs",
       "classification": "nucleus-proof-comparison",
-      "owner": "Nucleus Atom migration byte comparison",
+      "owner": "Nucleus named legacy AZM binary-comparison boundary",
       "retirement": "Remove after the Atom-built proof images become authoritative and old AZM-built comparison images are no longer needed."
     },
     {
@@ -121,12 +121,6 @@
       "classification": "nucleus-proof-comparison",
       "owner": "Nucleus named legacy AZM proof assembler and contract-checker boundary",
       "retirement": "Remove after every non-measurement proof image has a permanent Atom route and strict contract verification no longer depends on AZM."
-    },
-    {
-      "file": "packages/nucleus/test/atom-migration-dry-run.test.mjs",
-      "classification": "nucleus-proof-comparison",
-      "owner": "Nucleus Atom migration regression tests",
-      "retirement": "Remove after the migration bridge and AZM comparison path are retired."
     },
     {
       "file": "scripts/cpm22/azm-strict-sidecar.mjs",
