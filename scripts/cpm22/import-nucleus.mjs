@@ -5,7 +5,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
+import {
+  compileAzmStrictSidecar,
+  symbolsFromDebugMap,
+} from "./azm-strict-sidecar.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..");
@@ -32,66 +35,31 @@ assert.equal(
   "Nucleus checkout is not the reviewed native CP/M revision",
 );
 
-const assembled = await compile(
+const assembled = await compileAzmStrictSidecar({
+  label: "native Nucleus CP/M compiler",
   source,
-  {
-    emitBin: true,
-    emitD8m: true,
-    emitHex: false,
-    emitLst: false,
-    emitAsm80: false,
-    registerContracts: "strict",
-    registerContractsInterfaces: [
-      join(
-        nucleusRoot,
-        "asm",
-        "vertical-slice",
-        "expression-generated-z80.asmi",
-      ),
-      join(nucleusRoot, "asm", "vertical-slice", "cpm22-bdos-call.asmi"),
-    ],
-  },
-  { formats: defaultFormatWriters },
-);
-const errors = assembled.diagnostics.filter(
-  (diagnostic) => diagnostic.severity === "error",
-);
-assert.deepEqual(
-  errors,
-  [],
-  errors
-    .map(
-      (diagnostic) =>
-        `${diagnostic.sourceName}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}`,
-    )
-    .join("\n"),
-);
-const binary = assembled.artifacts.find((artifact) => artifact.kind === "bin");
-const debugMap = assembled.artifacts.find(
-  (artifact) => artifact.kind === "d8m",
-);
-assert.equal(binary?.kind, "bin", "AZM omitted the native Nucleus binary");
-assert.equal(debugMap?.kind, "d8m", "AZM omitted the native Nucleus debug map");
+  registerContractsInterfaces: [
+    join(nucleusRoot, "asm", "vertical-slice", "expression-generated-z80.asmi"),
+    join(nucleusRoot, "asm", "vertical-slice", "cpm22-bdos-call.asmi"),
+  ],
+});
 
 const symbols = new Map(
-  debugMap.json.symbols.flatMap((symbol) => {
-    const value = symbol.address ?? symbol.value;
-    return value === undefined ? [] : [[symbol.name, value]];
-  }),
+  Object.entries(symbolsFromDebugMap(assembled.debugMap)),
 );
 assert.equal(symbols.get("CpmCompilerTransientStart"), 0x0100);
 assert.equal(symbols.get("CpmCompilerResidentEnd"), 0x530c);
 assert.equal(
-  binary.bytes[0],
+  assembled.bytes[0],
   0xc3,
   "NUCLEUS.COM must begin with the CP/M entry jump",
 );
 
-const sha256 = createHash("sha256").update(binary.bytes).digest("hex");
+const sha256 = createHash("sha256").update(assembled.bytes).digest("hex");
 assert.equal(
   sha256,
   expectedSha256,
-  `native Nucleus artifact changed: sha256=${sha256} bytes=${binary.bytes.length}`,
+  `native Nucleus artifact changed: sha256=${sha256} bytes=${assembled.bytes.length}`,
 );
 
 const provenance = {
@@ -101,12 +69,12 @@ const provenance = {
   sourcePath: "asm/vertical-slice/cpm22-native-compiler.asm",
   license: "GPL-3.0-only",
   artifactSha256: sha256,
-  artifactBytes: binary.bytes.length,
+  artifactBytes: assembled.bytes.length,
 };
 
 await mkdir(destinationDirectory, { recursive: true });
 await Promise.all([
-  writeFile(join(destinationDirectory, "NUCLEUS.COM"), binary.bytes),
+  writeFile(join(destinationDirectory, "NUCLEUS.COM"), assembled.bytes),
   writeFile(
     join(destinationDirectory, "PROVENANCE.json"),
     `${JSON.stringify(provenance, undefined, 2)}\n`,

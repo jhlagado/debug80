@@ -133,12 +133,6 @@
       "classification": "cpm22-development-tooling",
       "owner": "Shared CP/M strict-contract sidecar validation",
       "retirement": "Remove after CP/M development proofs no longer need AZM strict-contract validation before Atom supplies executable bytes and D8 symbols."
-    },
-    {
-      "file": "scripts/cpm22/import-nucleus.mjs",
-      "classification": "cpm22-development-tooling",
-      "owner": "CP/M 2.2 Nucleus import utility",
-      "retirement": "Convert when the imported native Nucleus compiler image is built from Atom source."
     }
   ]
 }
