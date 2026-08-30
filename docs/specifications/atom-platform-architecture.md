@@ -8,8 +8,8 @@ The Node-hosted, Debug80-integrated, CP/M-native, and TEC-native profiles are
 implemented and proved under emulation. The reusable native named-object
 harness, TEC-FS source provider, and TecMate launcher are implemented. TEC
 hardware acceptance is deferred to a later deployment checkpoint. Nucleus
-convergence and release installation remain active work. The Debug80 project
-corpus no longer selects AZM.
+convergence remains active work. Atom release installation is complete. The
+Debug80 project corpus no longer selects AZM.
 
 ## Product decision
 

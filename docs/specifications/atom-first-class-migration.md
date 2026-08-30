@@ -1,6 +1,6 @@
 # Atom first-class migration
 
-Status: Atom-first Debug80 consolidation complete; deferred work is listed
+Status: Atom-first Debug80 consolidation complete; Nucleus convergence active
 
 Date: 2026-08-27
 
@@ -16,9 +16,10 @@ providers for ordinary TEC-FS input and transactional output. The harness has
 a proved immutable-bank profile with fixed state relocated to common RAM. The
 TEC include resolver, launcher, and final memory map are implemented and proved
 under emulation. Physical TEC hardware acceptance is deferred to a later
-deployment checkpoint. Nucleus convergence is deferred until Nucleus's new
-host boundary stabilizes. Atom npm publication and install verification are
-complete. The checked-in Debug80 project corpus no longer selects AZM.
+deployment checkpoint. Nucleus convergence has resumed against the shared
+source-preparation, output-selection, assembler-flavour, and service-boundary
+packages. Atom npm publication and install verification are complete. The
+checked-in Debug80 project corpus no longer selects AZM.
 
 ## Objective
 
@@ -119,9 +120,9 @@ are migrated before default output changes.
 ### 7. Debug80 integration
 
 Add `AtomBackend`, `assembler: "atom"`, structured diagnostics, BIN, HEX, D8,
-and listing integration. `.ASM` does not infer a dialect. Existing projects
-retain their configured or historical assembler; new Atom projects select it
-explicitly.
+and listing integration. Explicit assembler selection wins; an omitted backend
+now defaults assembly source to Atom. Existing projects that require AZM must
+select it explicitly.
 
 Proof: CLI and Debug80 API produce byte-identical artifacts and Debug80's
 mapping/load flows consume Atom output without AZM-specific assumptions.
@@ -152,16 +153,24 @@ Move Nucleus's lower named-object constants and provider tests onto the shared
 package without changing its fourteen-entry compiler vector, language policy,
 runtime catalogue, or generated-program services.
 
-Proof: shared service conformance plus unchanged Nucleus compiler and native
+Proof: shared service conformance plus unchanged Nucleus compiler and proof
 profile acceptance.
 
-Status: pending. Nucleus is undergoing an architectural rewrite and still owns
-its existing source-composition implementation. Atom does not force that older
-interface into the shared package; convergence resumes against Nucleus's new
-host boundary when it stabilizes.
+Status: active. Nucleus now uses the shared source-preparation resolver for
+high-level source preparation, the shared assembler-flavour selector for
+proof-image assembly, and the shared positive-output selector for publication
+CLIs. The checked-in permanent Atom translation has no compatibility-lowering
+issues, no late includes, and no source drift. The permanent proof gate
+currently checks 29 proof manifests: 26 assemble byte-identically with Atom
+and execute successfully, while 3 measurement artifacts are intentionally
+skipped.
 
-This is deferred follow-on work, not a blocker for the Atom-first Debug80
-consolidation.
+Remaining Nucleus convergence work is implementation, not a source-format
+blocker: finish retiring compatibility-only proof paths after all proof images
+have permanent Atom routes, continue moving lower service adapters onto the
+shared contracts where that does not change the compiler vector, and then
+decide whether Nucleus remains in this monorepo or returns to an independent
+repository with `@jhlagado/z80-tool-services` as the explicit extraction seam.
 
 ### 10. Default migration
 
