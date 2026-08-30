@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
 import { readCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
 import {
   CPM22_TERMINAL_ATTR_REVERSE,
@@ -14,6 +13,10 @@ import {
   assembleProjectOwnedAtomArtifacts,
   projectOwnedCandidates,
 } from "./atom-projection.mjs";
+import {
+  compileAzmStrictSidecar,
+  symbolsFromDebugMap,
+} from "./azm-strict-sidecar.mjs";
 
 const outputDirectory = "apps/debug80-vscode/roms/cpm22";
 const source = join(outputDirectory, "editor.asm");
@@ -25,40 +28,11 @@ const WORKSPACE_CANARY = 0xa5;
 const TEXT_CANARY = 0xc7;
 const HIGH_CANARY = 0x5a;
 
-const assembly = await compile(
+const sidecar = await compileAzmStrictSidecar({
+  label: "editor proof",
   source,
-  {
-    emitBin: true,
-    emitD8m: true,
-    emitHex: false,
-    emitLst: false,
-    emitAsm80: false,
-    registerContracts: "strict",
-    registerContractsInterfaces: [interfaceSource],
-  },
-  { formats: defaultFormatWriters },
-);
-const errors = assembly.diagnostics.filter(
-  (diagnostic) => diagnostic.severity === "error",
-);
-assert.deepEqual(
-  errors,
-  [],
-  errors
-    .map(
-      (diagnostic) =>
-        `${diagnostic.sourceName}:${diagnostic.line}:${diagnostic.column}: ${diagnostic.message}`,
-    )
-    .join("\n"),
-);
-const azmBinary = assembly.artifacts.find(
-  (artifact) => artifact.kind === "bin",
-);
-assert.equal(
-  azmBinary?.kind,
-  "bin",
-  "editor proof requires an AZM strict-contract binary",
-);
+  registerContractsInterfaces: [interfaceSource],
+});
 const temporaryDirectory = await mkdtemp(
   join(tmpdir(), "debug80-cpm22-editor-proof-"),
 );
@@ -70,7 +44,7 @@ try {
     candidate: projectOwnedCandidates.find(
       (candidate) => candidate.name === "editor.asm",
     ),
-    azmBytes: azmBinary.bytes,
+    azmBytes: sidecar.bytes,
     base: 0x0100,
     entryAddress: 0x0100,
   });
@@ -80,12 +54,7 @@ try {
 const binary = { kind: "bin", bytes: atomArtifacts.bytes };
 const debugMap = { kind: "d8m", json: atomArtifacts.debugMap };
 assert.equal(debugMap.kind, "d8m", "editor proof requires an Atom debug map");
-const symbols = Object.fromEntries(
-  debugMap.json.symbols.flatMap((symbol) => {
-    const value = symbol.address ?? symbol.value;
-    return value === undefined ? [] : [[symbol.name, value]];
-  }),
-);
+const symbols = symbolsFromDebugMap(debugMap.json);
 
 function symbol(name) {
   const value = symbols[name];

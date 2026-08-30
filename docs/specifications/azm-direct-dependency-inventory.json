@@ -135,28 +135,22 @@
       "retirement": "Remove after AZM strict-contract sidecars and byte-identity checks are no longer required for CP/M development builds; Atom already supplies the packaged bytes and active D8 maps."
     },
     {
+      "file": "scripts/cpm22/azm-strict-sidecar.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "Shared CP/M strict-contract sidecar validation",
+      "retirement": "Remove after CP/M development proofs no longer need AZM strict-contract validation before Atom supplies executable bytes and D8 symbols."
+    },
+    {
       "file": "scripts/cpm22/check-atom-assembly-candidates.mjs",
       "classification": "cpm22-development-tooling",
       "owner": "CP/M 2.2 Atom migration candidate check",
       "retirement": "Remove after the CP/M build pipeline has been converted to Atom or all remaining CP/M assembly blockers are tracked by a stronger migration gate."
     },
     {
-      "file": "scripts/cpm22/editor-candidate-assembly.mjs",
-      "classification": "cpm22-development-tooling",
-      "owner": "CP/M editor measurement candidate strict-contract sidecar",
-      "retirement": "Remove after editor measurement candidates no longer need AZM strict-contract validation before Atom supplies executable bytes and D8 symbols."
-    },
-    {
       "file": "scripts/cpm22/import-nucleus.mjs",
       "classification": "cpm22-development-tooling",
       "owner": "CP/M 2.2 Nucleus import utility",
       "retirement": "Convert when the imported native Nucleus compiler image is built from Atom source."
-    },
-    {
-      "file": "scripts/cpm22/prove-editor.mjs",
-      "classification": "cpm22-development-tooling",
-      "owner": "CP/M editor proof",
-      "retirement": "Remove after the editor proof no longer needs AZM strict-contract validation; Atom already supplies the proof bytes and D8 symbols."
     }
   ]
 }
