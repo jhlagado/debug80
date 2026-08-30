@@ -31,6 +31,7 @@ import {
   assembleLegacyAzmCurrentSource,
   assembleLegacyAzmProofSource,
 } from "./legacy-proof-assembler.js";
+import { createLegacyUnorderedMemoryAtomSink } from "./atom-proof-sink.js";
 import type { NucleusTargetPublicationDescriptor } from "./target-publication.js";
 import {
   createNucleusHostRuntimeStreamAdapter,
@@ -540,27 +541,15 @@ async function assembleProofSource({
   ) {
     const { assembleAtomProject, materializeAtomGeneration, writeIntelHex } =
       await import("atom-z80");
-    const compareModule =
-      selectedAssembler.legacyOutputOrder === true
-        ? await import(
-            pathToFileURL(
-              path.join(
-                path.dirname(manifestDirectory),
-                "scripts",
-                "atom-migration-proof-compare.mjs",
-              ),
-            ).href
-          )
-        : undefined;
     const assembled = await assembleAtomProject({
       root: selectedAssembler.root,
       entry: selectedAssembler.entry,
       target: { start: 0, capacity: 0xffff },
       maxInstructions: selectedAssembler.maxInstructions ?? 50_000_000,
       maxCycles: selectedAssembler.maxCycles ?? 500_000_000,
-      ...(compareModule === undefined
+      ...(selectedAssembler.legacyOutputOrder !== true
         ? {}
-        : { sink: compareModule.createLegacyUnorderedMemoryAtomSink() }),
+        : { sink: createLegacyUnorderedMemoryAtomSink() }),
     });
     const materialized = materializeAtomGeneration(assembled.generation, {
       base: contentBase(assembled.generation),

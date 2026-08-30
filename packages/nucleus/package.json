@@ -22,7 +22,10 @@
   },
   "files": [
     "dist/src",
-    "README.md"
+    "README.md",
+    "proofs",
+    "asm",
+    "atom-asm"
   ],
   "scripts": {
     "clean": "rm -rf dist",

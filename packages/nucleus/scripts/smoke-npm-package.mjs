@@ -29,5 +29,8 @@ assert(files.has("dist/src/cli/nucleus.js"));
 assert(files.has("dist/src/index.js"));
 assert(files.has("dist/src/cli/nucleus.d.ts"));
 assert(files.has("README.md"));
+assert(files.has("proofs/flat-target-z80-slice-proof.json"));
+assert(files.has("asm/vertical-slice/flat-target-z80-slice-proof.asm"));
+assert(files.has("atom-asm/vertical-slice/flat-target-z80-slice-proof.asm"));
 assert(!files.has("src/cli/nucleus.ts"));
 assert(!files.has("test/application.test.ts"));

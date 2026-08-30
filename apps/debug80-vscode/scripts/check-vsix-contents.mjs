@@ -15,6 +15,20 @@ const REQUIRED_ENTRIES = [
   { label: 'language-configuration/', matches: hasTopLevelDirectory('language-configuration') },
   { label: 'syntaxes/', matches: hasTopLevelDirectory('syntaxes') },
   { label: 'assets/native-core.json', matches: (entry) => entry === 'assets/native-core.json' },
+  {
+    label: 'resources/nucleus/proofs/flat-target-z80-slice-proof.json',
+    matches: (entry) => entry === 'resources/nucleus/proofs/flat-target-z80-slice-proof.json',
+  },
+  {
+    label: 'resources/nucleus/asm/vertical-slice/flat-target-z80-slice-proof.asm',
+    matches: (entry) =>
+      entry === 'resources/nucleus/asm/vertical-slice/flat-target-z80-slice-proof.asm',
+  },
+  {
+    label: 'resources/nucleus/atom-asm/vertical-slice/flat-target-z80-slice-proof.asm',
+    matches: (entry) =>
+      entry === 'resources/nucleus/atom-asm/vertical-slice/flat-target-z80-slice-proof.asm',
+  },
   { label: 'README.md', matches: (entry) => entry === 'README.md' },
   {
     label: 'LICENSE.txt',
@@ -269,16 +283,75 @@ async function smokeBundledAtomAssembly(stage) {
   return [];
 }
 
+async function smokeStagedNucleusResources(stage) {
+  const projectRoot = path.join(stage, 'nucleus-smoke-project');
+  const compilerManifest = path.join(
+    stage,
+    'resources',
+    'nucleus',
+    'proofs',
+    'flat-target-z80-slice-proof.json'
+  );
+  fs.mkdirSync(projectRoot);
+  fs.writeFileSync(
+    path.join(projectRoot, 'main.nu'),
+    ['var value as u16 = 3', 'var cleared as u8', 'sub main()', 'value = value * 2', 'end', ''].join(
+      '\n'
+    )
+  );
+
+  try {
+    const {
+      buildNucleusPreparedSourceArtifacts,
+      NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+      NUCLEUS_TARGET_PUBLICATION_SCHEMA,
+    } = await import('@jhlagado/nucleus');
+    const targetFile = path.join(projectRoot, 'nucleus-target.json');
+    fs.writeFileSync(
+      targetFile,
+      `${JSON.stringify(
+        {
+          schema: NUCLEUS_TARGET_PUBLICATION_SCHEMA,
+          ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+        },
+        null,
+        2
+      )}\n`
+    );
+    const result = await buildNucleusPreparedSourceArtifacts({
+      root: projectRoot,
+      entry: 'main.nu',
+      targetFile,
+      compilerManifest,
+    });
+    if (result.artifacts.nobj.length === 0) {
+      return ['staged Nucleus smoke build emitted an empty NOBJ artifact'];
+    }
+    if (!result.artifacts.hex.includes(':00000001FF')) {
+      return ['staged Nucleus smoke build emitted an invalid Intel HEX artifact'];
+    }
+    if (!result.artifacts.d8.includes('"format": "d8-debug-map"')) {
+      return ['staged Nucleus smoke build emitted an invalid D8 artifact'];
+    }
+  } catch (error) {
+    return [`staged Nucleus smoke build failed: ${error?.stack ?? error}`];
+  }
+
+  return [];
+}
+
 async function main() {
   const stage = stageExtension();
   let entries;
   let bundledAtomFailures = [];
+  let stagedNucleusFailures = [];
   try {
     entries = normalizeEntries(runVsceLs(stage));
     bundledAtomFailures = verifyBundledAtomRuntime(stage);
     if (bundledAtomFailures.length === 0) {
       bundledAtomFailures = await smokeBundledAtomAssembly(stage);
     }
+    stagedNucleusFailures = await smokeStagedNucleusResources(stage);
   } finally {
     removeStage(stage);
   }
@@ -287,12 +360,19 @@ async function main() {
   if (
     result.missingRequired.length > 0 ||
     result.forbiddenEntries.length > 0 ||
-    bundledAtomFailures.length > 0
+    bundledAtomFailures.length > 0 ||
+    stagedNucleusFailures.length > 0
   ) {
     printFailure(result);
     if (bundledAtomFailures.length > 0) {
       console.error('\nBundled Atom runtime verification failed:');
       for (const failure of bundledAtomFailures) {
+        console.error(`  - ${failure}`);
+      }
+    }
+    if (stagedNucleusFailures.length > 0) {
+      console.error('\nStaged Nucleus runtime verification failed:');
+      for (const failure of stagedNucleusFailures) {
         console.error(`  - ${failure}`);
       }
     }

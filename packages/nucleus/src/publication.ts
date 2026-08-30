@@ -150,7 +150,13 @@ const proofAssemblerOptions = async (
   assembler: NucleusCompilerAssemblerFlavour,
 ): Promise<Parameters<typeof runProofManifest>[1]> => {
   if (assembler === "azm") return {};
-  return nucleusPermanentAtomProofOptions(manifestPath);
+  const packagedRoot = path.dirname(path.dirname(manifestPath));
+  const asmRoot = path.join(packagedRoot, "asm");
+  const atomRoot = path.join(packagedRoot, "atom-asm");
+  return nucleusPermanentAtomProofOptions(
+    manifestPath,
+    existsSync(asmRoot) && existsSync(atomRoot) ? { asmRoot, atomRoot } : {},
+  );
 };
 
 const selectNucleusCompilerAssembler = (

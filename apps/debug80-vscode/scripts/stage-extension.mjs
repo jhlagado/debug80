@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const atomPackageRoot = path.resolve(path.dirname(require.resolve('atom-z80')), '..', '..');
+const nucleusPackageRoot = path.dirname(require.resolve('@jhlagado/nucleus/package.json'));
 
 const files = [
   'CHANGELOG.md',
@@ -33,6 +34,13 @@ export function stageExtension() {
     path.join(atomPackageRoot, 'assets', 'native-core.json'),
     path.join(directory, 'assets', 'native-core.json')
   );
+  for (const source of ['proofs', 'asm', 'atom-asm']) {
+    fs.cpSync(
+      path.join(nucleusPackageRoot, source),
+      path.join(directory, 'resources', 'nucleus', source),
+      { recursive: true }
+    );
+  }
   for (const source of directories) {
     fs.cpSync(path.join(extensionRoot, source), path.join(directory, source), {
       recursive: true,

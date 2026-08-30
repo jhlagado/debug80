@@ -10,6 +10,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type {
   NucleusPreparedSourceArtifactBuild,
   NucleusPreparedSourceTargetPublicationOptions,
@@ -31,6 +32,24 @@ const defaultCompiler = (): NucleusCompilerApi => ({
     return buildNucleusPreparedSourceArtifacts(options);
   },
 });
+
+const PACKAGED_NUCLEUS_COMPILER_MANIFEST = path.join(
+  'resources',
+  'nucleus',
+  'proofs',
+  'flat-target-z80-slice-proof.json'
+);
+
+function packagedNucleusCompilerManifest(): string | undefined {
+  let current = path.dirname(fileURLToPath(import.meta.url));
+  while (true) {
+    const candidate = path.join(current, PACKAGED_NUCLEUS_COMPILER_MANIFEST);
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
+}
 
 function sourcePath(root: string, name: string): string {
   const resolved = path.resolve(root, name);
@@ -143,10 +162,12 @@ export class NucleusBackend implements AssemblerBackend {
 
     let build: NucleusPreparedSourceArtifactBuild;
     try {
+      const compilerManifest = packagedNucleusCompilerManifest();
       build = await this.compiler.buildPreparedSourceArtifacts({
         root: loaded.root,
         entry: loaded.entry,
         targetFile: loaded.targetFile,
+        ...(compilerManifest === undefined ? {} : { compilerManifest }),
       });
     } catch (error) {
       const message = `Nucleus build failed: ${formatError(error)}`;
