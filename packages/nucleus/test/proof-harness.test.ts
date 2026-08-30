@@ -20,8 +20,34 @@ import type { SourcePart } from "../src/source-part.js";
 const proof = (name: string): string =>
   path.resolve(import.meta.dirname, "..", "proofs", `${name}.json`);
 
+const legacyAzmProofOptions = {
+  assembler: { flavour: "azm" },
+} as const;
+
+const runPermanentAtomProof = async (
+  name: string,
+  options: Parameters<typeof runProofManifest>[1] = {},
+) =>
+  runProofManifest(proof(name), {
+    ...(await nucleusPermanentAtomProofOptions(proof(name))),
+    ...options,
+  });
+
+const z80ProofExecutionTimeout = 120_000;
+
 const wordAt = (memory: Uint8Array, address: number): number =>
   (memory[address] ?? 0) | ((memory[address + 1] ?? 0) << 8);
+
+const symbolValue = (
+  symbols: Readonly<Record<string, number>>,
+  name: string,
+): number => {
+  const wanted = name.toLowerCase();
+  for (const [candidate, value] of Object.entries(symbols)) {
+    if (candidate.toLowerCase() === wanted) return value;
+  }
+  expect.fail(`${name} must be retained by the assembled proof`);
+};
 
 const flatTargetCompilerEntry = {
   executionEntry: "ProofStart",
@@ -52,7 +78,7 @@ async function withSourceTree<T>(
   }
 }
 
-describe("source-prepared AZM and Debug80 proofs", () => {
+describe("source-prepared Atom, AZM, and Debug80 proofs", () => {
   it("keeps direct proof-manifest execution on the named legacy assembler default", () => {
     expect(NUCLEUS_LEGACY_PROOF_ASSEMBLER).toBe("azm");
   });
@@ -170,9 +196,7 @@ describe("source-prepared AZM and Debug80 proofs", () => {
   });
 
   it("publishes a flat target through the append-only logical sink", async () => {
-    const outcome = await runProofManifest(
-      proof("flat-target-z80-slice-proof"),
-    );
+    const outcome = await runPermanentAtomProof("flat-target-z80-slice-proof");
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
     expect(
@@ -221,8 +245,8 @@ describe("source-prepared AZM and Debug80 proofs", () => {
     expect(contains([0xcd, 0xb9, 0x80])).toBe(true); // CALL linked MultiplyU16
     const word = (name: string): number =>
       wordAt(outcome.memory, outcome.symbols[name] ?? -1);
-    expect(outcome.symbols.ProofEnd).toBeLessThanOrEqual(
-      outcome.symbols.AdapterLoadedLogBase ?? -1,
+    expect(symbolValue(outcome.symbols, "ProofEnd")).toBeLessThanOrEqual(
+      symbolValue(outcome.symbols, "AdapterLoadedLogBase"),
     );
     for (const [base, length, next] of [
       [
@@ -265,10 +289,10 @@ describe("source-prepared AZM and Debug80 proofs", () => {
         `${base} must not overlap ${next}`,
       ).toBeLessThanOrEqual(outcome.symbols[next] ?? -1);
     }
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("decodes optional source-provenance logs from proof memory", async () => {
-    const outcome = await runProofManifest(proof("source-provenance-proof"));
+    const outcome = await runPermanentAtomProof("source-provenance-proof");
 
     expect(outcome.sourceProvenance).toEqual([
       {
@@ -286,7 +310,7 @@ describe("source-prepared AZM and Debug80 proofs", () => {
 
   it("rejects source-provenance logs that exceed the declared capacity", async () => {
     await expect(
-      runProofManifest(proof("source-provenance-proof"), {
+      runPermanentAtomProof("source-provenance-proof", {
         sourceProvenance: {
           at: "SourceProvenanceLog",
           lengthAt: "SourceProvenanceLength",
@@ -322,11 +346,11 @@ describe("source-prepared AZM and Debug80 proofs", () => {
         expect(prepared.residentSource).toBeDefined();
         if (prepared.residentSource === undefined) return;
 
-        const baseline = await runProofManifest(
-          proof("flat-target-z80-slice-proof"),
+        const baseline = await runPermanentAtomProof(
+          "flat-target-z80-slice-proof",
         );
-        const hosted = await runProofManifest(
-          proof("flat-target-z80-slice-proof"),
+        const hosted = await runPermanentAtomProof(
+          "flat-target-z80-slice-proof",
           {
             source: {
               image: prepared.residentSource,
@@ -340,12 +364,10 @@ describe("source-prepared AZM and Debug80 proofs", () => {
         expect(hosted.nobj?.serialized).toEqual(baseline.nobj?.serialized);
       },
     );
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("runs the Stage 7 aggregate-call production path through committed banked NOBJ", async () => {
-    const outcome = await runProofManifest(
-      proof("banked-target-z80-slice-proof"),
-    );
+    const outcome = await runPermanentAtomProof("banked-target-z80-slice-proof");
     expect(outcome.nobj?.parsed.begin.banked).toBe(true);
     expect(outcome.nobj?.parsed.map.partBanks).toEqual([1, 0]);
     expect(outcome.nobj?.materialized.banks).toHaveLength(2);
@@ -360,55 +382,53 @@ describe("source-prepared AZM and Debug80 proofs", () => {
     expect(wordAt(outcome.nobj?.memory ?? new Uint8Array(), 0x4038)).toBe(0);
     expect(outcome.nobj?.memory[0x4048]).toBe(12);
     expect(outcome.nobj?.selectedBank).toBe(1);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("runs startup and main from bank 1 through committed banked NOBJ", async () => {
-    const outcome = await runProofManifest(
-      proof("banked-target-entry1-z80-slice-proof"),
+    const outcome = await runPermanentAtomProof(
+      "banked-target-entry1-z80-slice-proof",
     );
     expect(outcome.nobj?.parsed.map.entryBank).toBe(1);
     expect(outcome.nobj?.parsed.map.partBanks).toEqual([1]);
     expect(outcome.nobj?.memory[0x4046]).toBe(12);
     expect(outcome.nobj?.selectedBank).toBe(1);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("restores a cross-bank trap through the common terminal path", async () => {
-    const outcome = await runProofManifest(
-      proof("banked-target-trap-z80-slice-proof"),
+    const outcome = await runPermanentAtomProof(
+      "banked-target-trap-z80-slice-proof",
     );
     expect(outcome.nobj?.memory[0x4022]).toBe(3);
     expect(outcome.nobj?.memory[0x4027]).toBe(0);
     expect(outcome.nobj?.selectedBank).toBe(0);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("executes loaded startup without copying initialized storage", async () => {
-    const outcome = await runProofManifest(
-      proof("flat-target-loaded-z80-slice-proof"),
+    const outcome = await runPermanentAtomProof(
+      "flat-target-loaded-z80-slice-proof",
     );
     expect(outcome.nobj?.parsed.map.romMode).toBe(false);
     expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(0x1048);
     expect(outcome.nobj?.instructions).toBeGreaterThan(0);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("restores the established stack after a target trap", async () => {
-    const outcome = await runProofManifest(
-      proof("flat-target-trap-z80-slice-proof"),
-    );
+    const outcome = await runPermanentAtomProof("flat-target-trap-z80-slice-proof");
     expect(outcome.nobj?.parsed.map.establishedStack).toBe(true);
     expect(outcome.nobj?.memory[0x4022]).toBe(3);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("runs the Stage 8 propagation production path through committed flat NOBJ", async () => {
-    const outcome = await runProofManifest(
-      proof("flat-target-unhandled-z80-slice-proof"),
+    const outcome = await runPermanentAtomProof(
+      "flat-target-unhandled-z80-slice-proof",
     );
     expect(outcome.nobj?.parsed.map.establishedStack).toBe(true);
     expect(outcome.nobj?.memory[0x4026]).toBe(7);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("runs the accepted Chapter 21 multipart program through committed NOBJ", async () => {
-    const outcome = await runProofManifest(
-      proof("chapter21-target-z80-slice-proof"),
+    const outcome = await runPermanentAtomProof(
+      "chapter21-target-z80-slice-proof",
     );
     const source = (start: string, end: string): string =>
       new TextDecoder().decode(
@@ -431,11 +451,11 @@ describe("source-prepared AZM and Debug80 proofs", () => {
     expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(1461);
     expect(outcome.nobj?.memory[0x4046]).toBe(4);
     expect(outcome.nobj?.memory[0x7300]).toBe("Y".charCodeAt(0));
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
-  it("retains the historical direct-Z80 Chapter 21 module proof", async () => {
-    const outcome = await runProofManifest(
-      proof("stage9-conformance-z80-slice-proof"),
+  it("retains the direct-Z80 Chapter 21 module proof", async () => {
+    const outcome = await runPermanentAtomProof(
+      "stage9-conformance-z80-slice-proof",
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -561,11 +581,11 @@ describe("source-prepared AZM and Debug80 proofs", () => {
         new TextDecoder().decode(sourceParts[1]?.bytes ?? new Uint8Array()),
     ).toBe(specificationPrograms[0]);
     expect(sourceParts[1]?.diagnosticName).toBe("main.nu");
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
-  it("retains the historical direct-Z80 Stage 8 module proof", async () => {
-    const outcome = await runProofManifest(
-      proof("stage8-failure-z80-slice-proof"),
+  it("retains the direct-Z80 Stage 8 module proof", async () => {
+    const outcome = await runPermanentAtomProof(
+      "stage8-failure-z80-slice-proof",
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -620,10 +640,10 @@ describe("source-prepared AZM and Debug80 proofs", () => {
     }
     expect(generatedLimit).toBeLessThanOrEqual(runtimeStart);
     expect(runtimeEnd).toBeLessThanOrEqual(symbol("TargetRuntimeLimit"));
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("locks the bounded vertical-slice memory map", async () => {
-    const outcome = await runProofManifest(proof("memory-map-proof"));
+    const outcome = await runPermanentAtomProof("memory-map-proof");
 
     expect(outcome.instructions).toBe(4);
     expect(outcome.cycles).toBe(34);
@@ -650,6 +670,7 @@ describe("source-prepared AZM and Debug80 proofs", () => {
 
   it("runs the memory-map proof with Atom migration metadata attached", async () => {
     const outcome = await runProofManifest(proof("memory-map-proof"), {
+      ...legacyAzmProofOptions,
       atomMigration: {
         proofSymbolMap: [
           {
@@ -692,7 +713,7 @@ describe("source-prepared AZM and Debug80 proofs", () => {
   });
 
   it("compiles the fixed source and rejects a malformed source by position", async () => {
-    const outcome = await runProofManifest(proof("compiler-slice-proof"));
+    const outcome = await runPermanentAtomProof("compiler-slice-proof");
 
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -712,7 +733,7 @@ describe("source-prepared AZM and Debug80 proofs", () => {
   });
 
   it("executes the same checked operations as a direct-Z80 program", async () => {
-    const outcome = await runProofManifest(proof("z80-slice-proof"));
+    const outcome = await runPermanentAtomProof("z80-slice-proof");
     const generatedBase = outcome.symbols.GeneratedBase ?? -1;
     const generatedSize = outcome.symbols.ProgramSize ?? -1;
     const generated = outcome.memory.slice(
@@ -750,7 +771,7 @@ describe("source-prepared AZM and Debug80 proofs", () => {
   });
 
   it("checks the scalar-local and counted-loop source slice", async () => {
-    const outcome = await runProofManifest(proof("loop-compiler-slice-proof"));
+    const outcome = await runPermanentAtomProof("loop-compiler-slice-proof");
     expect(outcome.instructions).toBe(51_047);
     expect(outcome.cycles).toBe(493_964);
     expect(outcome.extents).toEqual([
@@ -765,10 +786,10 @@ describe("source-prepared AZM and Debug80 proofs", () => {
     expect(outcome.memory[outcome.symbols.DiagnosticCode ?? -1]).toBe(
       outcome.symbols.DiagnosticExpectedEnd,
     );
-  }, 20_000);
+  }, z80ProofExecutionTimeout);
 
   it("executes the counted loop as direct Z80", async () => {
-    const outcome = await runProofManifest(proof("loop-z80-slice-proof"));
+    const outcome = await runPermanentAtomProof("loop-z80-slice-proof");
     const generatedBase = outcome.symbols.GeneratedBase ?? -1;
     const generatedSize = outcome.symbols.ProgramSize ?? -1;
     const generated = outcome.memory.slice(
@@ -801,10 +822,10 @@ describe("source-prepared AZM and Debug80 proofs", () => {
     expect(outcome.runtimeStreams.outputWriteCalls).toBe(
       expectedStreams.outputWriteCalls,
     );
-  }, 20_000);
+  }, z80ProofExecutionTimeout);
 
   it("executes checked initialized-array selection as direct Z80", async () => {
-    const outcome = await runProofManifest(proof("array-z80-slice-proof"));
+    const outcome = await runPermanentAtomProof("array-z80-slice-proof");
     expect(outcome.instructions).toBe(65_238);
     expect(outcome.cycles).toBe(630_479);
     expect(outcome.extents).toEqual([
@@ -827,10 +848,16 @@ describe("source-prepared AZM and Debug80 proofs", () => {
 
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
-  }, 20_000);
+  }, z80ProofExecutionTimeout);
 
   it("executes a forward-declared recursive scalar value call", async () => {
-    const outcome = await runProofManifest(proof("call-z80-slice-proof"));
+    // These checks intentionally inspect source-local marker labels by their
+    // original names. Permanent Atom source makes those markers private, so the
+    // original label names are only present in the explicit legacy proof view.
+    const outcome = await runProofManifest(
+      proof("call-z80-slice-proof"),
+      legacyAzmProofOptions,
+    );
     expect(outcome.instructions).toBe(79_305);
     expect(outcome.cycles).toBe(758_715);
     expect(outcome.extents).toEqual([
@@ -902,10 +929,10 @@ describe("source-prepared AZM and Debug80 proofs", () => {
         ].map((name) => outcome.symbols[name] ?? -1),
       ).size,
     ).toBe(8);
-  }, 20_000);
+  }, z80ProofExecutionTimeout);
 
   it("executes general scalar symbols and precedence as direct Z80", async () => {
-    const outcome = await runProofManifest(proof("expression-z80-slice-proof"));
+    const outcome = await runPermanentAtomProof("expression-z80-slice-proof");
     const generatedSizeAddress = outcome.symbols.GeneratedSize ?? -1;
     const generatedSize =
       (outcome.memory[generatedSizeAddress] ?? 0) |
@@ -936,11 +963,11 @@ describe("source-prepared AZM and Debug80 proofs", () => {
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
     expect(generatedSize).toBeGreaterThan(0);
     expect(outcome.memory[(outcome.symbols.GeneratedBase ?? -1) + 3]).toBe(0);
-  }, 20_000);
+  }, z80ProofExecutionTimeout);
 
   it("executes typed scalar expressions and traps atomically as direct Z80", async () => {
-    const outcome = await runProofManifest(
-      proof("typed-expression-z80-slice-proof"),
+    const outcome = await runPermanentAtomProof(
+      "typed-expression-z80-slice-proof",
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -967,11 +994,15 @@ describe("source-prepared AZM and Debug80 proofs", () => {
       { name: "proof-code-and-data", bytes: 1_627 },
     ]);
     expect(generatedSize).toBe(857);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("executes typed structured control as direct Z80", async () => {
+    // These checks intentionally inspect source-local marker labels by their
+    // original names. Permanent Atom source makes those markers private, so the
+    // original label names are only present in the explicit legacy proof view.
     const outcome = await runProofManifest(
       proof("structured-control-z80-slice-proof"),
+      legacyAzmProofOptions,
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
@@ -1039,10 +1070,10 @@ describe("source-prepared AZM and Debug80 proofs", () => {
       { name: "z80-runtime", bytes: 497 },
       { name: "proof-code-and-data", bytes: 905 },
     ]);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("emits packed aggregate layouts and publishes one atomic static image", async () => {
-    const outcome = await runProofManifest(proof("aggregate-z80-slice-proof"));
+    const outcome = await runPermanentAtomProof("aggregate-z80-slice-proof");
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
     expect(outcome.instructions).toBe(378_619);
@@ -1062,15 +1093,20 @@ describe("source-prepared AZM and Debug80 proofs", () => {
       { name: "z80-runtime", bytes: 497 },
       { name: "proof-code-and-data", bytes: 1_222 },
     ]);
-  }, 30_000);
+  }, z80ProofExecutionTimeout);
 
   it("measures dense semantic dispatch against a comparison chain", async () => {
-    const outcome = await runProofManifest(proof("dispatcher-measurement"));
+    const outcome = await runProofManifest(
+      proof("dispatcher-measurement"),
+      legacyAzmProofOptions,
+    );
     const direct = await runProofManifest(
       proof("dispatcher-offset-direct-measurement"),
+      legacyAzmProofOptions,
     );
     const trampoline = await runProofManifest(
       proof("dispatcher-offset-trampoline-measurement"),
+      legacyAzmProofOptions,
     );
     expect(outcome.extents.slice(0, 2)).toEqual([
       { name: "table-dispatch-selection", bytes: 37 },
