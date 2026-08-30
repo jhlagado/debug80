@@ -1,0 +1,174 @@
+{
+  "schema": "debug80-azm-direct-dependency-inventory/v1",
+  "purpose": "Classify every direct @jhlagado/azm import outside packages/azm while Atom becomes the first-class assembler path. This is a migration control, not permission to add new AZM dependencies.",
+  "imports": [
+    {
+      "file": "apps/debug80-vscode/src/debug/launch/azm-backend.ts",
+      "classification": "azm-backend",
+      "owner": "Debug80 explicit compatibility backend",
+      "retirement": "Remove only after all supported assembly projects build through Atom or another non-AZM backend and the Debug80 release process no longer promises AZM compatibility."
+    },
+    {
+      "file": "apps/debug80-vscode/tests/debug/azm-contract.test.ts",
+      "classification": "azm-backend",
+      "owner": "Debug80 packaged AZM compatibility contract",
+      "retirement": "Remove when Debug80 no longer ships or verifies the AZM compatibility backend."
+    },
+    {
+      "file": "archive/lanternfly/src/bootstrap/assemble.ts",
+      "classification": "archived-tooling",
+      "owner": "Archived Lanternfly bootstrap assembler wrapper",
+      "retirement": "Remove from this inventory only if the archived project is deleted or its bootstrap wrapper is rewritten; it is not part of the active Atom/Nucleus migration path."
+    },
+    {
+      "file": "integration/azm-headless/test/counter.test.ts",
+      "classification": "azm-headless-integration",
+      "owner": "AZM headless integration package",
+      "retirement": "Remove when the AZM headless integration package is retired or replaced by an Atom-headless integration package."
+    },
+    {
+      "file": "packages/atom/scripts/generate-cpm22.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom CP/M-native strict contract artifact builder",
+      "retirement": "Replace when Atom has an independent contract checker for native Atom source or another checked path proves the CP/M image without translating through AZM."
+    },
+    {
+      "file": "packages/atom/scripts/generate-native-core.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom native-core byte and strict-contract oracle",
+      "retirement": "Replace when Atom self-host proof and register-contract proof no longer require AZM as the external strict-contract authority."
+    },
+    {
+      "file": "packages/atom/scripts/measure-cpm22-output-candidates.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom CP/M output candidate measurement",
+      "retirement": "Replace after candidate measurement sources are either retired or measured through Atom plus an independent contract proof."
+    },
+    {
+      "file": "packages/atom/scripts/native-object-harness-builder.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom native object harness strict-contract builder",
+      "retirement": "Replace when the native object harness can be built and contract-checked without AZM."
+    },
+    {
+      "file": "packages/atom/test/host-atom-to-azm.test.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom source translation tests",
+      "retirement": "Remove when Atom no longer supports or verifies Atom-to-AZM translation."
+    },
+    {
+      "file": "packages/atom/test/host-azm-to-atom.test.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom source translation tests",
+      "retirement": "Remove when the AZM-to-Atom migration bridge is no longer supported."
+    },
+    {
+      "file": "packages/atom/test/host-self-host.test.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom self-host byte-equivalence proof",
+      "retirement": "Replace when self-host proof no longer compares against an AZM-built oracle image."
+    },
+    {
+      "file": "packages/atom/test/measure-self-host.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom self-host measurement",
+      "retirement": "Replace when the measured self-host path has a non-AZM baseline."
+    },
+    {
+      "file": "packages/atom/test/support.mjs",
+      "classification": "atom-oracle",
+      "owner": "Atom host test oracle helper",
+      "retirement": "Remove after all Atom host tests stop using AZM as the byte-identity oracle."
+    },
+    {
+      "file": "packages/glimmer/src/build.ts",
+      "classification": "glimmer-compatibility",
+      "owner": "Glimmer selectable generated-source assembler backend",
+      "retirement": "Remove after Glimmer no longer supports AZM as a generated-Z80 backend."
+    },
+    {
+      "file": "packages/glimmer/test/atom.test.ts",
+      "classification": "glimmer-compatibility",
+      "owner": "Glimmer Atom/AZM generated-source comparison tests",
+      "retirement": "Remove with Glimmer AZM backend support."
+    },
+    {
+      "file": "packages/glimmer/test/generate.test.ts",
+      "classification": "glimmer-compatibility",
+      "owner": "Glimmer generated AZM output tests",
+      "retirement": "Remove or translate when Glimmer's checked generated assembly format becomes Atom-only."
+    },
+    {
+      "file": "packages/glimmer/test/load.test.ts",
+      "classification": "glimmer-compatibility",
+      "owner": "Glimmer load/build tests with AZM backend coverage",
+      "retirement": "Remove with Glimmer AZM backend support."
+    },
+    {
+      "file": "packages/nucleus/scripts/atom-migration-proof-compare.mjs",
+      "classification": "nucleus-proof-comparison",
+      "owner": "Nucleus Atom migration byte comparison",
+      "retirement": "Remove after the Atom-built proof images become authoritative and old AZM-built comparison images are no longer needed."
+    },
+    {
+      "file": "packages/nucleus/src/nucleus-runtime.ts",
+      "classification": "nucleus-runtime-fallback",
+      "owner": "Nucleus canonical runtime image explicit AZM fallback",
+      "retirement": "Remove after the Atom runtime route is the only supported runtime provider and downstream callers no longer request the AZM fallback."
+    },
+    {
+      "file": "packages/nucleus/src/proof.ts",
+      "classification": "nucleus-proof-comparison",
+      "owner": "Nucleus proof harness legacy assembler and contract checker",
+      "retirement": "Remove after every non-measurement proof image has a permanent Atom route and strict contract verification no longer depends on AZM."
+    },
+    {
+      "file": "packages/nucleus/test/atom-migration-dry-run.test.mjs",
+      "classification": "nucleus-proof-comparison",
+      "owner": "Nucleus Atom migration regression tests",
+      "retirement": "Remove after the migration bridge and AZM comparison path are retired."
+    },
+    {
+      "file": "scripts/cpm22/build-image.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M 2.2 disk image build",
+      "retirement": "Convert the CP/M build pipeline to Atom once bootstrap, BIOS, smoke, and editor sources assemble byte-identically with Atom or have explicit blockers recorded."
+    },
+    {
+      "file": "scripts/cpm22/import-nucleus.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M 2.2 Nucleus import utility",
+      "retirement": "Convert when the imported native Nucleus compiler image is built from Atom source."
+    },
+    {
+      "file": "scripts/cpm22/measure-editor-buffers.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M editor buffer measurement",
+      "retirement": "Convert after the editor candidate fixtures assemble and expose equivalent symbols through Atom D8 output."
+    },
+    {
+      "file": "scripts/cpm22/measure-editor-new-file.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M editor new-file measurement",
+      "retirement": "Convert after the editor candidate fixtures assemble and expose equivalent symbols through Atom D8 output."
+    },
+    {
+      "file": "scripts/cpm22/measure-editor-replace.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M editor replace measurement",
+      "retirement": "Convert after the editor candidate fixtures assemble and expose equivalent symbols through Atom D8 output."
+    },
+    {
+      "file": "scripts/cpm22/measure-editor-search.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M editor search measurement",
+      "retirement": "Convert after the editor candidate fixtures assemble and expose equivalent symbols through Atom D8 output."
+    },
+    {
+      "file": "scripts/cpm22/prove-editor.mjs",
+      "classification": "cpm22-development-tooling",
+      "owner": "CP/M editor proof",
+      "retirement": "Convert after the editor build and D8 symbol path no longer depend on AZM register-contract output."
+    }
+  ]
+}
