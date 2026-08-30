@@ -1,6 +1,7 @@
 import {
   createRuntimeStreamIoHandlers,
   createRuntimeStreamIoStubBytes,
+  isZ80Word,
   runtimeStreamIoOperationName,
   type RuntimeByteStreams,
   type RuntimeStreamIoHandlers,
@@ -86,7 +87,7 @@ const streamServiceName = (
 };
 
 const checkedAddress = (name: string, value: number): number => {
-  if (!Number.isInteger(value) || value < 0 || value > 0xffff) {
+  if (!isZ80Word(value)) {
     throw new RangeError(`${name} is outside 0..65535`);
   }
   return value;
