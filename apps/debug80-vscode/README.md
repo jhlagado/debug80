@@ -47,9 +47,9 @@ are available at [debug80.com](https://debug80.com/).
   `zero and A eq $20`.
 - **Integrated build workflow**: Atom, AZM, Glimmer, and Nucleus are packaged
   with the extension and called in-process, so users do not need global
-  compiler installs. New assembly projects select Atom explicitly in
-  `debug80.json`. Existing targets without an assembler field retain the AZM
-  compatibility default until they are migrated.
+  compiler installs. Assembly targets use Atom by default. Set
+  `"assembler": "azm"` only for source that still requires the AZM
+  compatibility backend.
 - **Register, symbol, stack, and memory visibility**: inspect CPU registers,
   source-map symbols and constants, best-effort symbolic stack entries, flags,
   program counter state, memory regions, RAM contents, ROM-protected ranges, and
@@ -70,9 +70,10 @@ are available at [debug80.com](https://debug80.com/).
 - **Z80 assembly language support**: file associations and syntax highlighting
   for `.asm`, `.z80`, and `.asmi` files, including layout types, enums,
   contracts, and interface files.
-- **Glimmer language support**: `.glim` projects compile through Glimmer and AZM,
-  retain source-level breakpoints and diagnostics, and embed full Z80/AZM syntax
-  highlighting inside `begin`/`end` bodies.
+- **Glimmer language support**: `.glim` projects compile through Glimmer and the
+  selected generated-source assembler, Atom by default, retain source-level
+  breakpoints and diagnostics, and embed Z80 assembly highlighting inside
+  `begin`/`end` bodies.
 - **Nucleus language support**: `.nu` files have language-aware editing, target
   discovery, positioned compiler diagnostics, and builds through the standalone
   Nucleus package's in-process Host API. The extension contains the pinned

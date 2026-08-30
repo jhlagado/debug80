@@ -193,7 +193,7 @@ assembleIfRequested({
 
 ### Assembler backend selection
 
-`resolveAssemblerBackend()` in `src/debug/launch/assembler-backend.ts` chooses the assembler based on the `assembler` field in the launch arguments, or infers it from the file extension:
+`resolveAssemblerBackend()` in `src/debug/launch/assembler-backend.ts` chooses the backend from the `assembler` field in the launch arguments. When that field is absent, Debug80 uses source-extension defaults:
 
 | Extension              | Backend |
 | ---------------------- | ------- |
@@ -202,10 +202,12 @@ assembleIfRequested({
 | `.nu`                  | Nucleus |
 
 Atom is the default in-process backend for ordinary assembly files. Atom and
-AZM both use `.asm`, so Debug80 does not guess between them from the filename
-once a concrete assembler has been requested. The shared assembler-flavour
-normalizer accepts Atom as `atom` or `ATOM-Z80` and AZM as `azm` or `ASM80`.
-Top-level `assembler` also accepts the frontend IDs `glimmer` and `nucleus`.
+AZM both use `.asm`, so `.asm` is a source format, not an assembler selection.
+Projects that need AZM should set `"assembler": "azm"` explicitly. The shared
+assembler-flavour normalizer accepts Atom as `atom` or `ATOM-Z80` and AZM as
+`azm` or `ASM80`; project configuration writes the canonical `atom` or `azm`
+value when it updates a target. Top-level `assembler` also accepts the frontend
+IDs `glimmer` and `nucleus`.
 
 The backend conforms to the `AssemblerBackend` interface:
 
@@ -589,7 +591,7 @@ All three paths send an error response to VS Code, which shows the error and cle
 
 - Platforms are lazy-loaded via dynamic imports. Each platform provides a `ResolvedPlatformProvider` that supplies I/O handlers, custom commands, ROM configurations, and entry point resolution.
 
-- The assembler backend is selected from the target configuration and source file extension. Atom is the default for `.asm`, `.inc`, and `.z80`, explicit AZM selectors can use either `azm` or `ASM80`, and Glimmer handles `.glim`. Assembly is optional and conditional on the `assemble` flag.
+- The assembler backend is selected from the target configuration first, then from source-extension defaults when the target does not name a backend. Atom is the default for `.asm`, `.inc`, and `.z80`; AZM requires an explicit `azm`/`ASM80` selector; Glimmer handles `.glim`; Nucleus handles `.nu`. Assembly is optional and conditional on the `assemble` flag.
 
 - Program loading builds a platform-specific memory image: plain for simple, ROM + RAM overlay for TEC-1/TEC-1G. Source mapping and symbols come from the native D8 map emitted by the selected assembler backend.
 
