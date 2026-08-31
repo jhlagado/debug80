@@ -117,7 +117,7 @@ The standard CP/M profile accepts:
 ```text
 ATOM
 ATOM SOURCE
-ATOM SOURCE OUTPUT.COM
+ATOM SOURCE OUTPUT
 ATOM ?
 ```
 
@@ -125,15 +125,16 @@ ATOM ?
 `HELLO.ASM` to `HELLO.COM`. A root source follows active `%INCLUDE` directives;
 the command accepts no second source-composition form.
 
-The standard CP/M image emits COM only. It has no definition, target geometry,
-listing, D8, HEX, NOBJ, or suppression switches. Its target, provider, fill,
-and output module are properties of the linked native profile.
+The standard CP/M image selects COM, BIN, or Intel HEX from an explicit output
+suffix. One invocation emits one file. It has no definition, target geometry,
+listing, D8, NOBJ, or suppression switches. Its target, provider, fill, and
+output module are properties of the linked native profile.
 
 The TEC-native command follows the same positional shape, with the selected
 native profile defining its default and supported output suffixes.
 
-The revised CP/M command-tail parser is Measured 351 resident code bytes,
-exactly 64 bytes above the 287-byte include-root baseline. Include resolution
+The revised CP/M command-tail parser is Measured 390 resident code bytes,
+exactly 103 bytes above the 287-byte include-root baseline. Include resolution
 and its workspace are measured separately from the command parser and from the
 Atom core.
 

@@ -59,8 +59,8 @@ against a checked upstream build or historical binary proves the resulting CCP
 and BDOS bytes, apart from documented serial-number fields.
 
 Native `ATOM.COM` is built from `packages/atom` under GPL-3.0-only. The current
-14,660-byte artifact has SHA-256
-`9048475453092a12f2e509cedc7931683698b6edafeb8645d95d1049be485ebb`.
+15,008-byte artifact has SHA-256
+`315780b93751f9b6661ea5c5d131ca4d1c4cd27d84c080e302366a3a6735ed80`.
 `packages/atom/proofs/cpm22-census.json` records the corresponding strict build,
 capacity account, and artifact digest. The CP/M image build verifies that
 census before installing the program.
@@ -176,17 +176,20 @@ The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
 `INPUT.ASM`, `HELLO.ASM`, the 16,535-byte `LARGE.ASM` acceptance source,
 `PART1.ASM`, `PART2.ASM`, `BUILD.ASM`, `NUCLEUS.COM`, `INPUT.NU`, and
 `EDIT.COM`. `ATOM.COM` reads and writes through the guest BDOS. With no
-arguments it uses `INPUT.ASM` and `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects
-another pair of current-drive CP/M 8.3 names. A source may place `%INCLUDE`
+arguments it uses `INPUT.ASM` and `OUTPUT.COM`; `ATOM SOURCE OUTPUT` selects
+another pair of current-drive CP/M 8.3 names. The output suffix selects COM,
+BIN, or Intel HEX. A source may place `%INCLUDE`
 directives in its leading header. Atom resolves those current-drive CP/M 8.3
 names once, rejects cycles and malformed or late includes during preflight,
 and assembles dependencies before their importer.
 
 Each source part may contain at most 65,535 logical bytes. Atom retains up to
-255 parts, assigns one-based part ordinals, and resets the diagnostic byte
+255 parts, assigns zero-based part ordinals, and resets the diagnostic byte
 offset at each part boundary. All source reads use a 128-byte random-record
-cache. The output remains one transactional, 18,304-byte in-TPA COM image;
-multipart input does not raise that output limit. `BUILD.ASM` includes two
+cache. The output remains one transactional, 18,304-byte in-TPA image. COM and
+BIN publish the final bytes directly; HEX is rendered after patching and
+streamed through BDOS records. Multipart input does not raise that output
+limit. `BUILD.ASM` includes two
 33,000-byte parts whose program leaves a forward reference in the first part
 and resolves it in the second.
 

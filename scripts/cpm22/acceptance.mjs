@@ -158,8 +158,8 @@ const atomExecution = runCommand(
   "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
 );
 assert.deepEqual(atomExecution, {
-  instructions: 204776,
-  tStates: 2657015,
+  instructions: 205925,
+  tStates: 2675545,
 });
 const expectedOutput = Uint8Array.from([
   0x0e,
@@ -185,8 +185,8 @@ const namedAtomExecution = runCommand(
   "ATOM HELLO.ASM MADE.COM\r\r\n\r\nMADE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(namedAtomExecution, {
-  instructions: 215671,
-  tStates: 2762204,
+  instructions: 216825,
+  tStates: 2780784,
 });
 const namedOutputFile = readCpm22File(platform.disk.exportImage(), "MADE.COM");
 assert.ok(namedOutputFile, "native Atom did not publish selected MADE.COM");
@@ -200,8 +200,8 @@ const largeAtomExecution = runCommand(
   "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(largeAtomExecution, {
-  instructions: 4298294,
-  tStates: 42133203,
+  instructions: 4299448,
+  tStates: 42151783,
 });
 const largeOutputFile = readCpm22File(platform.disk.exportImage(), "LARGE.COM");
 assert.ok(
@@ -235,8 +235,8 @@ const multipartAtomExecution = runCommand(
   20_000_000,
 );
 assert.deepEqual(multipartAtomExecution, {
-  instructions: 16685400,
-  tStates: 161603099,
+  instructions: 16686554,
+  tStates: 161621679,
 });
 const multipartOutputFile = readCpm22File(
   platform.disk.exportImage(),
