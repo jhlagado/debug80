@@ -120,3 +120,10 @@ adapter uses an isolated temporary object or memory area and makes it visible
 only after the operation succeeds. This is the same publication rule used by
 the Node implementation; it does not require the Z80 to retain the whole NOBJ
 in memory.
+
+The optional `native/atom-flat-nobj.asm` module implements `ZN_PROF` for Atom
+NOBJ 0.2. It expands the state block to 45 bytes and checks the complete flat
+profile, including IMAGE coverage for every PATCH and pairwise PATCH
+non-overlap. Those two checks use repeated sequential reads. The implementation
+therefore has constant RAM use at the cost of additional file scans when an
+object contains many PATCH records.
