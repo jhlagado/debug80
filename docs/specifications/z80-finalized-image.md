@@ -1,5 +1,8 @@
 # Z80 finalized-image contract
 
+This contract refines the output boundary in the
+[Atom platform contract](atom-platform-architecture.md).
+
 ## Purpose
 
 Atom and Nucleus both produce ordered IMAGE records followed by PATCH records.

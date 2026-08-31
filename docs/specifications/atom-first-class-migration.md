@@ -1,5 +1,9 @@
 # Atom first-class migration
 
+This document records the migration checkpoints. The current ownership and
+lifecycle authority is the
+[Atom platform contract](atom-platform-architecture.md).
+
 Status: Atom-first Debug80 consolidation complete; Nucleus convergence active
 
 Date: 2026-08-27

@@ -1,8 +1,8 @@
 # Atom CLI v1
 
-Status: accepted target contract
+Status: authoritative
 
-Date: 2026-08-27
+Date: 2026-08-31
 
 ## Principles
 
@@ -19,6 +19,7 @@ Date: 2026-08-27
 ```text
 atom [OPTIONS] INPUT.ASM [OUTPUT...]
 atom --project PROJECT.json [OUTPUT...]
+atom self-host [OUTPUT...]
 ```
 
 Examples:
@@ -58,6 +59,7 @@ The ordinary option set is:
 
 ```text
 -p, --project FILE
+-o, --output FILE
 -t, --target NAME
 -DNAME[=VALUE]
 -h, --help
@@ -157,15 +159,11 @@ one concise diagnostic, preserves the preceding COM through its transaction,
 and returns `A=0` on success, `A=1` on build or I/O failure, and `A=2` on command
 misuse for monitors and tests that can observe it.
 
-## Migration
+## Compatibility boundary
 
-Atom is pre-1.0, so CLI v1 is adopted before it becomes Debug80's default.
-During one compatibility checkpoint, existing Node switches may translate to
-an anonymous project/target with a deprecation diagnostic, and the existing
-artifact bundle remains available to repository automation. Debug80 and all
-in-repository scripts must request exact artifacts before the default changes
-to BIN only.
+The command rejects removed negative-output and geometry switches rather than
+silently translating them. Repeated desktop build policy belongs in project
+JSON. Native profiles use their positional command and linked target policy.
 
-The CP/M profile now uses the include-driven native path exclusively. Its
-multipart, diagnostic, capacity, transaction, and size proofs gate later CLI
-changes.
+Tools that accept ordinary `.asm` files select the assembler explicitly. A
+filename does not distinguish Atom from another assembly-language frontend.

@@ -1,224 +1,257 @@
-# Atom platform architecture
+# Atom platform contract
 
-Status: accepted target architecture
+Status: authoritative
 
-Date: 2026-08-27
+Date: 2026-08-31
 
-The Node-hosted, Debug80-integrated, CP/M-native, and TEC-native profiles are
-implemented and proved under emulation. The reusable native named-object
-harness, TEC-FS source provider, and TecMate launcher are implemented. TEC
-hardware acceptance is deferred to a later deployment checkpoint. Nucleus
-convergence remains active work. Atom release installation is complete. The
-Debug80 project corpus no longer selects AZM.
+## Product shape
 
-## Product decision
+Atom is always a Z80 program. On a desktop, Debug80 executes the Atom Z80 core
+and Node supplies files and artifact services. On a native system, the same
+core runs through a Z80 harness that calls CP/M, MON3, TEC-FS, or another local
+operating environment.
 
-Atom is Debug80's first-class Z80 assembler. The authoritative Atom product
-lives in this monorepo as `packages/atom`, is published independently as the
-`atom-z80` npm package, and retains the `atom` command. Its native programs and
-source remain deployable without Node or Debug80.
-
-The package move does not make the assembler a component of the emulator.
-Package dependencies enforce this direction:
+The normal caller shapes are:
 
 ```text
-z80-tool-services ----+
-                      +--> atom-z80 --> debug80-vscode AtomBackend
-debug80-runtime ------+
-
-z80-tool-services --------> Nucleus
+atom main.asm build/main.bin build/main.hex
+atom --project atom.json
+ATOM SOURCE OUTPUT
+assembleAtomProject({ root, entry, target })
 ```
+
+The desktop command and API may expose richer preparation and output policy.
+A native command remains small and positional. Neither frontend changes Atom's
+instruction, expression, symbol, or directive semantics.
+
+Atom lives in `packages/atom` and is published as `atom-z80`. The emulator is a
+dependency of the desktop profile, not the owner of the assembler.
+
+## Ownership map
+
+```text
+frontend
+  -> source preparation
+  -> Atom Z80 harness
+  -> Atom Z80 core
+  -> logical IMAGE/PATCH generation
+  -> optional NOBJ serialization
+  -> finalized-image consumer
+  -> requested files or runnable memory
+
+filesystem adapter <-> source preparation, harness, and NOBJ consumer
+```
+
+| Layer | Owns | Must not own |
+| --- | --- | --- |
+| Frontend | command syntax, project selection, target selection, requested outputs | assembly-language semantics |
+| Source preparation | dependency discovery, conditional filtering, source identity, provenance | tokens, symbols, instruction encoding |
+| Atom harness | run lifecycle, source callback, platform adaptation, diagnostics | project JSON or portable filesystem policy |
+| Atom core | tokenizer, expressions, symbols, directives, encoding, forward patches | filenames, NOBJ framing, BIN, COM, HEX, listing, D8 |
+| Finalized-image layer | NOBJ validation, IMAGE/PATCH materialization, BIN, COM, HEX | symbol lookup or relocation expressions |
+| Filesystem adapter | object naming, reads, writes, seek, commit, abort | include grammar or compiler policy |
+
+This contract deliberately rejects three broader designs:
+
+- one universal resident binary, because small systems should link only the
+  source, output, console, and filesystem modules they use;
+- one register-level compiler ABI, because Atom and Nucleus already have
+  compact internal calls suited to their different cores; and
+- mandatory NOBJ serialization, because a platform that already owns the
+  completed generation can materialize it directly.
+
+The shared boundary is therefore semantic: source bytes, named objects,
+transactions, IMAGE/PATCH generations, and finalized target images. Small
+adapters translate each tool's native calls to those meanings.
+
+## Atom Z80 core
+
+`AtomAssemble` receives bounded source descriptors, caller-owned symbol and
+pending arenas, and a target range. It reads source through
+`AtomSourceReadByte`, emits begin, IMAGE, PATCH, commit, and abort calls, and
+returns exact source-part and byte offsets for diagnostics.
+
+The core has no filesystem, path, command-line, JSON, NOBJ, or artifact-format
+code. The same code runs on hardware and under emulation.
+The core and its fixed workspace remain subject to Atom's 16 KiB resident gate.
+
+IMAGE records contain bytes produced in source order. PATCH records contain
+final replacement bytes after a forward symbol resolves. They never contain a
+symbol name or an unevaluated expression.
+
+## Source service and preparation
+
+The core-facing source contract is deliberately small:
+
+```text
+AtomSourceReadByte(partOrdinal, logicalOffset) -> byte or failure
+```
+
+The harness implements that callback from one of three sources:
+
+- immutable JavaScript snapshots in the desktop profile;
+- a random-record file cache in the CP/M profile; or
+- a TEC-FS or other native object reader in a small-system profile.
+
+Each source part keeps its own identity and 16-bit offset domain. Parts are not
+copied into one Z80 input buffer. The native driver accepts 1 through 255
+ordered parts, each containing at most 65,535 bytes.
+
+Source preparation starts from one root `.asm` file. Active `%INCLUDE`
+directives form an import-once dependency graph. Dependencies precede their
+importer, repeated direct imports and diamonds contribute one part, and cycles
+fail before assembly begins.
+
+Node additionally supports `%DEFINE`, `%IF`, `%ELSE`, `%ENDIF`, and `INCBIN`.
+It masks or lowers host-owned source without changing byte offsets. Native
+CP/M and TEC profiles currently implement leading `%INCLUDE` only. Native
+profiles do not parse Node project JSON or an intermediate manifest.
+
+The detailed rules are in the
+[Z80 source preparation contract](z80-source-preparation.md).
+
+## Filesystem and tool-service adapters
+
+Filesystem policy stays below the assembler and outside the shared service
+ABI. Node paths, CP/M FCB names, and TEC-FS catalogue identities are different
+provider concerns. There is no portable `resolvePath` operation.
+
+`@jhlagado/z80-tool-services` defines the common named-object operations:
+open, read, seek, rewind, close, begin write, write, commit, and abort. Atom's
+compact callbacks and Nucleus's compiler vector retain their own register-level
+shapes; their harness adapters translate to the common service meanings.
+
+A provider must keep EOF separate from byte values, leave a cursor unchanged
+after a failed read or seek, and prevent a failed update from replacing the
+last committed object. The provider retains no caller pointer after a
+synchronous request.
+
+The register and transaction rules are in
+[Z80 Tool Services ABI v1](z80-tool-services-abi-v1.md).
+
+## NOBJ and finalized images
+
+NOBJ is the portable stored form of a logical generation. It is not a linker
+input and it is not mandatory between Atom and a final file. A platform may
+choose either path:
+
+```text
+Atom generation -> materialize directly -> BIN, COM, HEX, or RAM
+Atom generation -> NOBJ -> validate and materialize -> BIN, COM, HEX, or RAM
+```
+
+The second path is useful when assembly and final publication happen at
+different times or on different machines. The consumer validates the complete
+NOBJ envelope and the selected Atom or Nucleus profile before changing visible
+target memory. It then initializes the target, applies IMAGE records, and
+applies final PATCH bytes.
+
+This operation is called validation and materialization, not linking. It never
+looks up symbols, chooses addresses, or evaluates relocation expressions.
+
+The shared Node implementation owns NOBJ envelope validation, target-image
+materialization, and BIN, COM, and Intel HEX rendering. The shared native Z80
+implementation can read a stored NOBJ through a sequential byte callback,
+validate it, rewind it, and materialize it without retaining the complete file
+in RAM. Atom and Nucleus supply separate profile validators.
+
+A COM file is the selected flat binary with load and entry address `$0100`; it
+has no header. A BIN file carries raw bytes and no load address. Intel HEX
+carries addressed records and checksums.
+
+The detailed rules are in the
+[Z80 finalized-image contract](z80-finalized-image.md).
+
+## Frontend responsibilities
+
+The desktop command owns project JSON, full preprocessing, target selection,
+positive output selection, listings, and D8 maps. It supports BIN, COM, HEX,
+NOBJ, listing, and D8 output. It renders and stages every requested file before
+replacing any previous output.
+
+The native CP/M command accepts:
+
+```text
+ATOM
+ATOM SOURCE
+ATOM SOURCE OUTPUT
+ATOM ?
+```
+
+It emits one COM, BIN, or HEX file. Target geometry, fill, filesystem provider,
+and available renderers belong to the linked native profile rather than command
+options. A TEC command follows the same small positional principle, with its
+own platform defaults.
+
+Debug80 integration uses the Atom programming API directly. Tools select the
+`atom` assembler explicitly for ordinary `.asm` files; the filename does not
+select a source language.
+
+The exact command contract is in [Atom CLI v1](atom-cli-v1.md).
+
+## Platform profiles
+
+| Profile | Z80 execution | Source and storage provider | Product surface |
+| --- | --- | --- | --- |
+| Desktop | Debug80 runtime | Node snapshots and transactional files | `atom` CLI and `atom-z80` API |
+| Debug80-integrated | same desktop execution | same Node providers | Debug80 Atom backend |
+| CP/M native | physical or emulated Z80 | BDOS `$0005`, FCBs, record cache | `ATOM.COM` |
+| TEC native | physical or emulated Z80 | MON3 and TEC-FS services | TecMate command profile |
+
+The desktop and CP/M products are complete paths. The reusable TEC harness and
+provider components are proved under emulation; final TecMate product
+integration, target memory-map acceptance, and physical-hardware acceptance are
+separate deployment checkpoints.
+
+Running `ATOM.COM` in Debug80 is still the native CP/M profile: the guest uses
+the real CCP, BDOS, and BIOS path, while Debug80 emulates the processor and
+devices. The desktop profile is different because Node directly provides the
+Atom harness services.
+
+## Lifecycle and failure rules
+
+One build follows this order:
+
+1. resolve and validate the complete source set;
+2. allocate descriptors and caller-owned arenas;
+3. begin one tentative logical generation;
+4. run the Z80 assembler once over the ordered parts;
+5. commit the generation or abort it exactly once;
+6. optionally serialize or consume NOBJ;
+7. materialize the requested target image; and
+8. publish every requested file as one transaction.
+
+Preparation fails before the core starts. A failure after begin aborts the
+tentative generation. NOBJ validation fails before visible target memory or a
+committed output file changes. A frontend failure leaves the previous files in
+place.
+
+These rules apply equally to Node files, CP/M temporary-and-backup publication,
+and a native object store, even though their physical mechanisms differ.
+
+## Dependency direction
 
 `debug80-runtime` owns processors and emulated machines. It does not know Atom,
 NOBJ, source preparation, or compiler publication policy.
 
-## Terms
+`z80-tool-services` owns language-neutral source, object, transaction, NOBJ
+envelope, and finalized-image facilities. It does not import Atom or Nucleus
+language policy.
 
-These names are normative in code, documentation, tests, and status reports.
-
-| Term                    | Meaning                                                                                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Z80-native Atom         | A self-contained Z80 program using a Z80 operating environment such as CP/M, MON3, or TEC-FS. It needs no Node service while running.                     |
-| Node-hosted Atom        | The Atom Z80 engine runs in `debug80-runtime`; Node supplies project preparation and tool services.                                                       |
-| Debug80-integrated Atom | Node-hosted Atom invoked through Debug80's assembler backend.                                                                                             |
-| hardware execution      | Atom's Z80 instructions execute on a physical Z80-compatible processor.                                                                                   |
-| emulated execution      | Atom's Z80 instructions execute in Debug80 or another emulator.                                                                                           |
-| native profile          | A statically composed Z80 harness and provider for one operating environment.                                                                             |
-| project                 | A Node-only JSON build description. Native profiles do not parse it.                                                                                      |
-| prepared source set     | The immutable ordered source parts obtained by following active `%INCLUDE` directives from one root source. This is an internal value, not a file format. |
-| target profile          | Address limits, banking, entry convention, fill policy, and deployment constraints.                                                                       |
-| tool-service provider   | The adapter from portable named-object, transaction, and console operations to Node, BDOS, or TEC-FS.                                                     |
-
-`ATOM.COM` running in Debug80 is the CP/M-native profile under emulated
-execution. It follows the same CCP, BDOS, and BIOS path as hardware execution;
-only the processor and devices are emulated.
-
-## Layers
-
-```text
-7. Product frontend
-   atom CLI | Atom API | Debug80 AtomBackend | CP/M command | TEC command
-
-6. Project preparation
-   %INCLUDE | conditionals | INCBIN | identities | provenance
-
-5. Atom Z80 harness
-   run lifecycle | source access | diagnostics | NOBJ or direct output profile
-
-4. Atom Z80 core
-   tokenizer | parser | symbols | directives | encoder | IMAGE/PATCH decisions
-
-3. Z80 tool-services ABI
-   named-object reads | transactional writes | optional console
-
-2. Platform provider
-   Node provider | CP/M provider | TEC provider
-
-1. Operating environment
-   Node | CP/M BDOS | MON3/TEC-FS
-
-0. Processor and machine
-   Debug80 emulator | physical Z80 | memory | terminal | storage hardware
-```
-
-Layers 4 and 5 always execute as Z80 code. Node may prepare sources, execute
-the Z80 image, provide objects, and render artifacts, but it does not
-reimplement assembly semantics.
-
-## Atom core
-
-The core remains the size-critical, platform-independent assembler. It:
-
-- reads bytes through `AtomSourceReadByte(part, offset)`;
-- receives bounded source, symbol, pending, target, and stack regions;
-- emits begin, IMAGE, PATCH, commit, and abort operations;
-- retains exact source-part ordinals and offsets for diagnostics;
-- contains no filename, path, filesystem, operating-system, command-line, NOBJ
-  framing, or artifact-format code; and
-- remains subject to the existing 16 KiB code gate.
-
-The compact Atom callback ABI remains separate from Nucleus's compiler vector.
-The common layer begins below both tool-specific adapters.
-
-## Atom harness
-
-The harness is Atom-owned Z80 code around the core. Reusable source modules own
-run-level lifecycle, source access, diagnostics, and output adaptation. Native
-profiles select only the required modules at link time; there is no universal
-binary that makes every small system pay for every service.
-
-The reusable named-object harness exposes a link-time source-reader target.
-The ordinary target reads prepared bytes directly. A native preparation profile
-may replace it with an equal-offset filtering reader that masks only directives
-validated during preflight. This composition point remains outside the Atom
-core and does not add filesystem or preprocessor policy to the named-object ABI.
-It also exposes a measured postlude region after the shared adapter. A native
-profile keeps its small fixed-origin dispatcher in the prelude and places its
-larger launcher or preparation code in this postlude. Both regions are included
-in the deployed resident extent and the 16 KiB bank gate.
-
-NOBJ belongs in an optional harness output module, not in the core or the
-filesystem provider. A constrained profile may retain a measured direct-image
-sink when it is smaller. Core, harness, provider, workspace, buffers, and
-generated output are measured separately, with an additional deployed-image
-gate for each native profile.
-
-## Tool services
-
-`packages/z80-tool-services` is the language-neutral authority for:
-
-- `openRead`, `read`, `seek`, `rewind`, and `close`;
-- `beginWrite`, `write`, `commit`, and `abort`;
-- byte-transparent transfers and EOF separate from data;
-- canonical status values;
-- transaction states and failure atomicity;
-- provider capabilities and limits;
-- Z80 request, register, flag, stack, and bank contracts;
-- TypeScript types and reference providers; and
-- provider conformance vectors shared by Node, CP/M, and TEC environments.
-
-The package contains no Atom- or Nucleus-specific policy. It may publish
-generated Z80 include files so native clients can pin an ABI version without
-requiring npm at build or run time.
-
-## Source preparation
-
-One root `.ASM` file is the only authored build input. Active `%INCLUDE`
-directives discover dependencies. Each included file remains a distinct source
-part, preserving identity and local offsets; the implementation does not need
-to concatenate all bytes into Z80 memory.
-
-The public interface has one source-composition model: a root source plus active
-`%INCLUDE` directives. Existing composition interfaces remain temporarily
-available only until the replacement passes the same multipart, diagnostic,
-capacity, and failure proofs.
-
-Node resolves includes, conditionals, definitions, and `INCBIN` into an
-immutable prepared source set before starting the Z80 core. A Node project may
-describe repeatable target and output policy in JSON, but neither the core nor
-any Z80-native profile parses JSON.
-
-A Z80-native profile starts from one root source and follows `%INCLUDE` through
-its tool-service provider. Target geometry and available output modules are
-linked into the profile. The current CP/M and TEC profiles implement leading
-`%INCLUDE`; `%DEFINE`, `%IF`, `%ELSE`, `%ENDIF`, and `INCBIN` remain Node-hosted
-preparation features. A future native profile may add those features without
-changing the root-source interface or exposing an intermediate ordering file.
-
-## Host profiles
-
-| Profile            | Execution                      | Provider                         | Normal product                 |
-| ------------------ | ------------------------------ | -------------------------------- | ------------------------------ |
-| Node-hosted        | `debug80-runtime` Z80 emulator | JavaScript named-object provider | `atom` CLI and programming API |
-| Debug80-integrated | same Node-hosted execution     | same provider                    | Debug80 `AtomBackend`          |
-| CP/M-native        | physical or emulated Z80       | BDOS `$0005` provider            | `ATOM.COM`                     |
-| TEC-native         | physical or emulated Z80       | MON3/TEC-FS provider             | TecMate `ASM` command          |
-
-Debug80's CP/M machine remains below the guest BIOS. It supplies emulated disk
-and terminal devices and does not intercept Atom or BDOS.
-
-## Artifacts
-
-The core emits one logical generation. Output modules may serialize or render:
-
-- Atom NOBJ as the portable append-oriented object;
-- flat BIN;
-- Intel HEX;
-- validated CP/M COM;
-- a source listing; and
-- a D8 map.
-
-D8 and host listings are Node renderers. They do not enter the native core,
-tool-service ABI, or normal CP/M profile. COM is a validated flat image loaded
-and entered at `$0100`; it adds no header and no assembler semantics.
-
-Only requested public artifacts are published. Integrity metadata for an
-immutable artifact generation is publication state, not source composition,
-and uses generation or receipt terminology.
-
-## Versioned contracts
-
-The migration publishes and tests these contracts independently:
-
-1. Atom Core ABI v1.
-2. Z80 Tool Services ABI v1.
-3. Atom prepared-source-set model.
-4. Atom output-event and NOBJ profile.
-5. Atom CLI v1.
-6. Atom public Node API.
-7. Native image metadata: Atom version, ABI versions, profile, entry points,
-   digest, memory map, and measured limits.
+`atom-z80` depends on those two packages for its desktop profile. Native Atom
+images contain the Z80 code and platform adapters they need; they do not depend
+on Node or npm at run time.
 
 ## Acceptance
 
-A checkpoint may become authoritative only when the affected profile proves:
+A platform profile is authoritative only when its executable proof covers:
 
-- byte-identical output over Atom's complete claimed Z80 instruction space;
-- native self-host reproduction;
-- exact register, flag, stack, memory, and callback contracts;
-- exact source identity and diagnostic offsets across includes;
-- no partial output after source, capacity, provider, or commit failure;
-- fresh code, immutable data, workspace, buffer, and cycle accounts;
-- Node package and CLI operation without a repository checkout;
-- CP/M execution through real guest BDOS and BIOS under Debug80; and
-- provider conformance before TEC hardware acceptance.
+- exact Atom output for every claimed instruction form;
+- self-assembly of the native core;
+- register, flag, stack, memory, and callback contracts;
+- source identity and offsets across multiple files;
+- exact capacity boundaries;
+- failure atomicity for preparation, assembly, NOBJ consumption, and
+  publication; and
+- separate measurements for core code, immutable data, workspace, adapter
+  state, output storage, stack, and execution cost.

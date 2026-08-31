@@ -1,5 +1,8 @@
 # Z80 source preparation contract
 
+This contract refines the source boundary in the
+[Atom platform contract](atom-platform-architecture.md).
+
 ## Purpose
 
 Source preparation turns one entry source into ordered source parts for a
