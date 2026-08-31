@@ -111,12 +111,14 @@ and whether the profile requires at least one IMAGE record.
 
 The reader returns a byte with carry clear. It returns carry set with A equal
 to `ZN_EOF` only at end of input; any other carry-set value is an input failure.
-The rewind, profile, initialization, and store routines preserve IX. The
+The read, rewind, profile, initialization, and store routines preserve IX and
+IY. The
 profile routine must check its complete BEGIN, IMAGE/PATCH, and MAP rules before
 returning success. Target initialization occurs only after that validation.
 
-The state block must not overlap target memory. The stored object must be
-immutable between validation and materialization. A
+The state block must not overlap target memory. From the first read until
+`ZN_MAT` returns, the stored object must remain readable and byte-for-byte
+unchanged, and no target write may alias it. A
 direct RAM store must also be infallible for every address accepted by the
 profile validator. When either property cannot be guaranteed, the platform
 adapter uses an isolated temporary object or memory area and makes it visible
@@ -131,3 +133,14 @@ profile, including IMAGE coverage for every PATCH and pairwise PATCH
 non-overlap. Those two checks use repeated sequential reads. The implementation
 therefore has constant RAM use at the cost of additional file scans when an
 object contains many PATCH records.
+
+The optional `native/nucleus-nobj.asm` module implements `ZN_PROF` for Nucleus
+NOBJ 0.1. It uses a 94-byte state block for either a flat loaded image or a
+banked ROM image. Per-bank IMAGE ordering, used extents, MAP regions, entry and
+data-load placement, and pairwise PATCH non-overlap are validated before target
+initialization. Repeated scans keep the state size independent of the number of
+banks and patches. Pairwise PATCH checking takes quadratic time in the number
+of patches, without imposing a lower format limit. A native platform may define
+and diagnose a smaller operational limit. The common consumer is measured at
+755 code bytes; the Nucleus profile is measured at 2,270 code bytes and 94
+state bytes.

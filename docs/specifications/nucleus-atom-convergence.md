@@ -29,6 +29,11 @@ Nucleus has now started moving onto that boundary:
   the package root.
 - Nucleus publication CLIs use the shared positive-output selector and
   transactional output publisher.
+- The shared native NOBJ consumer has a Nucleus 0.1 profile for flat loaded and
+  banked ROM images. It validates and materializes one through 255 banks with a
+  fixed 94-byte state block.
+- The Node resolver, resident source descriptor builder, Z80 multipart adapter,
+  and NOBJ map use the same 255-part limit as Atom.
 - The source profile recognizes only leading `//% import "path.nu"` directives
   and passes compiler bytes through unchanged.
 - The permanent Atom translation under `packages/nucleus/atom-asm` has no

@@ -210,8 +210,10 @@ object is always in ROM mode. The established-stack flag must match the target
 descriptor.
 
 `partCount` is followed immediately by `partCount` one-byte bank ordinals in
-manifest order. NOBJ can encode 1 through 255 parts. The first Z80 compiler's
-smaller published source-part capacity remains binding.
+source order. NOBJ and the resident compiler adapter both accept 1 through 255
+parts. A resident build also needs five external descriptor bytes per part and
+storage for the source bytes themselves; available target memory can therefore
+become the practical limit before the byte-sized part count does.
 
 ### 8.2 Bank entries
 
@@ -314,6 +316,15 @@ A reader with insufficient private memory may validate the stored object before
 materializing it during another read. It may rescan the patch phase to check
 pairwise non-overlap without a compiler-resident or loader-resident patch table.
 These are loader strategies, not additional compiler source passes.
+
+The shared native implementation in `@jhlagado/z80-tool-services` uses this
+strategy. Its Nucleus profile keeps a 94-byte state block and rescans immutable
+sequential storage for each bank and patch. The same routine therefore handles
+one through 255 banks without a bank-sized RAM table. The common consumer and
+Nucleus profile assemble to 755 and 2,270 code bytes respectively. Pairwise
+PATCH validation takes quadratic time in the number of patches. The format
+retains its 16-bit record count; a native platform may publish and diagnose a
+smaller execution-time limit.
 
 A direct one-pass wire receiver can materialize a flat object when it has an
 isolated writable extent for the complete image. It can materialize a banked
