@@ -113,7 +113,8 @@ to `ZN_EOF` only at end of input; any other carry-set value is an input failure.
 The rewind, profile, and store routines preserve IX. The profile routine must
 check its complete BEGIN, IMAGE/PATCH, and MAP rules before returning success.
 
-The stored object must be immutable between validation and materialization. A
+The state block must not overlap target memory. The stored object must be
+immutable between validation and materialization. A
 direct RAM store must also be infallible for every address accepted by the
 profile validator. When either property cannot be guaranteed, the platform
 adapter uses an isolated temporary object or memory area and makes it visible
@@ -122,7 +123,8 @@ the Node implementation; it does not require the Z80 to retain the whole NOBJ
 in memory.
 
 The optional `native/atom-flat-nobj.asm` module implements `ZN_PROF` for Atom
-NOBJ 0.2. It expands the state block to 45 bytes and checks the complete flat
+NOBJ 0.2. It expands the state block to 48 bytes, rejects target/state overlap,
+and checks the complete flat
 profile, including IMAGE coverage for every PATCH and pairwise PATCH
 non-overlap. Those two checks use repeated sequential reads. The implementation
 therefore has constant RAM use at the cost of additional file scans when an
