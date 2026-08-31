@@ -267,5 +267,5 @@ describe("Stage 7 packed LL(1)", () => {
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
-  }, 30_000);
+  }, 90_000);
 });

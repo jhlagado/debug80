@@ -14,13 +14,14 @@ import {
 
 import {
   materializedNucleusFlatBytes,
+  materializedNucleusCpmCom,
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
   writeNucleusIntelHex,
 } from "../publication.js";
 import { renderNucleusD8 } from "../source-provenance.js";
 
-export type NucleusPublicationOutputFormat = "nobj" | "bin" | "hex" | "d8";
+export type NucleusPublicationOutputFormat = "nobj" | "bin" | "com" | "hex" | "d8";
 
 export interface NucleusPublicationOutputSelection {
   readonly format: NucleusPublicationOutputFormat;
@@ -33,11 +34,7 @@ const NUCLEUS_OUTPUT_FORMATS: readonly OutputFormatSuffix<NucleusPublicationOutp
     { format: "nobj", suffix: ".nobj" },
     { format: "bin", suffix: ".bin" },
     { format: "hex", suffix: ".hex" },
-    {
-      format: "nobj",
-      suffix: ".com",
-      message: "Nucleus COM output is not implemented",
-    },
+    { format: "com", suffix: ".com" },
     {
       format: "nobj",
       suffix: ".lst",
@@ -224,6 +221,8 @@ const selectedOutputBytes = (
       return publication.nobj.serialized;
     case "bin":
       return materializedNucleusFlatBytes(publication);
+    case "com":
+      return materializedNucleusCpmCom(publication);
     case "hex":
       return writeNucleusIntelHex(
         publication.nobj.parsed.begin.imageBase,

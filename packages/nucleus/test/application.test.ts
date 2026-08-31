@@ -1245,10 +1245,17 @@ describe("Nucleus application boundary", () => {
     }
   }, 180_000);
 
-  it("rejects repeated and not-yet-supported publication output formats", async () => {
+  it("rejects repeated, incompatible, and unsupported publication outputs", async () => {
     await withSourceTree(
       {
-        "src/main.nu": "sub main()\nend\n",
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
       },
       async (root) => {
         const repeated = await execFileAsync(
@@ -1303,7 +1310,9 @@ describe("Nucleus application boundary", () => {
         ).catch((error: unknown) => error);
         expect(com).toMatchObject({
           code: 1,
-          stderr: expect.stringContaining("Nucleus COM output is not implemented"),
+          stderr: expect.stringContaining(
+            "COM output requires one flat bank loaded and entered at $0100",
+          ),
         });
 
         const invalidAssembler = await execFileAsync(

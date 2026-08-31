@@ -25,7 +25,7 @@ Options:
   --json                  Print machine-readable JSON.
   -h, --help              Show this help.
 
-Output suffixes: .nobj .bin .hex .d8.json
+Output suffixes: .nobj .bin .com .hex .d8.json
 Name output paths after the input. Each suffix selects one output format.
 With no output path, the command publishes and summarizes without writing.
 Legacy -o/--output forms are still accepted for existing scripts, but new

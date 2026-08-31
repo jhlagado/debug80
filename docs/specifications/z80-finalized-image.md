@@ -8,10 +8,16 @@ the same: allocate target memory, copy each IMAGE, apply the final patch bytes,
 and publish a file or runnable memory image.
 
 `@jhlagado/z80-tool-services` owns that common final step. Language packages
-remain responsible for parsing and validating their NOBJ version, MAP record,
-entry metadata, and language-specific constraints. They pass a normalized
-generation to `materializeTargetImage` only after the serialized generation
-has a valid terminal COMMIT and checksum.
+remain responsible for validating their BEGIN and MAP profiles, entry
+metadata, and language-specific constraints. They pass a normalized generation
+to `materializeTargetImage` only after the serialized generation has a valid
+terminal COMMIT and checksum.
+
+The package also owns the common NOBJ envelope parser. Atom and Nucleus use
+`decodeNobjEnvelope` for record framing, phase order, version selection, record
+count, and CRC validation. Their profile parsers then validate the different
+BEGIN and MAP payloads. This shares the integrity implementation without
+treating Atom NOBJ 0.2 and Nucleus NOBJ 0.1 as one profile.
 
 This operation is not symbol linking. PATCH records contain final bytes. The
 materializer does not read symbol names, evaluate relocation expressions, or

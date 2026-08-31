@@ -29,6 +29,7 @@ import {
   nucleusRuntimeServiceOrder,
   nucleusRuntimeServiceVectorBytes,
 } from "../src/nucleus-runtime.js";
+import { materializedNucleusCpmCom } from "../src/publication.js";
 
 const emptyProvider: RuntimeImageProvider = { get: () => undefined };
 
@@ -181,6 +182,56 @@ const withCrc = (bytes: Uint8Array): Uint8Array => {
 };
 
 describe("NOBJ 0.1", () => {
+  it("renders a loaded $0100 target as a headerless CP/M COM", () => {
+    const begin: NobjBegin = {
+      banked: false,
+      runtimeIdentity: 0,
+      bankCount: 1,
+      imageFill: 0,
+      imageBase: 0x0100,
+      imageCapacity: 0x0100,
+    };
+    const map: NobjMap = {
+      romMode: false,
+      establishedStack: false,
+      entryBank: 0,
+      entryAddress: 0x0100,
+      writableBase: 0x0103,
+      writableCapacity: 0x0010,
+      vectorBase: 0x0103,
+      vectorLength: 1,
+      initializedRunBase: 0x0103,
+      initializedRunLength: 1,
+      bssBase: 0x0104,
+      bssLength: 1,
+      stackRequirement: 0,
+      dataLoadBank: 0,
+      dataLoadAddress: 0x0103,
+      dataLoadLength: 1,
+      partBanks: [0],
+      banks: [{
+        usedLength: 4,
+        readOnlyBase: 0,
+        readOnlyLength: 0,
+        aggregateConstantBase: 0,
+        aggregateConstantLength: 0,
+      }],
+    };
+    const serialized = build({
+      begin,
+      images: [{ bank: 0, address: 0x0100, bytes: Uint8Array.of(0xc9, 0, 0, 0x42) }],
+      map,
+    });
+    const parsed = parseNobj(serialized);
+    const publication = { nobj: { serialized, parsed } } as Parameters<
+      typeof materializedNucleusCpmCom
+    >[0];
+
+    expect(materializedNucleusCpmCom(publication)).toEqual(
+      Uint8Array.of(0xc9, 0, 0, 0x42),
+    );
+  });
+
   it("links the canonical runtime with Atom by default and keeps the AZM path byte-identical", async () => {
     expect(NUCLEUS_DEFAULT_RUNTIME_ASSEMBLER).toBe("atom");
     const atom = await loadCanonicalRuntimeImage(defaultRuntimeLinkContext);

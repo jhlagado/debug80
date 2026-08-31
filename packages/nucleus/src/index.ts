@@ -35,6 +35,7 @@ export {
   buildNucleusMaterializedArtifacts,
   buildNucleusPreparedSourceArtifacts,
   materializedNucleusFlatBytes,
+  materializedNucleusCpmCom,
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
   writeNucleusIntelHex,

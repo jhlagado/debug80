@@ -8,6 +8,8 @@ import {
   Z80_WORD_MAX,
   isUnsignedIntegerUpTo,
   materializeTargetImage,
+  decodeNobjEnvelope,
+  nobjCrc16CcittFalse,
   z80AddressEnd,
   type GenerationSpool,
   type GenerationSpoolFactory,
@@ -320,19 +322,7 @@ const validateBegin = (begin: NobjBegin): void => {
   }
 };
 
-export const crc16CcittFalse = (bytes: Uint8Array): number => {
-  let crc = 0xffff;
-  for (const byte of bytes) {
-    crc ^= byte << 8;
-    for (let bit = 0; bit < 8; bit += 1) {
-      crc =
-        (crc & 0x8000) === 0
-          ? (crc << 1) & 0xffff
-          : ((crc << 1) ^ 0x1021) & 0xffff;
-    }
-  }
-  return crc;
-};
+export const crc16CcittFalse = nobjCrc16CcittFalse;
 
 export class NobjGenerationSink {
   readonly #store: NobjGenerationStore;
@@ -1007,175 +997,76 @@ const validateOptionalImageExtent = (
 };
 
 export const parseNobj = (serialized: Uint8Array): ParsedNobj => {
-  const records: DecodedRecord[] = [];
-  let cursor = 0;
-  while (cursor < serialized.length) {
-    if (serialized.length - cursor < 3) fail("truncated record header");
-    const kind = serialized[cursor] ?? 0;
-    if (
-      !Object.values(NobjKind).includes(
-        kind as (typeof NobjKind)[keyof typeof NobjKind],
-      )
-    ) {
-      fail("reserved NOBJ record kind");
+  const envelope = (() => {
+    try {
+      return decodeNobjEnvelope(serialized, {
+        majorVersion: NOBJ_MAJOR_VERSION,
+        minorVersion: NOBJ_MINOR_VERSION,
+        requireImage: true,
+      });
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
     }
-    const payloadLength = readU16(serialized, cursor + 1);
-    const payloadStart = cursor + 3;
-    const payloadEnd = payloadStart + payloadLength;
-    if (payloadEnd > serialized.length)
-      fail(`truncated ${kindName(kind)} payload`);
-    records.push({ kind, start: cursor, payloadStart, payloadEnd });
-    cursor = payloadEnd;
-    if (kind === NobjKind.commit) {
-      if (cursor !== serialized.length) fail("byte after COMMIT");
-      break;
-    }
-  }
-  if (records.length === 0) fail("NOBJ stream is empty");
-  if (records.at(-1)?.kind !== NobjKind.commit)
-    fail("NOBJ stream has no terminal COMMIT");
-
-  let phase: "begin" | "image" | "patch" | "map" | "commit" = "begin";
-  let begin: NobjBegin | undefined;
-  let map: NobjMap | undefined;
-  let commit: NobjCommit | undefined;
+  })();
+  const begin = decodeBegin(serialized, envelope.begin);
   const images: NobjImageRecord[] = [];
   const patches: NobjImageRecord[] = [];
   const imageEnds = new Map<number, number>();
   const patchIntervals = new Map<number, Interval[]>();
-
-  for (const [index, recordValue] of records.entries()) {
-    switch (recordValue.kind) {
-      case NobjKind.begin:
-        if (phase !== "begin" || index !== 0)
-          fail("BEGIN must be the first and only BEGIN record");
-        begin = decodeBegin(serialized, recordValue);
-        phase = "image";
-        break;
-      case NobjKind.image: {
-        if (phase !== "image") fail("IMAGE appears outside the IMAGE phase");
-        if (begin === undefined) fail("IMAGE appears before BEGIN");
-        const activeBegin = begin as NobjBegin;
-        const item = decodeImageLike(serialized, recordValue, "IMAGE");
-        if (item.bank >= activeBegin.bankCount)
-          fail("IMAGE bank is out of range");
-        const end = requireRegion(
-          "IMAGE",
-          item.address,
-          item.bytes.length,
-          activeBegin.imageBase,
-          activeBegin.imageCapacity,
-        );
-        const previousEnd = imageEnds.get(item.bank);
-        if (previousEnd !== undefined && item.address < previousEnd) {
-          fail("IMAGE records descend or overlap within a bank");
-        }
-        imageEnds.set(item.bank, end);
-        images.push(item);
-        break;
-      }
-      case NobjKind.patch: {
-        if (phase !== "image" && phase !== "patch")
-          fail("PATCH appears outside the PATCH phase");
-        if (images.length === 0) fail("PATCH requires at least one IMAGE");
-        if (begin === undefined) fail("PATCH appears before BEGIN");
-        const activeBegin = begin as NobjBegin;
-        phase = "patch";
-        const item = decodeImageLike(serialized, recordValue, "PATCH");
-        if (item.bank >= activeBegin.bankCount)
-          fail("PATCH bank is out of range");
-        const end = requireRegion(
-          "PATCH",
-          item.address,
-          item.bytes.length,
-          activeBegin.imageBase,
-          activeBegin.imageCapacity,
-        );
-        const intervals = patchIntervals.get(item.bank) ?? [];
-        for (const interval of intervals) {
-          if (item.address < interval.end && interval.start < end) {
-            fail("PATCH records overlap");
-          }
-        }
-        intervals.push({ start: item.address, end });
-        patchIntervals.set(item.bank, intervals);
-        patches.push(item);
-        break;
-      }
-      case NobjKind.map:
-        if ((phase !== "image" && phase !== "patch") || images.length === 0) {
-          fail("MAP must follow IMAGE+ PATCH*");
-        }
-        map = decodeMap(serialized, recordValue);
-        phase = "map";
-        break;
-      case NobjKind.commit: {
-        if (phase !== "map" || map === undefined)
-          fail("COMMIT must follow MAP");
-        const activeMap = map as NobjMap;
-        if (recordValue.payloadEnd - recordValue.payloadStart !== 7) {
-          fail("COMMIT payload length must be 7");
-        }
-        const p = recordValue.payloadStart;
-        const recordCount = readU16(serialized, p);
-        const entryBank = serialized[p + 2] ?? 0;
-        const entryAddress = readU16(serialized, p + 3);
-        const storedCrc = readU16(serialized, p + 5);
-        if (recordCount !== records.length)
-          fail("COMMIT record count is incorrect");
-        if (
-          entryBank !== activeMap.entryBank ||
-          entryAddress !== activeMap.entryAddress
-        ) {
-          fail("COMMIT entry pair differs from MAP");
-        }
-        const crcOffset = p + 5;
-        const actualCrc = crc16CcittFalse(serialized.slice(0, crcOffset));
-        if (storedCrc !== actualCrc) fail("COMMIT CRC is incorrect");
-        commit = { recordCount, entryBank, entryAddress, crc16: storedCrc };
-        phase = "commit";
-        break;
+  for (const recordValue of envelope.images) {
+    const item = decodeImageLike(serialized, recordValue, "IMAGE");
+    if (item.bank >= begin.bankCount) fail("IMAGE bank is out of range");
+    const end = requireRegion(
+      "IMAGE",
+      item.address,
+      item.bytes.length,
+      begin.imageBase,
+      begin.imageCapacity,
+    );
+    const previousEnd = imageEnds.get(item.bank);
+    if (previousEnd !== undefined && item.address < previousEnd) {
+      fail("IMAGE records descend or overlap within a bank");
+    }
+    imageEnds.set(item.bank, end);
+    images.push(item);
+  }
+  for (const recordValue of envelope.patches) {
+    const item = decodeImageLike(serialized, recordValue, "PATCH");
+    if (item.bank >= begin.bankCount) fail("PATCH bank is out of range");
+    const end = requireRegion(
+      "PATCH",
+      item.address,
+      item.bytes.length,
+      begin.imageBase,
+      begin.imageCapacity,
+    );
+    const intervals = patchIntervals.get(item.bank) ?? [];
+    for (const interval of intervals) {
+      if (item.address < interval.end && interval.start < end) {
+        fail("PATCH records overlap");
       }
     }
+    intervals.push({ start: item.address, end });
+    patchIntervals.set(item.bank, intervals);
+    patches.push(item);
   }
-
+  const map = decodeMap(serialized, envelope.map);
   if (
-    begin === undefined ||
-    map === undefined ||
-    commit === undefined ||
-    phase !== "commit"
+    envelope.commit.entryBank !== map.entryBank ||
+    envelope.commit.entryAddress !== map.entryAddress
   ) {
-    fail("NOBJ record sequence is incomplete");
+    fail("COMMIT entry pair differs from MAP");
   }
-  const completedBegin = begin as NobjBegin;
-  const completedMap = map as NobjMap;
-  const completedCommit = commit as NobjCommit;
-  validateMap(completedBegin, completedMap, images, patches);
+  const commit: NobjCommit = { ...envelope.commit };
+  validateMap(begin, map, images, patches);
   return {
     serialized: serialized.slice(),
-    begin: completedBegin,
+    begin,
     images,
     patches,
-    map: completedMap,
-    commit: completedCommit,
+    map,
+    commit,
   };
-};
-
-const kindName = (kind: number): string => {
-  switch (kind) {
-    case NobjKind.begin:
-      return "BEGIN";
-    case NobjKind.image:
-      return "IMAGE";
-    case NobjKind.patch:
-      return "PATCH";
-    case NobjKind.map:
-      return "MAP";
-    case NobjKind.commit:
-      return "COMMIT";
-    default:
-      return "reserved record";
-  }
 };
 
 export const materializeNobj = (parsed: ParsedNobj): MaterializedNobj => {

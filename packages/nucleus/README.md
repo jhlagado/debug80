@@ -94,12 +94,13 @@ The resident compiler proof image and canonical target runtime image are
 assembled with Atom by default; pass `--assembler azm` only when explicitly
 exercising the legacy compiler assembly path.
 Name the output files you want after the input file; each suffix selects one
-format. The implemented desktop formats are `.nobj`, `.bin`, `.hex`, and
-`.d8.json`.
+format. The implemented desktop formats are `.nobj`, `.bin`, `.com`, `.hex`,
+and `.d8.json`. COM is a headerless flat image and is accepted only when the
+selected target loads and enters at `$0100`; the default `$8000` ROM target is
+therefore not a COM target.
 The current D8 map records the loaded range, input identity, and entry address;
-it does not yet claim source-line mappings or symbols. Listing and CP/M `.com`
-output are intentionally rejected until those artifact policies are specified
-for Nucleus.
+it does not yet claim source-line mappings or symbols. Listing output remains
+unimplemented.
 
 The older direct npm scripts remain compatibility shortcuts while the command
 surface converges.

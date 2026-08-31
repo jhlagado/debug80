@@ -6,6 +6,7 @@ import {
   createFlatTargetImage,
   publishOutputFiles,
   renderTargetBinary,
+  renderTargetCpmCom,
   renderTargetIntelHex,
   selectConcreteZ80AssemblerFlavour,
   type ConcreteZ80AssemblerFlavour,
@@ -238,6 +239,11 @@ export const materializedNucleusFlatBytes = (
   }
   return renderTargetBinary(materialized.targetImage);
 };
+
+export const materializedNucleusCpmCom = (
+  publication: NucleusPublication,
+): Uint8Array =>
+  renderTargetCpmCom(materializeNobj(publication.nobj.parsed).targetImage);
 
 export function buildNucleusMaterializedArtifacts(
   publication: NucleusPublication,

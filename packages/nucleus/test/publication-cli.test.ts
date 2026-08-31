@@ -53,6 +53,7 @@ describe("Nucleus publication CLI contract", () => {
         "src/main.nu",
         "build/program.nobj",
         "build/program.bin",
+        "build/program.com",
         "build/program.hex",
         "build/program.d8.json",
       ],
@@ -64,6 +65,7 @@ describe("Nucleus publication CLI contract", () => {
     expect(options.outputPaths).toEqual([
       "build/program.nobj",
       "build/program.bin",
+      "build/program.com",
       "build/program.hex",
       "build/program.d8.json",
     ]);
@@ -113,11 +115,13 @@ describe("Nucleus publication CLI contract", () => {
     expect(validateNucleusPublicationOutputs([
       "build/program.nobj",
       "build/program.bin",
+      "build/program.com",
       "build/program.hex",
       "build/program.d8.json",
     ])).toEqual([
       { format: "nobj", path: path.resolve("build/program.nobj") },
       { format: "bin", path: path.resolve("build/program.bin") },
+      { format: "com", path: path.resolve("build/program.com") },
       { format: "hex", path: path.resolve("build/program.hex") },
       { format: "d8", path: path.resolve("build/program.d8.json") },
     ]);
@@ -131,8 +135,6 @@ describe("Nucleus publication CLI contract", () => {
   });
 
   it("rejects unimplemented convenience artifacts explicitly", () => {
-    expect(() => validateNucleusPublicationOutputs(["build/program.com"]))
-      .toThrow("Nucleus COM output is not implemented");
     expect(() => validateNucleusPublicationOutputs(["build/program.lst"]))
       .toThrow("Nucleus listing output is not implemented");
   });
