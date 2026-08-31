@@ -11,12 +11,19 @@ interface PreparedSource {
   source: string;
   diagnostics: GlimmerDiagnostic[];
   lineOrigins?: number[];
+  symbolMappings?: AtomSymbolMapping[];
 }
 
 export interface AtomGenerateResult extends GenerateResult {
   azmSource: string;
   lineOrigins: number[];
   parts: AtomSourcePart[];
+  symbolMappings: AtomSymbolMapping[];
+}
+
+export interface AtomSymbolMapping {
+  original: string;
+  atom: string;
 }
 
 export interface AtomSourcePart {
@@ -299,7 +306,11 @@ function base36(value: number, digits: number): string {
   return value.toString(36).toUpperCase().padStart(digits, '0');
 }
 
-function buildSymbolMap(source: string): { mapping: Map<string, string>; error?: string } {
+function buildSymbolMap(source: string): {
+  mapping: Map<string, string>;
+  symbolMappings: AtomSymbolMapping[];
+  error?: string;
+} {
   const definitions = declaredSymbols(source);
   const globals = new Map<string, string>();
   const locals = new Map<string, string>();
@@ -312,6 +323,7 @@ function buildSymbolMap(source: string): { mapping: Map<string, string>; error?:
     if (previous !== undefined && previous !== name) {
       return {
         mapping: new Map(),
+        symbolMappings: [],
         error: `Symbols ${previous} and ${name} collide in Atom's case-insensitive namespace.`,
       };
     }
@@ -351,7 +363,18 @@ function buildSymbolMap(source: string): { mapping: Map<string, string>; error?:
     locals.set(key, replacement);
     mapping.set(key, replacement);
   }
-  return { mapping };
+  const symbolMappings: AtomSymbolMapping[] = [];
+  const seen = new Set<string>();
+  for (const rawName of definitions) {
+    const original = rawName.startsWith('@') ? rawName.slice(1) : rawName;
+    const atom = mapping.get(original.toUpperCase());
+    if (atom === undefined || atom === original) continue;
+    const identity = `${original.toUpperCase()}\0${atom.toUpperCase()}`;
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    symbolMappings.push({ original, atom });
+  }
+  return { mapping, symbolMappings };
 }
 
 function rewriteCode(
@@ -412,17 +435,21 @@ function rewriteCode(
 function prepareSourceParts(
   sources: readonly AtomImportSource[],
   allowRootImports = false,
-): { parts: AtomSourcePart[]; diagnostics: GlimmerDiagnostic[] } {
+): {
+  parts: AtomSourcePart[];
+  diagnostics: GlimmerDiagnostic[];
+  symbolMappings: AtomSymbolMapping[];
+} {
   const normalized = sources.map((part, index) => ({
     ...normalizeMetadata(part.source, index === 0 && allowRootImports),
     logicalIdentity: part.logicalIdentity,
     originalSource: part.source,
   }));
   const diagnostics = normalized.flatMap((part) => part.diagnostics);
-  if (diagnostics.length > 0) return { parts: [], diagnostics };
+  if (diagnostics.length > 0) return { parts: [], diagnostics, symbolMappings: [] };
   const symbols = buildSymbolMap(normalized.map((part) => part.source).join('\n'));
   if (symbols.error !== undefined) {
-    return { parts: [], diagnostics: [diagnostic(symbols.error)] };
+    return { parts: [], diagnostics: [diagnostic(symbols.error)], symbolMappings: [] };
   }
   const qualified = new Map(
     normalized
@@ -448,6 +475,7 @@ function prepareSourceParts(
     } catch (error) {
       return {
         parts: [],
+        symbolMappings: [],
         diagnostics: [
           diagnostic(
             `${part.logicalIdentity} cannot be represented by Atom: ${sourceMessage(error)}`,
@@ -457,7 +485,7 @@ function prepareSourceParts(
       };
     }
   }
-  return { parts, diagnostics: [] };
+  return { parts, diagnostics: [], symbolMappings: symbols.symbolMappings };
 }
 
 function prepareGeneratedSource(source: string): PreparedSource {
@@ -467,6 +495,7 @@ function prepareGeneratedSource(source: string): PreparedSource {
     source: part?.source ?? '',
     diagnostics: prepared.diagnostics,
     lineOrigins: part?.lineOrigins ?? [],
+    symbolMappings: prepared.symbolMappings,
   };
 }
 
@@ -506,6 +535,7 @@ export function generateAtomProjection(
       azmSource: generated.source,
       lineOrigins: [],
       parts: [],
+      symbolMappings: [],
     };
   }
   const prepared = prepareGeneratedSource(generated.source);
@@ -514,6 +544,7 @@ export function generateAtomProjection(
     diagnostics: prepared.diagnostics,
     azmSource: generated.source,
     lineOrigins: prepared.lineOrigins ?? [],
+    symbolMappings: prepared.symbolMappings ?? [],
     parts:
       prepared.source === ''
         ? []
@@ -541,6 +572,7 @@ export function generateAtomProjectProjection(
       azmSource: generated.source,
       lineOrigins: [],
       parts: [],
+      symbolMappings: [],
     };
   }
   const expectedImports = [...new Set(program.imports.map((declaration) => declaration.path))];
@@ -558,6 +590,7 @@ export function generateAtomProjectProjection(
       azmSource: generated.source,
       lineOrigins: [],
       parts: [],
+      symbolMappings: [],
     };
   }
   const prepared = prepareSourceParts(
@@ -571,6 +604,7 @@ export function generateAtomProjectProjection(
     azmSource: generated.source,
     lineOrigins: root?.lineOrigins ?? [],
     parts: prepared.parts,
+    symbolMappings: prepared.symbolMappings,
   };
 }
 

@@ -24,7 +24,11 @@ import { assembleResolvedAtomProject, renderAtomArtifacts } from 'atom-z80';
 
 import type { EffectDecl, GlimmerDiagnostic, GlimmerProgram, RoutineDecl } from './model.js';
 import { blockEntryLabel } from './emit.js';
-import { generateAtomProjectProjection, generateAtomProjection } from './atom.js';
+import {
+  generateAtomProjectProjection,
+  generateAtomProjection,
+  type AtomSymbolMapping,
+} from './atom.js';
 import { generateAzm } from './generate.js';
 import { loadGlimmerProgram } from './load.js';
 import { profileFor } from './profiles/index.js';
@@ -151,7 +155,36 @@ interface D8FileEntry {
 export interface D8Map {
   files?: Record<string, D8FileEntry>;
   fileList?: string[];
+  symbols?: unknown[];
   [key: string]: unknown;
+}
+
+function restoreAtomSymbolNames(
+  map: D8Map,
+  mappings: readonly AtomSymbolMapping[],
+): void {
+  if (mappings.length === 0) return;
+  const originals = new Map<string, string>();
+  for (const mapping of mappings) {
+    originals.set(mapping.atom.toUpperCase(), mapping.original);
+    if (mapping.atom.startsWith('_')) {
+      originals.set(`.${mapping.atom.slice(1).toUpperCase()}`, mapping.original);
+    }
+  }
+  const restore = (candidate: unknown): void => {
+    if (candidate === null || typeof candidate !== 'object') return;
+    const symbol = candidate as { name?: unknown; identity?: unknown };
+    if (typeof symbol.name !== 'string') return;
+    const original = originals.get(symbol.name.toUpperCase());
+    if (original === undefined) return;
+    symbol.name = original;
+    if (typeof symbol.identity === 'string') {
+      const separator = symbol.identity.lastIndexOf(':');
+      if (separator !== -1) symbol.identity = `${symbol.identity.slice(0, separator + 1)}${original}`;
+    }
+  };
+  map.symbols?.forEach(restore);
+  for (const file of Object.values(map.files ?? {})) file.symbols?.forEach(restore);
 }
 
 /**
@@ -569,6 +602,7 @@ export async function buildGlimmerProgram(
       base: options.org ?? 0x4000,
       entryAddress: options.org ?? 0x4000,
     }) as unknown as { bin: Uint8Array; hex: string; d8: D8Map };
+    restoreAtomSymbolNames(rendered.d8, atomProjection?.symbolMappings ?? []);
     const entryDir = path.dirname(entryPath);
     const outDir = path.dirname(asmPath);
     const entryBase = path.basename(entryPath);

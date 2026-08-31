@@ -137,8 +137,12 @@ describe('generateAtom', () => {
     const map = JSON.parse(await readFile(result.artifacts!.d8!, 'utf8')) as {
       files?: Record<string, unknown>;
       generator?: { name?: string };
+      symbols?: Array<{ name?: string }>;
     };
     expect(map.generator?.name).toBe('atom');
     expect(map.files).toHaveProperty('dot.glim');
+    const symbolNames = map.symbols?.map((symbol) => symbol.name);
+    expect(symbolNames).toContain('Framebuffer');
+    expect(symbolNames).toContain('GlimPollBindings');
   }, 30_000);
 });
