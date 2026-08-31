@@ -23,6 +23,7 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `sourceFile`              | `string`   | —                                                      | Alias for `asm`                                                                       |
 | `assembler`               | `string`   | inferred                                               | Backend identifier. Use `atom` or `ATOM-Z80`, `azm` or `ASM80`, or the frontend IDs `glimmer` and `nucleus`. |
 | `hex`                     | `string`   | derived                                                | Path to the output Intel HEX file; derived from `asm` if omitted                      |
+| `outputs`                 | `string[]` | —                                                      | Explicit generated artifact paths. Debug80 still requires HEX and D8 for launches     |
 | `outputDir`               | `string`   | `build`                                                | Directory for build artifacts                                                         |
 | `artifactBase`            | `string`   | asm filename                                           | Base name for generated artifacts such as `.hex`, `.bin`, `.d8.json`, and AZM reports |
 | `entry`                   | `number`   | platform default                                       | CPU entry address; overrides the platform block's `entry`                             |
@@ -60,8 +61,11 @@ block configures direct AZM builds and the contract checker used by Glimmer.
 
 Atom begins with that root source, follows active `%INCLUDE` directives, and
 keeps every included file distinct in diagnostics and D8 mappings. Debug80
-calls the `atom-z80` programming API directly and publishes `.hex`, `.bin`,
-`.d8.json`, and `.lst` as one transaction.
+calls the `atom-z80` programming API directly. Without an explicit `outputs`
+list it publishes `.hex`, `.bin`, `.d8.json`, and `.lst` as one transaction.
+With `outputs`, Atom treats the list as the explicit publication set, still
+ensures the configured HEX path and one `.d8.json` path are present, and also
+accepts `.nobj` when Atom emitted that artifact.
 
 ### Glimmer options
 

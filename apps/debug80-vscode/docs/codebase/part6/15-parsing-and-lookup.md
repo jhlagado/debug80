@@ -23,9 +23,11 @@ Debug80 no longer reconstructs source maps from `.lst` files. The selected assem
 - the selected source file, usually `asmPath` / `sourceFile`
 - the HEX artifact path
 - source roots used to resolve file keys from the D8 map
-- map arguments such as `artifactBase` and `outputDir`
+- map arguments such as `artifactBase`, `outputDir`, and `outputs`
 
-`buildMappingFromDebugMap()` in `src/debug/mapping/mapping-service.ts` resolves the expected map path, normally:
+`buildMappingFromDebugMap()` in `src/debug/mapping/mapping-service.ts` resolves
+the expected map path. If launch config already names a `.d8.json` entry in
+`outputs`, that explicit path wins. Otherwise the expected path is normally:
 
 ```text
 <outputDir>/<artifactBase>.d8.json

@@ -157,20 +157,29 @@ Custom platforms can be registered at runtime via `registerPlatform()`, which ad
 
 ## Stage 3: Artifact path resolution
 
-The pipeline needs an assembly source path and a primary Intel HEX output path. `resolveArtifacts()` derives any missing paths from the ones that are present:
+The pipeline needs an assembly source path, a primary Intel HEX output path, and
+optionally an explicit generated-artifact set. `resolveArtifacts()` derives any
+missing paths from the ones that are present:
 
 ```typescript
-const { hexPath, asmPath } = resolveArtifacts(merged, baseDir);
+const { hexPath, asmPath, outputPaths } = resolveArtifacts(merged, baseDir);
 ```
 
 The resolution rules:
 
 - If `hex` is specified, use it directly.
+- If `outputs` contains a `.hex` path, that path becomes the primary HEX output.
+- If both `hex` and `outputs` name a HEX artifact, they must resolve to the same file.
 - If only `asm` is specified, derive `hex` from the same basename in the output directory: `program.asm` → `program.hex`.
 - If an output directory is configured, artifacts go there. Otherwise they sit next to the source.
 - All paths are resolved to absolute.
 
-The source-map artifact is the native D8 map written beside the build output, normally `program.d8.json`. The D8 path is resolved later by `resolveDebugMapPath()` from the HEX path, optional `artifactBase`, optional `outputDir`, and source path. In the monorepo this still resolves inside the active project workspace, not inside `apps/debug80-vscode` or the runtime package.
+The source-map artifact is the native D8 map written beside the build output,
+normally `program.d8.json`. If `outputs` already names a `.d8.json` artifact,
+`resolveDebugMapPath()` uses that file directly. Otherwise it derives the D8
+path from the HEX path, optional `artifactBase`, optional `outputDir`, and
+source path. In the monorepo this still resolves inside the active project
+workspace, not inside `apps/debug80-vscode` or the runtime package.
 
 The base directory (`baseDir`) is resolved from the workspace root or the project config file's parent directory. Config discovery stays in `src/debug/launch-args.ts`. The staged path normalization and bundled-asset resolution live in `src/debug/launch/launch-config-merge.ts`. Source-map path derivation for active sessions lives in `src/debug/mapping/path-resolver.ts`.
 
@@ -230,18 +239,21 @@ the remaining source parts. Node prepares those parts, then Atom's Z80 core
 runs in the shared emulator. Debug80 does not invoke the `atom` command or
 parse command output.
 
-On success, `renderAtomArtifacts()` creates BIN, Intel HEX, D8, and listing
-values from the same committed generation. Debug80 validates the D8 JSON before
-`publishAtomOutputFiles()` replaces all four destination files as one
-transaction. A failure during preparation, assembly, rendering, validation, or
-publication therefore leaves the previous artifact set intact.
+On success, `renderAtomArtifacts()` creates BIN, Intel HEX, D8, listing, and
+when available NOBJ values from the same committed generation. Debug80
+validates the D8 JSON before `publishAtomOutputFiles()` replaces the requested
+artifact set as one transaction. A failure during preparation, assembly,
+rendering, validation, or publication therefore leaves the previous artifact
+set intact.
 
-This fixed four-file set is the Debug80 launch-session contract, not the
-standalone Atom command-line contract. A launch needs HEX for program loading
-and D8 for breakpoints, stepping, symbols, and editor features. The BIN and
-listing files are companion artifacts kept beside the launch outputs. Tools
-that need precise output selection should call Atom's public API or standalone
-CLI directly; Debug80 launch currently keeps the artifact policy uniform.
+Without `outputs`, Atom publishes the launch default set: HEX, BIN, D8, and
+listing. With `outputs`, Debug80 treats the list as the explicit publication
+set, deduplicates repeated paths, still forces the configured HEX path and one
+native `.d8.json` path into the transaction, and serves each requested path by
+suffix (`.hex`, `.bin`, `.d8.json`, `.lst`, and `.nobj` when available). A
+launch still requires HEX for program loading and D8 for breakpoints, stepping,
+symbols, and editor features, so those artifacts remain mandatory even when the
+rest of the set is caller-selected.
 
 Atom errors already carry the logical source identity, line, and column. The
 backend maps that location into `AssemblyDiagnostic`, reads the original source
@@ -316,10 +328,12 @@ direct launch errors from the package API.
 
 Successful builds receive one prepared artifact set from Nucleus: `.nobj`,
 flat `.hex`, native `.d8.json`, and the intermediate flat binary. Debug80
-validates the returned D8 map with `parseD8DebugMap()`, then publishes `.nobj`,
-`.hex`, and `.d8.json` beside the configured artifact base as one filesystem
-transaction. The intermediate flat binary stays inside the Nucleus build result
-rather than becoming a launch artifact.
+validates the returned D8 map with `parseD8DebugMap()`, then publishes either
+the default launch set (`.nobj`, `.hex`, and `.d8.json`) or the caller's
+explicit `outputs` set as one filesystem transaction. As with Atom, Debug80
+still forces the configured HEX path and one `.d8.json` path into that
+transaction. When `outputs` includes `.bin`, the intermediate flat binary is
+published too instead of remaining internal to the build result.
 
 Nucleus now owns source resolution, proof assembly selection, NOBJ publication,
 flat binary materialization, Intel HEX rendering, and D8 rendering. Debug80's

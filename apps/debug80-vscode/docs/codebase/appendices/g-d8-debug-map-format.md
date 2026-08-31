@@ -20,14 +20,20 @@ D8 is not tied to one assembler syntax. Atom and AZM are producers. Debug80 is o
 
 ## File Name
 
-A native D8 map should be written beside the primary build artifact with the same base name and the suffix `.d8.json`:
+A native D8 map should normally be written beside the primary build artifact
+with the same base name and the suffix `.d8.json`:
 
 ```text
 build/main.hex
 build/main.d8.json
 ```
 
-Debug80 treats the native sidecar map as the authoritative source map for active assembled targets. Debug80 no longer writes generated maps to a project-local `.debug80/cache` path and does not fall back to parsing listing files during active launches.
+Debug80 treats the native sidecar map as the authoritative source map for
+active assembled targets. Launch config can also point at an explicit
+`.d8.json` path through the top-level `outputs` list, which lets a target keep
+the authoritative map away from the default sidecar location. Debug80 no longer
+writes generated maps to a project-local `.debug80/cache` path and does not
+fall back to parsing listing files during active launches.
 
 ---
 
