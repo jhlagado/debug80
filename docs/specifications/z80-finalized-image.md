@@ -96,3 +96,27 @@ runtime prefix with generated code without copying both regions into a second
 contiguous buffer. The module performs no file naming, creation, rename, or
 rollback. Each tool's CP/M publisher owns that transaction and calls the
 renderer only after the final image is patched.
+
+## Native stored-object consumer
+
+`native/nobj-consumer.asm` provides the common Z80 half of the same contract.
+It reads through a caller-supplied sequential byte routine, validates NOBJ
+framing and integrity, invokes a language-profile validator, rewinds, and then
+applies IMAGE and PATCH bytes through a caller-supplied target-store routine.
+The public entries are `ZN_VALID` for envelope validation and `ZN_MAT` for the
+complete validate/profile/materialize operation. IX points to a 20-byte state
+block whose first three bytes select the expected major version, minor version,
+and whether the profile requires at least one IMAGE record.
+
+The reader returns a byte with carry clear. It returns carry set with A equal
+to `ZN_EOF` only at end of input; any other carry-set value is an input failure.
+The rewind, profile, and store routines preserve IX. The profile routine must
+check its complete BEGIN, IMAGE/PATCH, and MAP rules before returning success.
+
+The stored object must be immutable between validation and materialization. A
+direct RAM store must also be infallible for every address accepted by the
+profile validator. When either property cannot be guaranteed, the platform
+adapter uses an isolated temporary object or memory area and makes it visible
+only after the operation succeeds. This is the same publication rule used by
+the Node implementation; it does not require the Z80 to retain the whole NOBJ
+in memory.
