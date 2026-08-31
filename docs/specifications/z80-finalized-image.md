@@ -101,8 +101,9 @@ renderer only after the final image is patched.
 
 `native/nobj-consumer.asm` provides the common Z80 half of the same contract.
 It reads through a caller-supplied sequential byte routine, validates NOBJ
-framing and integrity, invokes a language-profile validator, rewinds, and then
-applies IMAGE and PATCH bytes through a caller-supplied target-store routine.
+framing and integrity, invokes a language-profile validator, initializes used
+target extents with the declared fill byte, rewinds, and then applies IMAGE and
+PATCH bytes through a caller-supplied target-store routine.
 The public entries are `ZN_VALID` for envelope validation and `ZN_MAT` for the
 complete validate/profile/materialize operation. IX points to a 20-byte state
 block whose first three bytes select the expected major version, minor version,
@@ -110,8 +111,9 @@ and whether the profile requires at least one IMAGE record.
 
 The reader returns a byte with carry clear. It returns carry set with A equal
 to `ZN_EOF` only at end of input; any other carry-set value is an input failure.
-The rewind, profile, and store routines preserve IX. The profile routine must
-check its complete BEGIN, IMAGE/PATCH, and MAP rules before returning success.
+The rewind, profile, initialization, and store routines preserve IX. The
+profile routine must check its complete BEGIN, IMAGE/PATCH, and MAP rules before
+returning success. Target initialization occurs only after that validation.
 
 The state block must not overlap target memory. The stored object must be
 immutable between validation and materialization. A
@@ -123,7 +125,7 @@ the Node implementation; it does not require the Z80 to retain the whole NOBJ
 in memory.
 
 The optional `native/atom-flat-nobj.asm` module implements `ZN_PROF` for Atom
-NOBJ 0.2. It expands the state block to 48 bytes, rejects target/state overlap,
+NOBJ 0.2. It expands the state block to 49 bytes, rejects target/state overlap,
 and checks the complete flat
 profile, including IMAGE coverage for every PATCH and pairwise PATCH
 non-overlap. Those two checks use repeated sequential reads. The implementation
