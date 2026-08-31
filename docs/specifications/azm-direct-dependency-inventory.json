@@ -123,6 +123,12 @@
       "retirement": "Remove after every non-measurement proof image has a permanent Atom route and strict contract verification no longer depends on AZM."
     },
     {
+      "file": "packages/z80-tool-services/test/native-nobj-consumer.test.ts",
+      "classification": "cpm22-development-tooling",
+      "owner": "Shared native NOBJ strict-contract proof",
+      "retirement": "Replace when the shared package can assemble and contract-check its native proof without creating a dependency cycle through Atom."
+    },
+    {
       "file": "scripts/cpm22/azm-strict-sidecar.mjs",
       "classification": "cpm22-development-tooling",
       "owner": "Shared CP/M strict-contract sidecar validation",
