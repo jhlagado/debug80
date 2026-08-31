@@ -3,7 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  createFlatTargetImage,
   publishOutputFiles,
+  renderTargetBinary,
+  renderTargetIntelHex,
   selectConcreteZ80AssemblerFlavour,
   type ConcreteZ80AssemblerFlavour,
 } from "@jhlagado/z80-tool-services";
@@ -13,10 +16,7 @@ import {
   prepareNucleusCompilation,
   type NucleusResidentSourcePreparationOptions,
 } from "./application.js";
-import {
-  runProofManifest,
-  type NobjExecutionOutcome,
-} from "./proof.js";
+import { runProofManifest, type NobjExecutionOutcome } from "./proof.js";
 import { nucleusPermanentAtomProofOptions } from "./atom-proof-options.js";
 import type { NucleusResidentCompilerEntrySymbols } from "./resident-compiler-entry.js";
 import {
@@ -56,11 +56,7 @@ const nucleusPackageRoot = (): string =>
   locatePackageRootFromCwd() ?? locatePackageRoot(import.meta.url);
 
 const defaultFlatCompilerProofManifest = (): string =>
-  path.join(
-    nucleusPackageRoot(),
-    "proofs",
-    "flat-target-z80-slice-proof.json",
-  );
+  path.join(nucleusPackageRoot(), "proofs", "flat-target-z80-slice-proof.json");
 const NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE = 0x5000;
 const NUCLEUS_DEFAULT_RESIDENT_SOURCE_CAPACITY = 0x0800;
 
@@ -209,8 +205,7 @@ export interface NucleusPreparedSourceTargetPublication {
 }
 
 export type NucleusPublication =
-  | NucleusProofTargetPublication
-  | NucleusPreparedSourceTargetPublication;
+  NucleusProofTargetPublication | NucleusPreparedSourceTargetPublication;
 
 export interface NucleusMaterializedArtifacts {
   readonly nobj: Uint8Array;
@@ -224,44 +219,24 @@ export interface NucleusPreparedSourceArtifactBuild {
   readonly artifacts: NucleusMaterializedArtifacts;
 }
 
-const hex2 = (value: number): string =>
-  value.toString(16).toUpperCase().padStart(2, "0");
-
-const intelRecord = (
-  address: number,
-  type: number,
-  bytes: readonly number[],
-): string => {
-  const values = [bytes.length, address >>> 8, address & 0xff, type, ...bytes];
-  const checksum = -values.reduce((sum, byte) => sum + byte, 0) & 0xff;
-  return `:${values.map(hex2).join("")}${hex2(checksum)}`;
-};
-
 export function writeNucleusIntelHex(
   base: number,
   bytes: Uint8Array,
   { lineEnding = "\n" }: { readonly lineEnding?: string } = {},
 ): string {
-  const lines: string[] = [];
-  for (let offset = 0; offset < bytes.length; offset += 16) {
-    lines.push(
-      intelRecord(base + offset, 0, [...bytes.slice(offset, offset + 16)]),
-    );
-  }
-  lines.push(":00000001FF");
-  return `${lines.join(lineEnding)}${lineEnding}`;
+  return renderTargetIntelHex(createFlatTargetImage({ base, bytes }), {
+    lineEnding,
+  });
 }
 
 export const materializedNucleusFlatBytes = (
   publication: NucleusPublication,
 ): Uint8Array => {
   const materialized = materializeNobj(publication.nobj.parsed);
-  const flat = materialized.flatImage;
-  const bank = publication.nobj.parsed.map.banks[0];
-  if (flat === undefined || bank === undefined) {
+  if (materialized.flatImage === undefined) {
     throw new Error("BIN/HEX output requires a flat NOBJ target");
   }
-  return flat.slice(0, bank.usedLength);
+  return renderTargetBinary(materialized.targetImage);
 };
 
 export function buildNucleusMaterializedArtifacts(
@@ -329,8 +304,7 @@ export async function publishNucleusPreparedSourceTarget(
   const assembler = selectNucleusCompilerAssembler(options.assembler);
   const rootPath = path.resolve(root);
   const compilerManifestPath = path.resolve(compilerManifest);
-  const sourceBase =
-    source.sourceBase ?? NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE;
+  const sourceBase = source.sourceBase ?? NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE;
   const sourceCapacity =
     source.sourceCapacity ?? NUCLEUS_DEFAULT_RESIDENT_SOURCE_CAPACITY;
   const targetDescriptor =

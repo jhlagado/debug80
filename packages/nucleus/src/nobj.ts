@@ -7,9 +7,11 @@ import {
   Z80_BYTE_MAX,
   Z80_WORD_MAX,
   isUnsignedIntegerUpTo,
+  materializeTargetImage,
   z80AddressEnd,
   type GenerationSpool,
   type GenerationSpoolFactory,
+  type MaterializedTargetImage,
 } from "@jhlagado/z80-tool-services";
 
 export const NobjKind = {
@@ -88,6 +90,7 @@ export interface ParsedNobj {
 
 export interface MaterializedNobj {
   readonly parsed: ParsedNobj;
+  readonly targetImage: MaterializedTargetImage;
   readonly banks: readonly Uint8Array[];
   readonly flatImage?: Uint8Array;
 }
@@ -1178,19 +1181,24 @@ const kindName = (kind: number): string => {
 export const materializeNobj = (parsed: ParsedNobj): MaterializedNobj => {
   // Re-validate retained bytes so callers cannot materialize a hand-built ParsedNobj.
   const validated = parseNobj(parsed.serialized);
-  const banks = Array.from({ length: validated.begin.bankCount }, () => {
-    const image = new Uint8Array(validated.begin.imageCapacity);
-    image.fill(validated.begin.imageFill);
-    return image;
+  const targetImage = materializeTargetImage({
+    geometry: {
+      bankCount: validated.begin.bankCount,
+      imageBase: validated.begin.imageBase,
+      imageCapacity: validated.begin.imageCapacity,
+      imageFill: validated.begin.imageFill,
+      entryBank: validated.map.entryBank,
+      entryAddress: validated.map.entryAddress,
+    },
+    banks: validated.map.banks.map(({ usedLength }) => ({ usedLength })),
+    images: validated.images,
+    patches: validated.patches,
+    patchPolicy: "used",
   });
-  for (const item of [...validated.images, ...validated.patches]) {
-    const bank = banks[item.bank];
-    if (bank === undefined) fail("materializer bank is unavailable");
-    bank.set(item.bytes, item.address - validated.begin.imageBase);
-  }
   return {
     parsed: validated,
-    banks,
-    ...(validated.begin.banked ? {} : { flatImage: banks[0] }),
+    targetImage,
+    banks: targetImage.banks,
+    ...(validated.begin.banked ? {} : { flatImage: targetImage.flatImage }),
   };
 };
