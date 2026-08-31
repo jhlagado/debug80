@@ -74,3 +74,19 @@ complete generation, rewinds it, and then materializes it.
 BIN and COM publication uses the exact logical used length. CP/M 2.2 writes
 physical 128-byte records, so the final disk record may contain padding. Intel
 HEX retains the logical length through its records and end-of-file marker.
+
+## Native CP/M renderer
+
+`native/cpm22-final-image.asm` supplies the shared Z80 Intel HEX renderer. A
+tool provides aliases for its open output FCB, BDOS wrapper, 128-byte DMA
+buffer, source cursor, target address, remaining length, and small renderer
+state. `ZTS_CPM_HEX_BEGIN` starts one output, `ZTS_CPM_HEX_SEGMENT` accepts a
+contiguous source segment, and `ZTS_CPM_HEX_END` writes the end-of-file record
+and pads the final physical CP/M record with `$1A`.
+
+Several segment calls may describe one logical image whose bytes occupy
+different resident buffers. This accommodates a compiler that combines a
+runtime prefix with generated code without copying both regions into a second
+contiguous buffer. The module performs no file naming, creation, rename, or
+rollback. Each tool's CP/M publisher owns that transaction and calls the
+renderer only after the final image is patched.

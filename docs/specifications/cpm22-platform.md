@@ -59,8 +59,8 @@ against a checked upstream build or historical binary proves the resulting CCP
 and BDOS bytes, apart from documented serial-number fields.
 
 Native `ATOM.COM` is built from `packages/atom` under GPL-3.0-only. The current
-15,008-byte artifact has SHA-256
-`315780b93751f9b6661ea5c5d131ca4d1c4cd27d84c080e302366a3a6735ed80`.
+15,029-byte artifact has SHA-256
+`cdd5d05e3131b23288914b354929cfb5c2e1639d71c35f337e8fcec8c2bdfcbb`.
 `packages/atom/proofs/cpm22-census.json` records the corresponding strict build,
 capacity account, and artifact digest. The CP/M image build verifies that
 census before installing the program.
