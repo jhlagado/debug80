@@ -72,6 +72,32 @@ Launch validation rejects malformed media and install failures before runtime cr
 
 ---
 
+## Bundled native tools
+
+The default CP/M 2.2 disk image also carries a small set of checked native guest
+tools that the Debug80 regression suite treats as product surface:
+
+- `ATOM.COM` publishes `.COM` files from the bundled `.ASM` sources
+- `NUC.COM` is the bundled native Nucleus compiler
+- `EDIT.COM` is the full-screen editor exercised by the terminal-panel contract
+
+The imported `NUC.COM` artifact lives in `third_party/nucleus/` with reviewed
+provenance metadata beside it. `scripts/cpm22/import-nucleus.mjs` rebuilds that
+binary from a neighbouring Nucleus checkout only when the exact reviewed commit
+and SHA-256 digest match the committed artifact.
+
+In the guest session, `NUC ?` prints the compact command contract:
+
+`NUC [SOURCE [OUTPUT.COM|OUTPUT.BIN|OUTPUT.HEX]]`
+
+When the caller supplies only a source path such as `INPUT.NU`, the compiler
+publishes `INPUT.COM` by basename rather than using a fixed `OUTPUT.COM`
+default. The acceptance and VS Code host integration suites also guard the
+collision path where `NUC INPUT.NU KEEP.COM` must fail without overwriting the
+existing guest file.
+
+---
+
 ## Terminal I/O
 
 The CP/M platform owns an 80×24 terminal rather than a hardware panel. `buildIoHandlers()` returns a `TerminalState` with fixed port assignments:
@@ -110,7 +136,7 @@ The built-in project kit is `cpm22/default`. New CP/M projects scaffold `debug80
 - `cpm22: { "writable": true, "programName": "MAIN.COM" }`
 - a starter source rooted at `src/main.asm`
 
-The VS Code host integration suite now includes a CP/M extension-host scenario that boots to `A>`, stops in the source-mapped BIOS, runs the bundled `SMOKE` flow, and exercises native Atom on the bundled single-source, large-source, and multipart examples. The same scenario also opens the Debug80 terminal panel, drives the bundled full-screen editor through search, literal replacement, save, quit, and new-file creation, and verifies the resulting guest files through `TYPE`. The expected transcript lives in `tests/integration-vscode/expected/cpm22-transcript.json`.
+The VS Code host integration suite now includes a CP/M extension-host scenario that boots to `A>`, stops in the source-mapped BIOS, runs the bundled `SMOKE` flow, and exercises native Atom on the bundled single-source, large-source, and multipart examples. The same scenario also runs the bundled Nucleus compiler through `NUC INPUT.NU`, verifies the resulting `INPUT.COM` guest artifact, then opens the Debug80 terminal panel, drives the bundled full-screen editor through search, literal replacement, save, quit, and new-file creation, and verifies the resulting guest files through `TYPE`. The expected transcript lives in `tests/integration-vscode/expected/cpm22-transcript.json`.
 
 ---
 
