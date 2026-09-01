@@ -65,11 +65,11 @@ Native `ATOM.COM` is built from `packages/atom` under GPL-3.0-only. The current
 capacity account, and artifact digest. The CP/M image build verifies that
 census before installing the program.
 
-Native `NUCLEUS.COM` comes from
+Native `NUC.COM` comes from
 [`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
-`44aa22c6fff7e15ed30fec5ea4811b3e331183ba` under GPL-3.0-only. Its
-21,004-byte artifact has SHA-256
-`bf4f7f4273b08afe54af08eb27f24ed819186e019c1e4b3cc268f1f24f1dad7f`.
+`79016539569aaffe66334cf350f9b9100a5a8bb4` under GPL-3.0-only. Its
+21,281-byte artifact has SHA-256
+`7b3da3c0b595a88b4906537fe0f76c44f7abd412e248d35d927d1aefd8971ef1`.
 Debug80 records the source path, revision, digest, and length in
 `third_party/nucleus/PROVENANCE.json`; the import command also requires strict
 AZM register-contract assembly.
@@ -174,7 +174,7 @@ BIOS.
 
 The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
 `INPUT.ASM`, `HELLO.ASM`, the 16,535-byte `LARGE.ASM` acceptance source,
-`PART1.ASM`, `PART2.ASM`, `BUILD.ASM`, `NUCLEUS.COM`, `INPUT.NU`, and
+`PART1.ASM`, `PART2.ASM`, `BUILD.ASM`, `NUC.COM`, `INPUT.NU`, and
 `EDIT.COM`. `ATOM.COM` reads and writes through the guest BDOS. With no
 arguments it uses `INPUT.ASM` and `OUTPUT.COM`; `ATOM SOURCE OUTPUT` selects
 another pair of current-drive CP/M 8.3 names. The output suffix selects COM,
@@ -200,25 +200,29 @@ addresses, temporary names, and backup names remain inside the adapter.
 
 ### Native Nucleus compiler
 
-`NUCLEUS.COM` runs the standalone 16 KiB Nucleus compiler core as a CP/M
-transient. With no arguments it reads `INPUT.NU` and publishes `OUTPUT.COM`.
-`NUCLEUS SOURCE OUTPUT.COM` selects one entry source and output pair. The entry
-source may declare leading `//% import "NAME.NU"` dependencies. The native
-harness resolves those dependencies before compiler execution, includes each
-source identity once, rejects cycles and malformed or late imports during
-preflight, and compiles dependencies before their importer. Filenames are
-current-drive CP/M 8.3 names, the output extension must be `.COM`, and preflight
-rejects a source/output name conflict. Each source part may contain at most
-65,535 logical bytes. Native Nucleus does not parse JSON and does not expose a
-separate source-plan command.
+`NUC.COM` runs the standalone 16 KiB Nucleus compiler core as a CP/M transient.
+With no arguments it reads `INPUT.NU` and publishes `OUTPUT.COM`. One argument
+names the source and derives a `.COM` output from the same base name; a missing
+source extension is treated as `.NU`. Two arguments select the source and the
+output explicitly. `NUC ?` prints the compact command summary.
+
+The output suffix selects `.COM`, `.BIN`, or Intel HEX. COM and BIN contain the
+same flat bytes beginning at logical `$0100`; HEX contains the same image with
+addresses and checksums. Filenames are current-drive CP/M 8.3 names, and
+preflight rejects a source/output name conflict. The current self-contained
+transient reads one physical source file of at most 65,535 logical bytes. The
+native import resolver and multipart streamer remain separate Z80 components
+until the common named-object services receive their CP/M binding. Native
+Nucleus parses neither JSON nor a source-plan command.
 
 The compiler uses Nucleus's ordinary forward-patch stream without serializing
 NOBJ. Its CP/M output adapter places generated image bytes in a 23,808-byte TPA
 buffer and applies later patch writes to the addressed bytes in that buffer.
 Commit writes the completed image to a temporary CP/M file and then replaces
-the requested `.COM`; abort removes transaction files and preserves any prior
-output. This direct path can publish at most 25,600 `.COM` bytes, including the
-fixed `$0100..$07FF` target prefix.
+the requested output; abort removes transaction files and preserves any prior
+output. The logical final image can contain at most 25,600 bytes, including the
+fixed `$0100..$07FF` target prefix. Intel HEX expands those bytes into text and
+therefore requires more disk space than COM or BIN.
 
 Generated Nucleus programs enter the public BDOS gateway at `$0005` for
 blocking console input and console output. They do not call Debug80's absolute
@@ -229,19 +233,19 @@ The native placement is independently bounded:
 
 | Account                                         | Inclusive or half-open range | Measured use or capacity |
 | ----------------------------------------------- | ---------------------------- | -----------------------: |
-| Transient artifact                              | `$0100..$530B`               |             21,004 bytes |
+| Transient artifact                              | `$0100..$5420`               |             21,281 bytes |
 | Fixed compiler core                             | within `$0103..$40BC`        |             16,314 bytes |
-| CP/M host vector, adapters, assets, and startup | `$4100..$530B`               |              4,620 bytes |
-| Unused host-resident allowance                  | `$530C..$57FF`               |              1,268 bytes |
-| Host workspace                                  | `$5800..$5E5A`               |              1,627 bytes |
-| Unused host-workspace allowance                 | `$5E5B..$5FFF`               |                421 bytes |
+| CP/M host vector, adapters, assets, and startup | `$4100..$5420`               |              4,897 bytes |
+| Unused host-resident allowance                  | `$5421..$57FF`               |                991 bytes |
+| Host workspace                                  | `$5800..$5E34`               |              1,589 bytes |
+| Unused host-workspace allowance                 | `$5E35..$5FFF`               |                459 bytes |
 | Compiler workspace reservation                  | `$6000..$6FFF`               |              4,096 bytes |
 | Streaming source reservation                    | `$7000..$77FF`               |              2,048 bytes |
 | Generated-image buffer                          | `$7800..$D4FF`               |             23,808 bytes |
 | Compiler stack                                  | `$D500..$E3FF`               |              3,840 bytes |
 
 CP/M enters a transient with the CCP's stack in resident system memory.
-`NUCLEUS.COM` therefore saves the exact incoming stack pointer, performs the
+`NUC.COM` therefore saves the exact incoming stack pointer, performs the
 complete compile on its reserved stack, restores the pointer, and returns. It
 is a writable, non-reentrant transient; a proof starts it with the real CCP
 stack address and verifies that `$E400..$EFFF` remains byte-for-byte unchanged.
@@ -329,7 +333,7 @@ bundled `cpm22` target, publish its exact `.COM` artifact, display the real CCP
 A>DIR
 A: README TXT : SMOKE COM : ATOM COM : INPUT ASM
 A: HELLO ASM : LARGE ASM : PART1 ASM : PART2 ASM
-A: BUILD ASM : NUCLEUS COM : INPUT NU : EDIT COM
+A: BUILD ASM : NUC COM : INPUT NU : EDIT COM
 A: MAIN COM
 
 A>MAIN
@@ -368,7 +372,7 @@ MULTI.COM written
 A>MULTI
 Hello from native Atom
 
-A>NUCLEUS
+A>NUC
 
 A>OUTPUT
 OK
@@ -383,8 +387,8 @@ injection, boot and warm boot, sequential-session isolation, platform
 selection, native Atom byte equivalence and rollback, Debug80 UI integration,
 no-argument, selected-filename, and multipart Atom commands, typechecking,
 formatting, lint, the 16,535-byte single-source path, the 66,000-byte
-cross-part forward-reference path, native Nucleus rollback and recovery,
-positioned multipart diagnostics, direct-patch byte placement, generated COM
+cross-part forward-reference path, native Nucleus compact commands, rollback
+and recovery, direct-patch byte placement, COM/BIN/HEX publication, generated COM
 execution, native editor rendering, forward search, repeat-search, and
 literal replacement with save and reload, new-file creation with transactional
 first save, raw editor control keys, scoped tests, full tests, and diff checks.

@@ -141,7 +141,7 @@ assert.equal(transcript(), "\r\nA>");
 
 runCommand(
   "DIR",
-  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    ASM : NUCLEUS  COM : INPUT    NU  : EDIT     COM\r\nA: MAIN     COM : KEEP     COM : KEEP     $$$\r\nA>",
+  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    ASM : NUC      COM : INPUT    NU  : EDIT     COM\r\nA: MAIN     COM : KEEP     COM : KEEP     $$$\r\nA>",
 );
 runCommand("MAIN", "MAIN\r\r\nHi\r\n\r\nA>");
 runCommand(
@@ -252,12 +252,12 @@ assert.deepEqual(
 );
 runCommand("MULTI", "MULTI\r\r\nHello from native Atom\r\n\r\nA>");
 const rejectedNucleusExecution = runCommand(
-  "NUCLEUS INPUT.NU KEEP.COM",
-  "NUCLEUS INPUT.NU KEEP.COM\r\r\n\r\nNucleus host error 61\r\n\r\nA>",
+  "NUC INPUT.NU KEEP.COM",
+  "NUC INPUT.NU KEEP.COM\r\r\n\r\nNucleus host error 61\r\n\r\nA>",
 );
 assert.deepEqual(rejectedNucleusExecution, {
-  instructions: 98155,
-  tStates: 1347814,
+  instructions: 98300,
+  tStates: 1354959,
 });
 assert.deepEqual(
   readCpm22File(platform.disk.exportImage(), "KEEP.COM")?.bytes.slice(
@@ -273,31 +273,37 @@ assert.deepEqual(
   ),
   reservedKeepTemporary,
 );
-const nucleusExecution = runCommand("NUCLEUS", "NUCLEUS\r\r\n\r\nA>");
+runCommand(
+  "NUC ?",
+  "NUC ?\r\r\n\r\nNUC [SOURCE [OUTPUT.COM|OUTPUT.BIN|OUTPUT.HEX]]\r\n\r\nA>",
+);
+const nucleusExecution = runCommand("NUC INPUT.NU", "NUC INPUT.NU\r\r\n\r\nA>");
 assert.deepEqual(nucleusExecution, {
-  instructions: 330838,
-  tStates: 4673329,
+  instructions: 332151,
+  tStates: 4686885,
 });
 const nucleusOutputFile = readCpm22File(
   platform.disk.exportImage(),
-  "OUTPUT.COM",
+  "INPUT.COM",
 );
-assert.ok(nucleusOutputFile, "native Nucleus did not publish OUTPUT.COM");
+assert.ok(nucleusOutputFile, "native Nucleus did not publish INPUT.COM");
 assert.equal(nucleusOutputFile.bytes[0], 0xcd);
 assert.equal(nucleusOutputFile.bytes[0x0700], 0xc3);
 const nucleusProgramBdosStart = bdosCalls.length;
-const nucleusProgramExecution = runCommand("OUTPUT", "OUTPUT\r\r\nOK\r\nA>");
+const nucleusProgramExecution = runCommand("INPUT", "INPUT\r\r\nOK\r\nA>");
 assert.deepEqual(nucleusProgramExecution, {
-  instructions: 98478,
-  tStates: 1443506,
+  instructions: 99033,
+  tStates: 1447303,
 });
 assert.equal(
-  bdosCalls.slice(nucleusProgramBdosStart).filter(
-    (call) =>
-      call.function === 2 &&
-      call.returnAddress >= 0x0100 &&
-      call.returnAddress < 0x0800,
-  ).length,
+  bdosCalls
+    .slice(nucleusProgramBdosStart)
+    .filter(
+      (call) =>
+        call.function === 2 &&
+        call.returnAddress >= 0x0100 &&
+        call.returnAddress < 0x0800,
+    ).length,
   2,
   "generated Nucleus console output must enter public BDOS twice",
 );
@@ -410,8 +416,8 @@ const editorExecution = {
   tStates: tStates - editorTStateStart,
 };
 assert.deepEqual(editorExecution, {
-  instructions: 373986,
-  tStates: 3680840,
+  instructions: 382133,
+  tStates: 3750209,
 });
 const editedNucleusSource = logicalCpmBytes(
   readCpm22File(platform.disk.exportImage(), "INPUT.NU"),
@@ -462,8 +468,8 @@ const newDiscardExecution = {
   tStates: tStates - newDiscardTStateStart,
 };
 assert.deepEqual(newDiscardExecution, {
-  instructions: 52244,
-  tStates: 559122,
+  instructions: 52351,
+  tStates: 559995,
 });
 assert.equal(
   readCpm22File(platform.disk.exportImage(), "THROW.NU"),
@@ -499,8 +505,8 @@ const newCreateExecution = {
   tStates: tStates - newCreateTStateStart,
 };
 assert.deepEqual(newCreateExecution, {
-  instructions: 113476,
-  tStates: 1144430,
+  instructions: 113904,
+  tStates: 1147922,
 });
 assert.deepEqual(
   logicalCpmBytes(

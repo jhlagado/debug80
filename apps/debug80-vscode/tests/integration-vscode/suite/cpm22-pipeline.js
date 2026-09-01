@@ -211,8 +211,8 @@ export async function runCpm22Pipeline(extension) {
       expectedTranscript.multipartAtom
     );
     await sendCommand(session, transcript, 'MULTI', expectedTranscript.multipartOutput);
-    await sendCommand(session, transcript, 'NUCLEUS', expectedTranscript.nucleus);
-    await sendCommand(session, transcript, 'OUTPUT', expectedTranscript.nucleusOutput);
+    await sendCommand(session, transcript, 'NUC INPUT.NU', expectedTranscript.nucleus);
+    await sendCommand(session, transcript, 'INPUT', expectedTranscript.nucleusOutput);
     await runEditor(session, transcript);
     await sendCommand(session, transcript, 'TYPE INPUT.NU', expectedTranscript.editedInput);
     await runNewEditor(session, transcript);

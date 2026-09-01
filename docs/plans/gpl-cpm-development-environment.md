@@ -30,14 +30,15 @@ and publishes through a recoverable temporary-file sequence. Headless proofs
 exercise direct and included builds and execute the resulting COM files. Each
 source part may contain at most 65,535 logical bytes.
 
-Native Nucleus now runs as a 21,004-byte CP/M transient. It keeps the fixed
+Native Nucleus now runs as a 21,281-byte `NUC.COM` transient. It keeps the fixed
 16,314-byte compiler core intact, supplies CP/M source, diagnostic, runtime,
 command, and transactional output adapters, and compiles directly into a
 23,808-byte addressed image buffer. Forward patches update that buffer before
-the completed `.COM` is published; the native path does not serialize NOBJ.
+the completed COM, BIN, or Intel HEX output is published; the native path does
+not serialize NOBJ.
 Headless and Extension Host proofs compile the bundled `INPUT.NU`, execute its
-`OUTPUT.COM`, preserve an existing output through a rejected transaction, and
-exercise recovery, multipart diagnostics, and the real CCP stack boundary.
+derived `INPUT.COM`, preserve an existing output through a rejected transaction,
+and exercise compact commands, recovery, and the real CCP stack boundary.
 
 The native editor now runs as a 3,003-byte CP/M transient. It opens the
 bundled Atom and Nucleus sources, renders an 80-by-24 full-screen view, supports
@@ -142,9 +143,9 @@ programs.
 | Atom margin below 16 KiB                             | Measured native account |  3,988 |
 | Native CP/M Atom COM                                 | Measured file           | 14,145 |
 | CP/M-specific Atom resident increment                | Measured linked account |  1,746 |
-| Native CP/M Nucleus COM                              | Measured file           | 21,004 |
+| Native CP/M Nucleus COM                              | Measured file           | 21,281 |
 | Nucleus compiler core                                | Measured fixed account  | 16,314 |
-| CP/M-specific Nucleus host region                    | Measured linked account |  4,620 |
+| CP/M-specific Nucleus host region                    | Measured linked account |  4,897 |
 | Nucleus direct generated-image buffer                | Measured TPA capacity   | 23,808 |
 | Native CP/M editor through literal replacement       | Measured file           |  3,003 |
 | Principal CP/M development utilities examined so far | Measured files          | 36,736 |
@@ -444,13 +445,13 @@ The CP/M Nucleus milestone runs the existing Z80 compiler as a transient
 program and maps its source, diagnostic, storage, and output services onto the
 CP/M environment. It does not introduce a second compiler implementation.
 
-The retained design supports single-source and eight-part plan commands,
-positioned hexadecimal diagnostics, a CP/M target startup and service provider,
-and transactional `.COM` publication. It applies the compiler's addressed
-image and patch operations directly to a 23,808-byte TPA buffer. The complete
-transient is 21,004 bytes, of which 16,314 bytes are the unchanged compiler
-core and 4,620 bytes are the host region. Its independent resident and
-workspace allowances retain 1,268 and 421 bytes respectively. Generated
+The retained design supports zero-, one-, and two-name commands, positioned
+hexadecimal diagnostics, a CP/M target startup and service provider, and
+transactional COM, BIN, and Intel HEX publication. It applies the compiler's
+addressed image and patch operations directly to a 23,808-byte TPA buffer. The
+complete transient is 21,281 bytes, of which 16,314 bytes are the unchanged
+compiler core and 4,897 bytes are the host region. Its independent resident
+and workspace allowances retain 991 and 459 bytes respectively. Generated
 program console calls enter CP/M through the public BDOS gateway at `$0005`.
 
 Suitable utilities and demonstrations may now be written in Nucleus. The first

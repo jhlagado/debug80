@@ -56,15 +56,15 @@ paths after their replacements are proved.
 
 The common model should be layered this way:
 
-| Layer | Shared or project-owned | Responsibility |
-| --- | --- | --- |
-| Processor and machine | Shared through Debug80 runtime or hardware | Z80 execution, memory, traps, timing where measured |
-| Operating provider | Platform-specific | Files, named objects, console, block transfer, host callbacks |
-| `z80-tool-services` ABI | Shared | Stable Z80-facing service calls for named objects and source bytes |
-| Tool adapter | Project-owned | Atom compact callbacks or Nucleus compiler vector mapped onto services |
-| Z80 core | Project-owned | Atom assembler core or Nucleus compiler core |
-| Source preparation | Shared resolver with language profiles | Dependency discovery, source identities, ordering, capacities, provenance |
-| CLI/API/Debug80 integration | Project-owned shape over shared services | Desktop commands, package exports, Debug80 assembler/compiler backends |
+| Layer                       | Shared or project-owned                    | Responsibility                                                            |
+| --------------------------- | ------------------------------------------ | ------------------------------------------------------------------------- |
+| Processor and machine       | Shared through Debug80 runtime or hardware | Z80 execution, memory, traps, timing where measured                       |
+| Operating provider          | Platform-specific                          | Files, named objects, console, block transfer, host callbacks             |
+| `z80-tool-services` ABI     | Shared                                     | Stable Z80-facing service calls for named objects and source bytes        |
+| Tool adapter                | Project-owned                              | Atom compact callbacks or Nucleus compiler vector mapped onto services    |
+| Z80 core                    | Project-owned                              | Atom assembler core or Nucleus compiler core                              |
+| Source preparation          | Shared resolver with language profiles     | Dependency discovery, source identities, ordering, capacities, provenance |
+| CLI/API/Debug80 integration | Project-owned shape over shared services   | Desktop commands, package exports, Debug80 assembler/compiler backends    |
 
 The Nucleus runtime services used by generated programs are a separate concern from the services used while the Nucleus compiler runs. They may share provider machinery, but the contracts must stay distinct: one contract feeds the compiler; the other supports the compiled program.
 
@@ -124,21 +124,29 @@ The desktop command may also retain `publish` as an explicit subcommand for
 existing scripts and development tooling, but ordinary publication should not
 require it.
 
-Recommended native shape:
+Implemented CP/M shape:
 
 ```text
-NUCLEUS MAIN.NU PROGRAM.NOBJ
+NUC
+NUC MAIN
+NUC MAIN.NU PROGRAM.COM
+NUC MAIN.NU PROGRAM.BIN
+NUC MAIN.NU PROGRAM.HEX
+NUC ?
 ```
 
 The Node command may support richer output selection, diagnostics, maps, and project JSON. Native Z80 commands should remain positional and small. A native system should not parse JSON; if it needs configuration, use a deliberately small native format or explicit command arguments.
 
 Output switches should request outputs rather than suppress defaults. That keeps the common command easy to type and avoids carrying Node-specific Debug80 options into CP/M or TEC-style environments.
 
-For native Nucleus, `MAIN.NU` is the entry source. Its leading `//% import`
-header drives dependency discovery. There is no public `PLAN` command and no
-serialized source-plan file in the native CLI contract. If a small system later
-needs a cached dependency product for performance, that product is an internal
-harness cache, not a source-language or command-line interface.
+The current self-contained CP/M transient compiles one physical source file.
+The separate Z80 resolver and multipart streamer use leading `//% import`
+headers, but require a CP/M binding for the common named-object services before
+they can precede the compiler on that platform. There is no public `PLAN`
+command and no serialized source-plan file in the native CLI contract. If a
+small system later needs a cached dependency product for performance, that
+product is an internal harness cache, not a source-language or command-line
+interface.
 
 ## Rewriting Nucleus assembly in Atom
 

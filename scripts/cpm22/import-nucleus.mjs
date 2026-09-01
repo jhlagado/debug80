@@ -22,9 +22,9 @@ const source = join(
   "cpm22-native-compiler.asm",
 );
 const destinationDirectory = join(repositoryRoot, "third_party", "nucleus");
-const expectedCommit = "44aa22c6fff7e15ed30fec5ea4811b3e331183ba";
+const expectedCommit = "79016539569aaffe66334cf350f9b9100a5a8bb4";
 const expectedSha256 =
-  "bf4f7f4273b08afe54af08eb27f24ed819186e019c1e4b3cc268f1f24f1dad7f";
+  "7b3da3c0b595a88b4906537fe0f76c44f7abd412e248d35d927d1aefd8971ef1";
 
 const commit = execFileSync("git", ["-C", nucleusRoot, "rev-parse", "HEAD"], {
   encoding: "utf8",
@@ -48,11 +48,11 @@ const symbols = new Map(
   Object.entries(symbolsFromDebugMap(assembled.debugMap)),
 );
 assert.equal(symbols.get("CpmCompilerTransientStart"), 0x0100);
-assert.equal(symbols.get("CpmCompilerResidentEnd"), 0x530c);
+assert.equal(symbols.get("CpmCompilerResidentEnd"), 0x5421);
 assert.equal(
   assembled.bytes[0],
   0xc3,
-  "NUCLEUS.COM must begin with the CP/M entry jump",
+  "NUC.COM must begin with the CP/M entry jump",
 );
 
 const sha256 = createHash("sha256").update(assembled.bytes).digest("hex");
@@ -74,7 +74,7 @@ const provenance = {
 
 await mkdir(destinationDirectory, { recursive: true });
 await Promise.all([
-  writeFile(join(destinationDirectory, "NUCLEUS.COM"), assembled.bytes),
+  writeFile(join(destinationDirectory, "NUC.COM"), assembled.bytes),
   writeFile(
     join(destinationDirectory, "PROVENANCE.json"),
     `${JSON.stringify(provenance, undefined, 2)}\n`,

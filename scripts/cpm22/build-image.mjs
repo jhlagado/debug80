@@ -85,7 +85,7 @@ async function main() {
           join(atomDirectory, "proofs", "cpm22-census.json"),
           "utf8",
         ).then(JSON.parse),
-        readFile(join(nucleusDirectory, "NUCLEUS.COM")),
+        readFile(join(nucleusDirectory, "NUC.COM")),
         readFile(join(nucleusDirectory, "PROVENANCE.json"), "utf8").then(
           JSON.parse,
         ),
@@ -265,7 +265,7 @@ async function main() {
     image = installCpm22File(image, "PART1.ASM", multipartPart1);
     image = installCpm22File(image, "PART2.ASM", multipartPart2);
     image = installCpm22File(image, "BUILD.ASM", multipartRoot);
-    image = installCpm22File(image, "NUCLEUS.COM", nucleus);
+    image = installCpm22File(image, "NUC.COM", nucleus);
     image = installCpm22File(image, "INPUT.NU", nucleusSource);
     image = installCpm22File(image, "EDIT.COM", editor.bytes);
 

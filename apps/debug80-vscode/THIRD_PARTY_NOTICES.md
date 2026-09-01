@@ -26,8 +26,8 @@ code.
 
 ## Native Nucleus compiler
 
-The ideal CP/M platform disk contains `NUCLEUS.COM`, built from
+The ideal CP/M platform disk contains `NUC.COM`, built from
 [`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
-`44aa22c6fff7e15ed30fec5ea4811b3e331183ba` under GPL-3.0-only. The exact
+`79016539569aaffe66334cf350f9b9100a5a8bb4` under GPL-3.0-only. The exact
 source identity, artifact digest, and reproducible import instructions are in
 `third_party/nucleus/`.
