@@ -91,6 +91,15 @@ original directories at Debug80 `6c8d0f19767166308bf6e3c9271c4d2aae0e309e`.
 The documentation-only corrections are published as Runtime `0024be1` and
 Tool Services `d75f2e0`; Debug80's verified code pins remain unchanged.
 
+The first Debug80 Linux run (`33770309955`) exposed missing optional native
+bindings in the lockfile: Rollup and Rolldown had only their macOS ARM entries.
+A fresh macOS install could not detect that Linux startup failure. The repair
+adds the missing entries and their optional WASM support dependencies from an
+isolated npm lock generated for the existing Rollup `4.62.2` and Rolldown
+`1.1.5` versions. Every previously locked package entry is unchanged.
+`npm run check:native-lockfile` failed on the original 38 omissions and now
+checks all 40 declared bindings. It runs before the local build and in CI.
+
 The four extracted public repositories are pushed. The user has authorized
 the complete Debug80 cutover, including its push. Final Linux CI verification
 follows publication.
