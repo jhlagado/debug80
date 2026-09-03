@@ -66,9 +66,22 @@ The real GitHub dependency install passes Debug80's maintained `npm run check`:
 webview tests. Two existing tests are skipped. CP/M acceptance checks pass with
 the complete disk image byte-for-byte unchanged. The live VS Code project and
 CP/M guest tests pass, and the staged VSIX smoke compiles with both installed
-compilers, including a Nucleus standard-library import. The final clean-clone
-cutover check remains pending. These are host-software proofs, not ESP32
-hardware measurements.
+compilers, including a Nucleus standard-library import. These are host-software
+proofs, not ESP32 hardware measurements.
+
+The final clean-clone proof passed at Debug80 commit `8166329e`: `npm ci`,
+`npm run check`, and `npm run package:verify -w debug80`, with none of the four
+former package directories present and no tracked changes after the run. The
+checkout was `/tmp/debug80-cutover.4oAs76/debug80`; installation ran with global
+Git configuration disabled and terminal prompting disabled. The main checkout
+also passed `npm run test:cpm22`, `npm run package:debug80`, and the final
+`npm run test:vscode -w debug80` run. The rebuilt VSIX is
+`apps/debug80-vscode/debug80-0.3.2.vsix` (93 files, 1.43 MB).
+
+The four extracted public repositories are pushed. Debug80's final cutover is
+committed locally; pushing that cutover still awaits authorization. The
+remaining release work is to resolve the external-link failures below and
+verify Debug80's Linux CI after its push.
 
 The separate external-link check reports two existing upstream failures:
 `https://www.cpm.z80.de/source.html` has a self-signed TLS certificate, and the
@@ -76,6 +89,10 @@ CI badge in the preserved CP/M upstream README returns HTTP 404. Local links
 and the source-size enforcement check pass. The external-link failures still
 affect the Debug80 CI documentation gate; no certificate checks were disabled
 and no vendored provenance was altered to hide them.
+
+`npm ci` also reports 22 dependency advisories (5 moderate, 15 high, 2 critical).
+Dependency upgrades were not mixed into this behavior-preserving refactor;
+their reachability and remediation need a separate audit.
 
 ## Verification rule
 

@@ -42,6 +42,6 @@ or proof directories. Backend tests cover import ordering, target validation,
 positioned diagnostics, selected outputs, and malformed-map preservation.
 
 [Repository migration](repository-migration.md) records the pinned revisions,
-verification results, and remaining clean-clone and packaging work. Website
+verification results, and remaining release work. Website
 snapshot updates are a separate release task; this dependency cutover does not
 publish a new debug80.com documentation edition.
