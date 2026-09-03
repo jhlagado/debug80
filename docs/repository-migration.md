@@ -100,9 +100,13 @@ isolated npm lock generated for the existing Rollup `4.62.2` and Rolldown
 `npm run check:native-lockfile` failed on the original 38 omissions and now
 checks all 40 declared bindings. It runs before the local build and in CI.
 
-The four extracted public repositories are pushed. The user has authorized
-the complete Debug80 cutover, including its push. Final Linux CI verification
-follows publication.
+The four extracted public repositories and the Debug80 cutover are published.
+Debug80's complete Linux Toolchain CI passed at `6b77104e` in run
+`33814747469`: repository guards, AZM tests and package proof, headless
+integration, extension tests, live VS Code scenarios, and VSIX packaging.
+The local `npm run check` and packaged-extension verification also passed at
+that revision. Glimmer's preserved tree matches its original Debug80 subtree
+exactly; the migration did not publish or rewrite Glimmer's remote history.
 
 Two existing documentation links were repaired before publication. The CP/M
 archive reference uses its working HTTP address because its HTTPS endpoint
