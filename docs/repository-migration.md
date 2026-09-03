@@ -78,6 +78,19 @@ also passed `npm run test:cpm22`, `npm run package:debug80`, and the final
 `npm run test:vscode -w debug80` run. The rebuilt VSIX is
 `apps/debug80-vscode/debug80-0.3.2.vsix` (93 files, 1.43 MB).
 
+A second checkout at `72b8f1f2` passed `npm ci`, `npm run build`, and the
+packaged-extension smoke using a new empty npm cache, disabled global and
+system Git configuration, and disabled SSH identities. This proof used
+`/tmp/debug80-fresh-install.FVx2ma/debug80` and left its tracked tree unchanged.
+It checks that previously cached Git packages did not conceal an installation
+dependency.
+
+The source-history audit also corrected a mistyped full source commit in the
+Runtime and Tool Services READMEs. Both extracted subtree hashes match their
+original directories at Debug80 `6c8d0f19767166308bf6e3c9271c4d2aae0e309e`.
+The documentation-only corrections are published as Runtime `0024be1` and
+Tool Services `d75f2e0`; Debug80's verified code pins remain unchanged.
+
 The four extracted public repositories are pushed. Debug80's final cutover is
 committed locally; pushing that cutover still awaits authorization. The
 remaining release work is to resolve the external-link failures below and
