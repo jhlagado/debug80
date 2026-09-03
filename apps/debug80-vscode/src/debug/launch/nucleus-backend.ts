@@ -27,7 +27,7 @@ export interface NucleusCompilerApi {
 }
 
 const defaultCompiler = (): NucleusCompilerApi => ({
-  async buildPreparedSourceArtifacts(options) {
+  async buildPreparedSourceArtifacts(options): Promise<NucleusPreparedSourceArtifactBuild> {
     const { buildNucleusPreparedSourceArtifacts } = await import('@jhlagado/nucleus');
     return buildNucleusPreparedSourceArtifacts(options);
   },
@@ -42,11 +42,15 @@ const PACKAGED_NUCLEUS_COMPILER_MANIFEST = path.join(
 
 function packagedNucleusCompilerManifest(): string | undefined {
   let current = path.dirname(fileURLToPath(import.meta.url));
-  while (true) {
+  for (;;) {
     const candidate = path.join(current, PACKAGED_NUCLEUS_COMPILER_MANIFEST);
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
     const parent = path.dirname(current);
-    if (parent === current) return undefined;
+    if (parent === current) {
+      return undefined;
+    }
     current = parent;
   }
 }
@@ -74,7 +78,11 @@ interface LoadedNucleusBuild {
   readonly targetFile: string;
 }
 
-function readProjectFile(projectPath: string): { readonly root: string; readonly entry: string; readonly target?: string } {
+function readProjectFile(projectPath: string): {
+  readonly root: string;
+  readonly entry: string;
+  readonly target?: string;
+} {
   const parsed = JSON.parse(fs.readFileSync(projectPath, 'utf8')) as unknown;
   if (!isObject(parsed)) {
     throw new Error('Nucleus project file must contain a JSON object');
@@ -89,7 +97,11 @@ function readProjectFile(projectPath: string): { readonly root: string; readonly
         : {}),
     };
   }
-  if (Array.isArray(parsed.sources) && parsed.sources.length === 1 && typeof parsed.sources[0] === 'string') {
+  if (
+    Array.isArray(parsed.sources) &&
+    parsed.sources.length === 1 &&
+    typeof parsed.sources[0] === 'string'
+  ) {
     return {
       root,
       entry: parsed.sources[0],
@@ -160,10 +172,18 @@ function nucleusOutputBytes(
   filePath: string,
   artifacts: NucleusPreparedSourceArtifactBuild['artifacts']
 ): Uint8Array | string {
-  if (pathHasSuffix(filePath, '.nobj')) return artifacts.nobj;
-  if (pathHasSuffix(filePath, '.hex')) return artifacts.hex;
-  if (pathHasSuffix(filePath, '.bin')) return artifacts.bin;
-  if (pathHasSuffix(filePath, '.d8.json')) return artifacts.d8;
+  if (pathHasSuffix(filePath, '.nobj')) {
+    return artifacts.nobj;
+  }
+  if (pathHasSuffix(filePath, '.hex')) {
+    return artifacts.hex;
+  }
+  if (pathHasSuffix(filePath, '.bin')) {
+    return artifacts.bin;
+  }
+  if (pathHasSuffix(filePath, '.d8.json')) {
+    return artifacts.d8;
+  }
   throw new Error(`Nucleus cannot publish unsupported Debug80 output path "${filePath}"`);
 }
 

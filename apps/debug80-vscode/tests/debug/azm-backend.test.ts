@@ -175,22 +175,24 @@ describe('azm-backend', () => {
     const backend = new AzmBackend();
     const { asmPath, hexPath, binPath } = createAssemblyFixture(tmpDir, 'ORG 4000h\nDB 1,3,4\n');
 
-    compile.mockImplementation(async (_asmPath, _options, deps) => ({
-      diagnostics: [],
-      artifacts: [
-        hexArtifact(),
-        deps.formats.writeBin({
-          bytes: new Map([
-            [0x3fff, 0xee],
-            [0x4000, 1],
-            [0x4002, 3],
-            [0x4004, 4],
-            [0x4005, 0xdd],
-          ]),
-        }),
-        d8Artifact(),
-      ],
-    }));
+    compile.mockImplementation((_asmPath, _options, deps) =>
+      Promise.resolve({
+        diagnostics: [],
+        artifacts: [
+          hexArtifact(),
+          deps.formats.writeBin({
+            bytes: new Map([
+              [0x3fff, 0xee],
+              [0x4000, 1],
+              [0x4002, 3],
+              [0x4004, 4],
+              [0x4005, 0xdd],
+            ]),
+          }),
+          d8Artifact(),
+        ],
+      })
+    );
 
     const result = await backend.assemble({
       asmPath,
@@ -207,7 +209,9 @@ describe('azm-backend', () => {
         emitHex: true,
         emitD8m: true,
       }),
-      expect.objectContaining({ formats: expect.objectContaining({ writeBin: expect.any(Function) }) })
+      expect.objectContaining({
+        formats: expect.objectContaining({ writeBin: expect.any(Function) }),
+      })
     );
     expect([...fs.readFileSync(binPath)]).toEqual([1, 0, 3, 0, 4]);
   });

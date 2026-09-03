@@ -123,7 +123,10 @@ export function resolveAsmPath(asm: string | undefined, baseDir: string): string
   return path.resolve(baseDir, asm);
 }
 
-function resolveOutputPaths(outputs: readonly string[] | undefined, baseDir: string): string[] | undefined {
+function resolveOutputPaths(
+  outputs: readonly string[] | undefined,
+  baseDir: string
+): string[] | undefined {
   if (outputs === undefined) {
     return undefined;
   }
@@ -215,7 +218,10 @@ export function resolveDebugMapPath(
   asmPath: string | undefined,
   hexPath: string
 ): string {
-  const outputD8Path = findOutputBySuffix(resolveOutputPaths(args.outputs, baseDir), D8_DEBUG_MAP_EXT);
+  const outputD8Path = findOutputBySuffix(
+    resolveOutputPaths(args.outputs, baseDir),
+    D8_DEBUG_MAP_EXT
+  );
   if (outputD8Path !== undefined) {
     return outputD8Path;
   }

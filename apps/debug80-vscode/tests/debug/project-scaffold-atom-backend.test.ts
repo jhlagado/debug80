@@ -40,9 +40,9 @@ describe('project scaffold Atom backend contract', () => {
         sourceFile: 'src/main.asm',
         assembler: 'atom',
       });
-      expect(resolveAssemblerBackend(String(target.assembler), String(target.sourceFile))).toBeInstanceOf(
-        AtomBackend
-      );
+      expect(
+        resolveAssemblerBackend(String(target.assembler), String(target.sourceFile))
+      ).toBeInstanceOf(AtomBackend);
     }
   });
 });

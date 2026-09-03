@@ -100,11 +100,21 @@ function atomOutputBytes(
   artifacts: AtomArtifacts,
   binBytes: Uint8Array
 ): Uint8Array | string {
-  if (pathHasSuffix(filePath, '.hex')) return artifacts.hex;
-  if (pathHasSuffix(filePath, '.bin')) return binBytes;
-  if (pathHasSuffix(filePath, '.d8.json')) return artifacts.d8Text;
-  if (pathHasSuffix(filePath, '.lst')) return artifacts.listing;
-  if (pathHasSuffix(filePath, '.nobj') && artifacts.nobj !== undefined) return artifacts.nobj;
+  if (pathHasSuffix(filePath, '.hex')) {
+    return artifacts.hex;
+  }
+  if (pathHasSuffix(filePath, '.bin')) {
+    return binBytes;
+  }
+  if (pathHasSuffix(filePath, '.d8.json')) {
+    return artifacts.d8Text;
+  }
+  if (pathHasSuffix(filePath, '.lst')) {
+    return artifacts.listing;
+  }
+  if (pathHasSuffix(filePath, '.nobj') && artifacts.nobj !== undefined) {
+    return artifacts.nobj;
+  }
   throw new Error(`Atom cannot publish unsupported Debug80 output path "${filePath}"`);
 }
 
