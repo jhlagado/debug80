@@ -657,7 +657,7 @@ retained:
 - [Debug80](https://github.com/jhlagado/debug80)
 - [CP/Mish](https://github.com/davidgiven/cpmish)
 - [ZSM4](https://github.com/hperaza/ZSM4)
-- [Digital Research ASM disassembly archive](https://www.cpm.z80.de/source.html)
+- [Digital Research ASM disassembly archive](http://www.cpm.z80.de/source.html)
 - [CP/M 2.2 Operating System Manual](https://adamarchive.org/archive/Manuals/Universal/CP-M%202.2%20Operating%20System%20Manual%20%28Jul82%29.pdf)
 - [DEC VT100 User Guide: programmer information](https://vt100.net/docs/vt100-ug/chapter3.html)
 - [Historical CP/M assembler archive](https://dflund.se/~pi/cpm/files/ftp.mayn.de/pub/cpm/archive/asmutl/)

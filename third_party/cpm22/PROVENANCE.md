@@ -12,6 +12,10 @@ license.
 For stable cross-platform builds, Debug80 stores the assembly sources with LF
 line endings. No source text was otherwise changed.
 
+Documentation-only adjustment: `README.upstream.md` replaces the upstream
+CI badge image, which returns HTTP 404, with a text link to the same workflow.
+The assembly sources and licence text are unaffected.
+
 | File          | Upstream SHA-256                                                   | Repository SHA-256                                                 |
 | ------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
 | `ccp.asm`     | `015dc5754a911c48eb50bbb6ec97bd170be39d000da9409f4064594782e9b5c3` | `497aea556887cbae6f2fc54f24b9826fcd17950f1534f9e54d9b67de094949bc` |

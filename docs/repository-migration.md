@@ -91,17 +91,16 @@ original directories at Debug80 `6c8d0f19767166308bf6e3c9271c4d2aae0e309e`.
 The documentation-only corrections are published as Runtime `0024be1` and
 Tool Services `d75f2e0`; Debug80's verified code pins remain unchanged.
 
-The four extracted public repositories are pushed. Debug80's final cutover is
-committed locally; pushing that cutover still awaits authorization. The
-remaining release work is to resolve the external-link failures below and
-verify Debug80's Linux CI after its push.
+The four extracted public repositories are pushed. The user has authorized
+the complete Debug80 cutover, including its push. Final Linux CI verification
+follows publication.
 
-The separate external-link check reports two existing upstream failures:
-`https://www.cpm.z80.de/source.html` has a self-signed TLS certificate, and the
-CI badge in the preserved CP/M upstream README returns HTTP 404. Local links
-and the source-size enforcement check pass. The external-link failures still
-affect the Debug80 CI documentation gate; no certificate checks were disabled
-and no vendored provenance was altered to hide them.
+Two existing documentation links were repaired before publication. The CP/M
+archive reference uses its working HTTP address because its HTTPS endpoint
+has a self-signed certificate. The upstream README's dead CI badge image was
+replaced by a text link to the same workflow; that adjustment is recorded in
+`third_party/cpm22/PROVENANCE.md`. The link checker and certificate validation
+remain unchanged, as do the CP/M sources, licence, and guest image.
 
 `npm ci` also reports 22 dependency advisories (5 moderate, 15 high, 2 critical).
 Dependency upgrades were not mixed into this behavior-preserving refactor;
