@@ -221,7 +221,7 @@ The routing functions contain no provider state — they are pure dispatch layer
 
 `registerAutoRebuildOnSave()` in `src/extension/auto-rebuild.ts` adds a second extension-host workflow around active sessions. When the user saves an eligible source document during a running Z80 session, the extension debounces the save for 250 ms and then sends `debug80/rebuildWarm` to the active debug session.
 
-Eligibility is checked by `debug80-source-extensions.ts`. The current rebuild-on-save path accepts `.asm`, `.z80`, `.asmi`, and `.glim` files, but only when the saved file is inside the active session's workspace folder. This keeps one workspace's save from warm-rebuilding another workspace's session in a multi-root window.
+Eligibility is checked by `debug80-source-extensions.ts`. The current rebuild-on-save path accepts `.asm`, `.z80`, `.asmi`, and `.nu` files, but only when the saved file is inside the active session's workspace folder. This keeps one workspace's save from warm-rebuilding another workspace's session in a multi-root window.
 
 Successful warm rebuilds clear any prior rebuild diagnostics and append the summary line to the shared Debug80 output channel. Assembly failures are converted into a single VS Code diagnostic at the reported source location, the short summary is appended to the output channel, and the detailed compiler text is shown in the same output stream. Repeated saves while a rebuild is already in flight are coalesced by `SessionStateManager`: the extension marks that another rebuild is pending and reruns exactly once when the current rebuild completes.
 

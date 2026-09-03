@@ -278,7 +278,7 @@ The project header renders the current workspace context and lets the user chang
 
 **Target selector** — visible only when `projectState === 'initialized'`. A `<select>` populated from the `targets[]` array in the `projectStatus` message. Configured targets render as their target name. Discovered runnable source files render with a `+ ` prefix so the user can tell that selecting them will persist a new target entry. When the user picks a target, the webview sends `{ type: 'selectTarget', rootPath, targetName }`.
 
-**Add Target** — visible only when `projectState === 'initialized'`. Posts `{ type: 'addTarget', rootPath }`, which opens the extension-host picker for eligible `.asm`, `.z80`, and runnable `.glim` sources that are not already configured as targets.
+**Add Target** — visible only when `projectState === 'initialized'`. Posts `{ type: 'addTarget', rootPath }`, which opens the extension-host picker for eligible `.asm`, `.z80`, and `.nu` sources that are not already configured as targets.
 
 **Remove Target** — visible only when `projectState === 'initialized'`. Posts `{ type: 'removeTarget', rootPath, targetName }` for the currently selected target. The button is disabled when the project has no selected configured target or when the current selection is still a discovered `+` entry that has not yet been persisted into `debug80.json`. Removing the last configured target is allowed and returns the project to a zero-target state.
 

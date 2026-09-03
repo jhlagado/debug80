@@ -196,7 +196,7 @@ debug80.selectedTarget:{projectConfigPath}
 
 The key includes the config file path, so different projects in a multi-root workspace each remember their own target independently. On the next launch, the stored target is preferred over the config's `defaultTarget`, unless it no longer exists in the config.
 
-The persistence logic lives in `ProjectTargetSelectionController` in `src/extension/project-target-selection.ts`. The controller is now a thin orchestrator around extracted policy modules: `project-target-policy.ts` decides whether to reuse a stored or default target or prompt, `project-target-config-policy.ts` turns config entries into visible choices, `project-target-source-policy.ts` tracks which source files are already covered by targets, `project-target-filesystem.ts` handles existence checks and short-lived source-file caching, and `target-discovery.ts` scans the workspace for runnable assembly entry conventions plus `.glim` files that declare a complete program.
+The persistence logic lives in `ProjectTargetSelectionController` in `src/extension/project-target-selection.ts`. The controller is now a thin orchestrator around extracted policy modules: `project-target-policy.ts` decides whether to reuse a stored or default target or prompt, `project-target-config-policy.ts` turns config entries into visible choices, `project-target-source-policy.ts` tracks which source files are already covered by targets, `project-target-filesystem.ts` handles existence checks and short-lived source-file caching, and `target-discovery.ts` scans the workspace for runnable assembly and Nucleus entry conventions.
 
 ### Discovered versus configured targets
 
@@ -211,18 +211,17 @@ The discovery rules are broader than the old `main.asm`-only flow:
 
 - files named exactly `main.asm` or `main.z80`
 - files named exactly `main.nu`
-- any `.glim` file whose top-level source declares `program <name>`
 
 Any `.nu` source is also treated as a runnable target source. `main.nu` is the
 entry-name convention that lets the panel surface it automatically as a
 discovered target without requiring an existing config entry.
 
 The explicit **Add Target** command goes further. It lists every eligible
-`.asm`, `.z80`, `.nu`, or runnable `.glim` source file in the workspace, even
-when the file does not match the entry-point naming convention. The command
-generates a stable target name from the filename, copies the first existing
-target as a template, then replaces source-specific fields such as
-`sourceFile`, `asm`, `artifactBase`, and incompatible assembler overrides.
+`.asm`, `.z80`, or `.nu` source file in the workspace, even when the file does
+not match the entry-point naming convention. The command generates a stable
+target name from the filename, copies the first existing target as a template,
+then replaces source-specific fields such as `sourceFile`, `asm`,
+`artifactBase`, and incompatible assembler overrides.
 
 ### Target editing and removal
 
