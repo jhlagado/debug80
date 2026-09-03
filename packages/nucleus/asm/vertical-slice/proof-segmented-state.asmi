@@ -1,2 +1,0 @@
-; Proof feature flags required before state-layout includes.
-SegmentedOutput .equ 1

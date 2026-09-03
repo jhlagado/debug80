@@ -14,7 +14,6 @@ const DEFAULT_ROOTS = [
   "apps/debug80-vscode/src",
   "apps/debug80-vscode/webview",
   "packages/azm/src",
-  "packages/debug80-runtime/src",
 ];
 const DEFAULT_ALLOWLIST_FILE = path.resolve(
   SCRIPT_DIR,

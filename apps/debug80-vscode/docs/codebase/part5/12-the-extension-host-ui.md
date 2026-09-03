@@ -12,7 +12,7 @@ nav_order: 1
 
 The Debug80 sidebar panel is a VS Code `WebviewView` embedded in the built-in **Run & Debug** container (`"views": { "debug": [...] }` in `package.json`). It runs in a separate JavaScript context from the extension host and communicates with it entirely through message passing. The extension host side of this boundary is managed by `PlatformViewProvider` in `src/extension/platform-view-provider.ts`.
 
-The view is registered under `"views": { "debug": [...] }` in `package.json` with `visibility: "visible"`, which places it as a normal Run and Debug subpanel alongside Variables, Watch, Call Stack, and Breakpoints. The extension can activate through the view, through Z80 debug resolution, through a workspace containing `debug80.json`, or through the contributed Z80 assembly and Glimmer language activation events.
+The view is registered under `"views": { "debug": [...] }` in `package.json` with `visibility: "visible"`, which places it as a normal Run and Debug subpanel alongside Variables, Watch, Call Stack, and Breakpoints. The extension can activate through the view, through Z80 debug resolution, through a workspace containing `debug80.json`, or through the contributed Z80 assembly and Nucleus language activation events.
 
 This chapter covers the provider class: what state it holds, how the webview is created and destroyed, the complete message catalogue in both directions, how message routing is structured, and how the provider wires together the debug adapter, the workspace, and the UI.
 
@@ -23,21 +23,19 @@ This chapter covers the provider class: what state it holds, how the webview is 
 Debug80 also owns the editor-facing language contributions for authored source files. In `package.json`, the extension contributes:
 
 - language id `z80-asm` for `.asm`, `.z80`, and `.asmi`
-- language id `glim` for `.glim`
-- breakpoint support for common Z80 assembly language ids plus `glim`
-- TextMate grammars at `syntaxes/z80-asm.tmLanguage.json` and `syntaxes/glim.tmLanguage.json`
+- language id `nucleus` for `.nu`
+- breakpoint support for common Z80 assembly language ids plus `nucleus`
+- TextMate grammars at `syntaxes/z80-asm.tmLanguage.json` and `syntaxes/nucleus.tmLanguage.json`
 
 The Z80 assembly grammar is deliberately lexical. It recognizes semicolon comments, AZMDoc comments, strings, labels, local labels, directives, condition-bearing control instructions, Z80 mnemonics, registers, condition codes, number formats, symbols, operators, layout types, enum/member syntax, layout casts, field declarations, AZM `op` declarations, lowercase AZM op invocations, `sizeof`/`offset`, and register contract annotations such as `in`, `out`, `clobbers`, and `preserves`.
 
-The Glimmer grammar covers top-level declarations, header clauses, resource declarations, pixel-row forms, and embedded `begin` / `end` block bodies. Those block bodies embed the `source.z80.asm` grammar inside `source.glim`, so assembly instructions inside Glimmer blocks inherit the same lexical colouring and breakpoint affordances as standalone Z80 sources.
+Colour is driven by default `editor.tokenColorCustomizations` in `package.json`. The Z80 palette distinguishes comments, labels, symbols, directives, annotations, instructions, registers, conditions and flags, strings, function names including AZM op declarations and invocations, operators, and numeric literals. This is TextMate colouring, not semantic-token analysis.
 
-Colour is driven by default `editor.tokenColorCustomizations` in `package.json`. The Z80 palette distinguishes comments, labels, symbols, directives, annotations, instructions, registers, conditions and flags, strings, function names including AZM op declarations and invocations, operators, and numeric literals. Glimmer adds distinct scopes for structural declarations, block and resource names, reactive cells and pulses, declaration operators, resource constants and strings. This is TextMate colouring, not semantic-token analysis.
-
-`registerLanguageAssociations()` in `src/extension/language-association.ts` is a safety net for opened documents. After VS Code loads the contributed languages, it assigns `.asm`, `.z80`, and `.asmi` documents to `z80-asm` for `file` and `untitled` documents. Glimmer relies on the direct `package.json` language contribution for `.glim`, while the embedded Z80 scopes inside Glimmer blocks come from the TextMate grammar itself.
+`registerLanguageAssociations()` in `src/extension/language-association.ts` is a safety net for opened documents. After VS Code loads the contributed languages, it assigns `.asm`, `.z80`, and `.asmi` documents to `z80-asm` for `file` and `untitled` documents. Nucleus uses the direct `package.json` language contribution for `.nu`.
 
 The language-server design note in the source repository is still a future direction. The current implementation is not an LSP, but it does provide several editor services from the last built D8 source map:
 
-- **Go to Definition / F12** via `registerD8DefinitionProvider()` in `src/extension/d8-definition-provider.ts`, registered for both `z80-asm` and `glim` documents.
+- **Go to Definition / F12** via `registerD8DefinitionProvider()` in `src/extension/d8-definition-provider.ts`, registered for both `z80-asm` and `nucleus` documents.
 - **Workspace Symbols** via `registerD8WorkspaceSymbolProvider()`, scoped to the active target's D8 map.
 - **Debug80: Search Workspace Symbols** via `debug80.searchWorkspaceSymbols`, a visible command that delegates to VS Code's `workbench.action.showAllSymbols` while using the same active-target D8 symbol provider.
 - **Hover** via `registerD8HoverProvider()`, showing compact symbol kind/address/value/size/source information and any nearby `.routine` register contract.

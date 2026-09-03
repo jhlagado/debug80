@@ -36,8 +36,9 @@ current-drive CP/M 8.3 filenames. `ATOM BUILD.ASM MULTI.COM` follows the
 parts of at most 65,535 logical bytes each and an 18,304-byte output image. The
 bundled multipart program leaves a forward reference in its first 33,000-byte
 part, resolves it in its second part, and executes the resulting `MULTI.COM`.
-The complete native Atom source and measurements are in `packages/atom` in the
-Debug80 repository.
+The complete native source and measurements are in the standalone
+[Atom repository](https://github.com/jhlagado/atom). Debug80's disk builder
+reads the binary and its checksum metadata through Atom's package exports.
 
 The default disk is writable for the life of the debug session. Set
 `cpm22.writable` to `false` for a write-protected session, or set

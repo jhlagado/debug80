@@ -6,43 +6,76 @@ does not rewrite or discard package history.
 
 ## Extracted repositories
 
-The following local repositories were produced with `git subtree split`, so
+The following repositories were produced with `git subtree split`, so
 their histories contain the commits that changed their former package paths:
 
-| Project | Local repository | Extracted commit | State |
-| --- | --- | --- | --- |
-| Debug80 Runtime | `/Users/johnhardy/projects/debug80-runtime` | `6b3deccd6902cf4efe3997393730ba32dea0188a` | Independently installs and passes `npm run check`; version prepared as 0.3.0 |
-| Z80 Tool Services | `/Users/johnhardy/projects/z80-tool-services` | `c714d483f2d918652de2e1844ba2104124e82212` | Independently installs and passes `npm run check`; version remains 0.1.0 |
-| Atom | `/Users/johnhardy/projects/atom` | `737dc28e03c27f4a344fe52a98444e72a4b39f11` | Existing standalone history fast-forwarded to the Debug80 package state |
-| Glimmer | `/Users/johnhardy/projects/glimmer` | `f4e3ca3e104846d4663c0743de56b34f1d51d770` | Current Debug80-owned source preserved separately before removal |
+| Project           | Local repository                                    | Published or preserved revision            | State                                                                                                   |
+| ----------------- | --------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Debug80 Runtime   | `/Users/johnhardy/projects/debug80-runtime`         | `b7343aa8c38c248abbc6ee801b4af270d4843ad6` | Version 0.3.0; standalone package and Git-install proofs pass                                           |
+| Z80 Tool Services | `/Users/johnhardy/projects/z80-tool-services`       | `feb8b4d152e15f980faced02c8ab39884ab5e0be` | Version 0.1.0; 98 tests, package proof, and standalone Linux CI pass                                    |
+| Atom              | `/Users/johnhardy/projects/atom`                    | `27b32ad97ee0596d1952617261b644f8ccc389f9` | Version 0.3.0; 341 standalone tests plus CP/M asset export and offline package proofs pass              |
+| Nucleus           | `/Users/johnhardy/projects/nucleus/.worktrees/main` | `6bd2723cb1b6e35f3e3796dbbfdcda9c320d40c6` | Version 0.3.0; Linux CI passes at code revision `384432a`; this revision updates Host API documentation |
+| Glimmer           | `/Users/johnhardy/projects/glimmer`                 | `f4e3ca3e104846d4663c0743de56b34f1d51d770` | Current Debug80-owned source preserved separately before removal                                        |
 
 The existing `/Users/johnhardy/projects/glimmer-old` checkout has independent
 commits and uncommitted documentation. The extraction did not modify it or
 combine the two histories.
 
-## Current Debug80 boundary
+Runtime and Tool Services now have public repositories:
+[Debug80 Runtime](https://github.com/jhlagado/debug80-runtime) and
+[Z80 Tool Services](https://github.com/jhlagado/z80-tool-services).
+The prepared histories have also been fast-forwarded to the existing public
+[Atom](https://github.com/jhlagado/atom) and
+[Nucleus](https://github.com/jhlagado/nucleus) repositories. No force push was
+used. Glimmer's extracted history remains local; its existing remote has not
+been reconciled or changed by this migration.
+
+Nucleus's installed host package depends on standalone Runtime. Its compiler
+source proofs still use a development-only AZM build from a pinned Debug80
+revision, because the npm AZM release lacks a required contract-checking rule.
+The local suite passed 548 tests; isolated reruns of the four affected files
+passed all nine tests after eliminating a shared-build race and allowing more
+host assembly time. The byte-size assertions are unchanged. The final build
+and published-runtime boundary check pass. The published correction also passed
+Linux CI (run `33766279539`), as did the subsequent documentation revision
+(run `33767171537`). Runtime and Tool Services passed their independent
+Linux workflows (runs `33764302118` and `33765617549`).
+
+## Debug80 boundary
 
 Debug80 no longer contains or ships the Glimmer compiler, language grammar,
 launch backend, target discovery rules, or headless integration workspace.
 Historical changelog entries may still describe releases that included
 Glimmer.
 
-The Debug80 workspace still contains Atom and Debug80 Runtime as temporary
-release bridges. Removing either copy now would lose tested behaviour:
+Debug80 keeps only the extension, AZM, and the AZM headless integration as npm
+workspaces. The extension pins Runtime, Atom, Nucleus, and Z80 Tool Services to
+reviewed Git commits. The Nucleus backend calls the standalone Host API and the
+build copies Atom's native core and Nucleus's standard library into `out/`.
+Development and packaged extensions therefore use the same resource layout;
+compiler sources and proof trees are not extension resources.
 
-- `@jhlagado/debug80-runtime@0.2.0` does not contain the current CP/M platform
-  types and modules used by Debug80.
-- `atom-z80@0.2.0` rejects source emitted by the current Nucleus integration,
-  and its packed manifest retains local `file:` dependency declarations.
+The four former package directories have been removed from the tracked tree.
+Their authoritative copies are published, and their former contents remain
+recoverable from Git history. The lockfile installs public HTTPS Git revisions,
+not sibling directories. AZM remains a workspace; separating its source-proof
+release dependency is future work.
 
-The next Runtime release must publish the extracted 0.3.0 package. The next
-Atom release must pass its standalone gate and the Debug80 Nucleus backend
-test. Debug80 can then replace the two workspace dependencies with versioned
-package dependencies and remove the bridge directories.
+The real GitHub dependency install passes Debug80's maintained `npm run check`:
+1,034 AZM tests, one headless integration test, 995 extension tests, and 293
+webview tests. Two existing tests are skipped. CP/M acceptance checks pass with
+the complete disk image byte-for-byte unchanged. The live VS Code project and
+CP/M guest tests pass, and the staged VSIX smoke compiles with both installed
+compilers, including a Nucleus standard-library import. The final clean-clone
+cutover check remains pending. These are host-software proofs, not ESP32
+hardware measurements.
 
-AZM, Nucleus, and Z80 Tool Services remain workspace packages for now. Nucleus
-has active, divergent work in its standalone repository, so its histories need
-an explicit reconciliation before Debug80 removes the workspace copy.
+The separate external-link check reports two existing upstream failures:
+`https://www.cpm.z80.de/source.html` has a self-signed TLS certificate, and the
+CI badge in the preserved CP/M upstream README returns HTTP 404. Local links
+and the source-size enforcement check pass. The external-link failures still
+affect the Debug80 CI documentation gate; no certificate checks were disabled
+and no vendored provenance was altered to hide them.
 
 ## Verification rule
 
@@ -50,7 +83,7 @@ Every removal follows the same order:
 
 1. extract or reconcile the package history;
 2. run the package outside Debug80;
-3. publish an immutable version;
+3. publish an immutable version or push an immutable Git revision;
 4. install that version in a clean Debug80 checkout;
 5. pass the Debug80 type, unit, packaging, and extension tests;
 6. remove the workspace copy.

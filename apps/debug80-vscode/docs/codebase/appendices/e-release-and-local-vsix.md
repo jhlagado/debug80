@@ -88,7 +88,8 @@ Before calling a VSIX candidate releasable, test:
 - `schemas/`
 - `syntaxes/`
 - the bundled runtime code for Atom and the other in-process backends in `out/`
-- `assets/native-core.json`, loaded by Atom's bundled native runner
+- `out/assets/native-core.json`, loaded by Atom's bundled native runner
+- `out/library/`, used for Nucleus standard-library imports
 - `README.md`
 - `LICENSE` or `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.md`
@@ -106,15 +107,16 @@ candidates for manual testing.
 
 ## CI Gate
 
-CI is part of the Definition of Done for Debug80 changes. The repository now runs one root `CI`
-workflow that executes `npm run check`, `npm run package:azm`, `npm run package:glimmer`,
-`npm run package:runtime`, and `npm run package:debug80`. After pushing, confirm that GitHub
-Actions has started that `CI` workflow for the pushed commit and that it passes before treating the
+CI is part of the Definition of Done for Debug80 changes. The `Toolchain CI`
+workflow in `.github/workflows/ci.yml` checks the maintained AZM, headless,
+source-size, and extension surfaces, including VS Code-hosted tests and VSIX
+packaging. Extracted packages have their own repository checks. After pushing,
+confirm that this workflow passes for the pushed commit before treating the
 change as complete or publishing a VSIX.
 
 ```bash
 git rev-parse --short HEAD
-gh run list --workflow CI --branch main --limit 5
+gh run list --workflow ci.yml --branch main --limit 5
 gh run watch
 ```
 

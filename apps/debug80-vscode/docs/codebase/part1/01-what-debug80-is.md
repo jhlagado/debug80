@@ -14,7 +14,9 @@ Debug80 is a VS Code extension that lets you debug Z80 assembly programs. You wr
 
 That description is accurate but it hides the interesting part. The extension does not merely wrap a debugger. It contains a full Z80 CPU emulator, emulations of real retro hardware and software environments including the TEC-1, TEC-1G, and an ideal CP/M 2.2 machine, assembler backends, source-to-address mapping, a custom webview panel with live hardware visualisation, and a pluggable platform system that allows new hardware targets to be added without modifying the core. Understanding how these pieces fit together is the first step toward contributing to any of them.
 
-This chapter maps the territory.
+Paths prefixed `debug80-runtime/` below refer to the standalone
+[Runtime repository](https://github.com/jhlagado/debug80-runtime), not a
+directory inside Debug80.
 
 ---
 
@@ -103,7 +105,7 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What it does:** Executes Z80 instructions. Maintains the full CPU state — registers, flags, interrupt mode, halt state — and calls out to I/O handlers for port reads and writes.
 
-**Where it lives:** `packages/debug80-runtime/src/z80/`
+**Where it lives:** `debug80-runtime/src/z80/`
 
 **Key type:** `Cpu` — a plain object containing every register (A, B, C, D, E, H, L, F, IX, IY, SP, PC, I, R), the alternate register set, interrupt state, and a cycle counter. This is the single most important data structure in the codebase. Every inspection, every step, every breakpoint check reads from it.
 
@@ -113,7 +115,7 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What they do:** Emulate the I/O peripherals of a specific hardware target. A platform runtime provides the I/O callbacks that the Z80 emulator calls on `in` and `out` instructions, and maintains the hardware state (display digits, matrix rows, LCD contents, speaker state).
 
-**Where they live:** `packages/debug80-runtime/src/platforms/tec1/`, `packages/debug80-runtime/src/platforms/tec1g/`, `packages/debug80-runtime/src/platforms/cpm22/`, `packages/debug80-runtime/src/platforms/simple/`
+**Where they live:** `debug80-runtime/src/platforms/tec1/`, `debug80-runtime/src/platforms/tec1g/`, `debug80-runtime/src/platforms/cpm22/`, `debug80-runtime/src/platforms/simple/`
 
 **Key type:** `ResolvedPlatformProvider` — the interface every platform must implement. It defines how to build I/O handlers, load ROM assets, resolve the entry point, and register platform-specific DAP commands.
 
@@ -137,8 +139,8 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 ### Assembly pipeline
 
-**What it does:** Turns source into loadable Z80 programs. Debug80 ships four
-in-process backends: Atom, AZM, Glimmer, and Nucleus. Atom and AZM share normal
+**What it does:** Turns source into loadable Z80 programs. Debug80 ships three
+in-process backends: Atom, AZM, and Nucleus. Atom and AZM share normal
 assembly filename extensions. New projects write `assembler: "atom"`
 explicitly; targets that omit the field infer Atom for `.asm`, `.inc`, and
 `.z80` sources. The shared assembler-flavour parser also accepts Atom as
@@ -147,7 +149,7 @@ requires the AZM compatibility backend. Each backend emits
 Intel HEX and a native D8 debug map. Atom also publishes BIN and a listing,
 preserving the identities of files reached through `%INCLUDE`.
 
-**Where it lives:** `apps/debug80-vscode/src/debug/launch/assembler.ts`, `apps/debug80-vscode/src/debug/launch/assembler-backend.ts`, the four `*-backend.ts` implementations in that directory, `packages/atom`, and `packages/debug80-runtime/src/z80/loaders.ts`
+**Where it lives:** `apps/debug80-vscode/src/debug/launch/assembler.ts`, `apps/debug80-vscode/src/debug/launch/assembler-backend.ts`, the three `*-backend.ts` adapters in that directory, the standalone Atom and Nucleus packages, and `debug80-runtime/src/z80/loaders.ts`.
 
 **Key flow:** Source file → selected assembler backend → Intel HEX binary + native D8 debug map + optional companion artifacts such as `.lst`, `.bin`, `.asmi`, and register-contract reports → `parseIntelHex()` → byte array loaded into Z80 memory.
 
@@ -271,11 +273,11 @@ debugger. No second Node attach configuration is required.
 npm run check
 ```
 
-Run this from the monorepo root when you need the full repository gate. It builds and verifies AZM, Glimmer, Debug80 Runtime, the headless integration workspaces, and the VS Code extension. Extension-only checks are still available through `npm test -w debug80`.
+Run this from the repository root for the full Debug80 gate. It builds and verifies AZM, the AZM headless integration, and the VS Code extension against the installed standalone dependencies. Extension-only checks remain available through `npm test -w debug80`.
 
 The extension test suite covers:
 
-- Z80 instruction decoding and execution (`tests/z80/`)
+- Runtime behavior through the installed package's public interface
 - Debug adapter request handling (`tests/debug/`)
 - Platform state management (`tests/platforms/`)
 - Source mapping and D8 import (`tests/mapping/`)
@@ -284,9 +286,12 @@ The extension test suite covers:
 
 Repository-level checks add:
 
-- headless runtime tests in `packages/debug80-runtime/test/`
 - AZM headless integration in `integration/azm-headless/test/`
-- Glimmer headless integration in `integration/glimmer-headless/test/`
+- Atom-generated debugger fixtures and CP/M assembly byte-equivalence checks
+- assembler-selection and direct-AZM-import boundary checks
+
+The standalone Runtime repository maintains the emulator instruction and
+headless-runtime test suites. Glimmer is outside Debug80's shipped product.
 
 Tests use VS Code API mocks, including `apps/debug80-vscode/tests/e2e/adapter/vscode-mock.ts`, so many adapter and extension paths run without a live VS Code instance.
 
@@ -307,12 +312,9 @@ debug80-toolchain/
 │       ├── tests/       Extension, adapter, and webview tests
 │       └── docs/        Extension docs and this manual
 ├── packages/
-│   ├── azm/             Assembler and typed assembly language
-│   ├── glimmer/         Reactive game preprocessor
-│   └── debug80-runtime/ Shared Z80 and platform runtime package
+│   └── azm/             Assembler and typed assembly language
 ├── integration/
-│   ├── azm-headless/    AZM + runtime headless verification
-│   └── glimmer-headless/ Glimmer + runtime headless verification
+│   └── azm-headless/    AZM + installed runtime headless verification
 └── package.json         Workspace scripts and CI entry points
 ```
 

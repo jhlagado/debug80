@@ -21,7 +21,7 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `platform`                | `string`   | `'simple'`                                             | Platform to emulate: `'simple'`, `'cpm22'`, `'tec1'`, or `'tec1g'`                    |
 | `asm`                     | `string`   | —                                                      | Path to the main Z80 assembly source file                                             |
 | `sourceFile`              | `string`   | —                                                      | Alias for `asm`                                                                       |
-| `assembler`               | `string`   | inferred                                               | Backend identifier. Use `atom` or `ATOM-Z80`, `azm` or `ASM80`, or the frontend IDs `glimmer` and `nucleus`. |
+| `assembler`               | `string`   | inferred                                               | Backend identifier. Use `atom` or `ATOM-Z80`, `azm` or `ASM80`, or `nucleus`. |
 | `hex`                     | `string`   | derived                                                | Path to the output Intel HEX file; derived from `asm` if omitted                      |
 | `outputs`                 | `string[]` | —                                                      | Explicit generated artifact paths. Debug80 still requires HEX and D8 for launches     |
 | `outputDir`               | `string`   | `build`                                                | Directory for build artifacts                                                         |
@@ -36,16 +36,15 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `stepOutMaxInstructions`  | `number`   | `0`                                                    | Instruction limit for step-out; `0` = unlimited                                       |
 | `diagnostics`             | `boolean`  | `false`                                                | Emit verbose diagnostic messages to the debug console                                 |
 | `azm`                     | `object`   | —                                                      | AZM-specific compile options; see below                                               |
-| `glimmer`                 | `object`   | —                                                      | Assembler used for generated Z80 source                                               |
 | `nucleus`                 | `object`   | —                                                      | Nucleus-specific launch options; see below                                            |
 
-Debug80 selects Atom for `.asm`, `.inc`, and `.z80`, Glimmer for `.glim`, and
+Debug80 selects Atom for `.asm`, `.inc`, and `.z80`, and
 Nucleus for `.nu` when `assembler` is omitted. Because Atom and AZM share
 ordinary assembly filenames, a target that requires AZM must set
 `"assembler": "azm"` or `"assembler": "ASM80"` explicitly. The same
 shared flavour parser accepts Atom as `atom` or `ATOM-Z80`. New project
 scaffolds write `"assembler": "atom"` explicitly. The top-level `azm`
-block configures direct AZM builds and the contract checker used by Glimmer.
+block configures direct AZM builds.
 
 ```json
 {
@@ -66,33 +65,6 @@ list it publishes `.hex`, `.bin`, `.d8.json`, and `.lst` as one transaction.
 With `outputs`, Atom treats the list as the explicit publication set, still
 ensures the configured HEX path and one `.d8.json` path are present, and also
 accepts `.nobj` when Atom emitted that artifact.
-
-### Glimmer options
-
-A `.glim` target selects the Glimmer frontend with `"assembler": "glimmer"`.
-The nested `glimmer.assembler` field selects the assembler for its generated
-Z80 source:
-
-```json
-{
-  "targets": {
-    "game": {
-      "sourceFile": "src/game.glim",
-      "assembler": "glimmer",
-      "glimmer": {
-        "assembler": "atom"
-      }
-    }
-  }
-}
-```
-
-The accepted concrete assembler flavours are Atom (`atom` or `ATOM-Z80`) and
-AZM (`azm` or `ASM80`). Atom is the normal choice and accepts ordered
-hand-written modules as separate source parts. Programs with AZM layout types
-or nested module imports currently require AZM. Both paths produce HEX,
-binary, and D8 artifacts, and both attribute user block instructions to the
-original `.glim` lines.
 
 ### AZM options
 

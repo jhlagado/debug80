@@ -25,7 +25,8 @@ const outputDirectory = join(
   "cpm22",
 );
 const thirdPartyDirectory = join(repositoryRoot, "third_party", "cpm22");
-const atomDirectory = join(repositoryRoot, "packages", "atom");
+const atomImage = new URL(import.meta.resolve("atom-z80/cpm22/image"));
+const atomMeasurement = new URL(import.meta.resolve("atom-z80/cpm22/census"));
 const nucleusDirectory = join(repositoryRoot, "third_party", "nucleus");
 const converter = join(scriptDirectory, "convert-8080-to-z80.mjs");
 
@@ -79,12 +80,9 @@ async function main() {
   try {
     const [atom, atomSource, atomCensus, nucleus, nucleusProvenance] =
       await Promise.all([
-        readFile(join(atomDirectory, "assets", "atom-cpm22.com")),
+        readFile(atomImage),
         readFile(join(scriptDirectory, "atom-example.asm")),
-        readFile(
-          join(atomDirectory, "proofs", "cpm22-census.json"),
-          "utf8",
-        ).then(JSON.parse),
+        readFile(atomMeasurement, "utf8").then(JSON.parse),
         readFile(join(nucleusDirectory, "NUC.COM")),
         readFile(join(nucleusDirectory, "PROVENANCE.json"), "utf8").then(
           JSON.parse,

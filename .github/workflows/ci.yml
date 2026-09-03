@@ -13,21 +13,21 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-# Each workspace verifies only when it or an upstream dependency changed.
+# Each maintained workspace verifies only when it changes.
 # Dependency graph:
 #   azm ──────────┬─▶ extension
-#   runtime ──────┼────────────────
 #                 └─▶ azm-headless
+#
+# Runtime, Atom, Nucleus, and Z80 Tool Services are immutable external
+# dependencies here. Their own repositories verify their source releases.
 jobs:
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       azm: ${{ steps.filter.outputs.azm }}
-      runtime: ${{ steps.filter.outputs.runtime }}
       azm-headless: ${{ steps.filter.outputs.azm-headless }}
       extension: ${{ steps.filter.outputs.extension }}
-      nucleus: ${{ steps.filter.outputs.nucleus }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v7
@@ -39,25 +39,17 @@ jobs:
           filters: |
             azm:
               - 'packages/azm/**'
-            runtime:
-              - 'packages/debug80-runtime/**'
             azm-headless:
               - 'integration/azm-headless/**'
               - 'integration/.eslintrc.json'
             extension:
               - 'apps/debug80-vscode/**'
-            nucleus:
-              - 'packages/nucleus/**'
-              - 'packages/atom/**'
-              - 'packages/azm/**'
-              - 'packages/debug80-runtime/**'
-              - 'packages/z80-tool-services/**'
             infra:
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/**'
-              - 'scripts/check-source-file-sizes.mjs'
-              - 'scripts/source-file-size-allowlist.json'
+              - 'scripts/**'
+              - 'docs/specifications/azm-direct-dependency-inventory.json'
 
   azm:
     needs: changes
@@ -78,30 +70,10 @@ jobs:
       - run: npm run test -w @jhlagado/azm
       - run: npm run package:azm
 
-  runtime:
-    needs: changes
-    if: needs.changes.outputs.runtime == 'true' || needs.changes.outputs.infra == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm run build -w @jhlagado/debug80-runtime
-      - run: npm run typecheck -w @jhlagado/debug80-runtime
-      - run: npm run lint -w @jhlagado/debug80-runtime
-      - run: npm run format:check -w @jhlagado/debug80-runtime
-      - run: npm run test -w @jhlagado/debug80-runtime
-      - run: npm run package:runtime
-
   source-size:
     needs: changes
     if: >-
       needs.changes.outputs.azm == 'true' ||
-      needs.changes.outputs.runtime == 'true' ||
       needs.changes.outputs.extension == 'true' ||
       needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
@@ -119,7 +91,6 @@ jobs:
     if: >-
       needs.changes.outputs.azm-headless == 'true' ||
       needs.changes.outputs.azm == 'true' ||
-      needs.changes.outputs.runtime == 'true' ||
       needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -129,9 +100,9 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci --ignore-scripts
+      # Runtime is a pinned Git dependency whose prepare script creates dist.
+      - run: npm ci
       - run: npm run build -w @jhlagado/azm
-      - run: npm run build -w @jhlagado/debug80-runtime
       - run: npm run typecheck -w @jhlagado/azm-headless-integration
       - run: npm run lint -w @jhlagado/azm-headless-integration
       - run: npm run format:check -w @jhlagado/azm-headless-integration
@@ -142,7 +113,6 @@ jobs:
     if: >-
       needs.changes.outputs.extension == 'true' ||
       needs.changes.outputs.azm == 'true' ||
-      needs.changes.outputs.runtime == 'true' ||
       needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -152,10 +122,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts
+      # Runtime and Tool Services build dist in prepare; the lockfile fixes
+      # all four external packages to reviewed source revisions.
+      - run: npm ci
       - run: npm run build -w @jhlagado/azm
-      - run: npm run build -w @jhlagado/debug80-runtime
       - run: npm run build -w debug80
+      - run: npm run check:assembler-selections
+      - run: npm run check:azm-dependency-inventory
+      - run: npm run check:atom-e2e-fixtures
+      - run: npm run check:cpm22-atom-candidates
       - run: npm run typecheck -w debug80
       - run: npm run typecheck:webview -w debug80
       - run: npm run lint -w debug80
@@ -164,40 +139,9 @@ jobs:
       - run: xvfb-run -a npm run test:vscode -w debug80
       - run: npm run package:debug80
 
-  nucleus:
-    needs: changes
-    if: >-
-      needs.changes.outputs.nucleus == 'true' ||
-      needs.changes.outputs.infra == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm run build -w @jhlagado/azm
-      - run: npm run build -w @jhlagado/debug80-runtime
-      - run: npm run build -w @jhlagado/z80-tool-services
-      - run: npm run build -w atom-z80
-      - run: npm run typecheck -w @jhlagado/nucleus
-      - run: npm run test -w @jhlagado/nucleus
-      - run: npm run package:nucleus
-
   # Single required status; fails if any triggered job failed.
   ci-ok:
-    needs:
-      [
-        changes,
-        azm,
-        runtime,
-        source-size,
-        azm-headless,
-        extension,
-        nucleus,
-      ]
+    needs: [changes, azm, source-size, azm-headless, extension]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

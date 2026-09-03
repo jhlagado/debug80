@@ -1,11 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import {
-  NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
-  NUCLEUS_TARGET_PUBLICATION_SCHEMA,
-  type NucleusPreparedSourceArtifactBuild,
-} from '@jhlagado/nucleus';
+import { defaultNucleusServices, type NucleusBuildResult } from '@jhlagado/nucleus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NucleusBackend, type NucleusCompilerApi } from '../../src/debug/launch/nucleus-backend';
 
@@ -40,8 +36,12 @@ describe('Nucleus backend', () => {
       target,
       JSON.stringify(
         {
-          schema: NUCLEUS_TARGET_PUBLICATION_SCHEMA,
-          ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+          schema: 'nucleus-target/v1',
+          imageBase: 0x8000,
+          imageCapacity: 0x1000,
+          writableBase: 0x4000,
+          writableCapacity: 0x1000,
+          services: defaultNucleusServices,
         },
         null,
         2
@@ -59,27 +59,22 @@ describe('Nucleus backend', () => {
     files: {},
   });
 
-  const success = (d8 = validD8): NucleusPreparedSourceArtifactBuild =>
+  const success = (d8 = validD8): NucleusBuildResult =>
     ({
-      publication: {
-        root: '',
-        entry: 'main.nu',
-        compilerManifest: '',
-        assembler: 'atom',
-        sourceParts: 1,
-        sourcePartIdentities: ['main.nu'],
-        sourceBytes: 15,
-      },
+      success: true,
       artifacts: {
         nobj: new Uint8Array(Buffer.from('NOBJ')),
         bin: new Uint8Array(Buffer.from('BIN')),
         hex: ':00000001FF\n',
-        d8,
+        d8: [{ bank: 0, map: {} as never, json: d8 }],
       },
-    }) as NucleusPreparedSourceArtifactBuild;
+      materialized: {},
+      instructions: 1,
+      cycles: 1,
+    }) as NucleusBuildResult;
 
-  const compiler = (result: NucleusPreparedSourceArtifactBuild): NucleusCompilerApi => ({
-    buildPreparedSourceArtifacts: vi.fn(() => Promise.resolve(result)),
+  const compiler = (result: NucleusBuildResult): NucleusCompilerApi => ({
+    build: vi.fn(() => Promise.resolve(result)),
   });
 
   it('builds NOBJ, HEX and D8 through the prepared source artifact API', async () => {
@@ -92,11 +87,12 @@ describe('Nucleus backend', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(api.buildPreparedSourceArtifacts).toHaveBeenCalledWith({
-      root: project.root,
-      entry: 'main.nu',
-      targetFile: project.target,
-    });
+    expect(api.build).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: [expect.objectContaining({ name: 'main.nu' })],
+        artifacts: { bin: true, hex: true, d8: true },
+      })
+    );
     expect(fs.readFileSync(path.join(project.root, 'build', 'main.nobj'), 'utf8')).toBe('NOBJ');
     expect(fs.readFileSync(project.hex, 'utf8')).toBe(':00000001FF\n');
     expect(fs.readFileSync(path.join(project.root, 'build', 'main.d8.json'), 'utf8')).toContain(
@@ -126,7 +122,7 @@ describe('Nucleus backend', () => {
     expect(fs.readFileSync(project.hex, 'utf8')).toBe(':00000001FF\n');
   });
 
-  it('executes the in-repo Nucleus package in process', async () => {
+  it('executes the installed standalone Nucleus package in process', async () => {
     const project = workspace();
     const result = await new NucleusBackend().assemble({
       asmPath: project.source,
@@ -141,8 +137,10 @@ describe('Nucleus backend', () => {
     );
   }, 60_000);
 
-  it('uses a conventional project file for the entry source only', async () => {
+  it('uses a conventional project file and Nucleus import resolution', async () => {
     const project = workspace();
+    fs.writeFileSync(path.join(project.root, 'model.nu'), 'const Value = 7\n');
+    fs.writeFileSync(project.source, '//% import "model.nu"\nsub main()\nend\n');
     fs.writeFileSync(
       path.join(project.root, 'nucleus-project.json'),
       JSON.stringify({
@@ -157,11 +155,14 @@ describe('Nucleus backend', () => {
       hexPath: project.hex,
       sourceRoot: project.root,
     });
-    expect(api.buildPreparedSourceArtifacts).toHaveBeenCalledWith({
-      root: project.root,
-      entry: 'main.nu',
-      targetFile: project.target,
-    });
+    expect(api.build).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: [
+          expect.objectContaining({ name: 'model.nu' }),
+          expect.objectContaining({ name: 'main.nu' }),
+        ],
+      })
+    );
   });
 
   it('rejects old source-list project files instead of treating them as ordered manifests', async () => {
@@ -187,7 +188,7 @@ describe('Nucleus backend', () => {
         'source ordering now comes from leading //% import directives'
       ),
     });
-    expect(api.buildPreparedSourceArtifacts).not.toHaveBeenCalled();
+    expect(api.build).not.toHaveBeenCalled();
   });
 
   it('refuses to launch without a target descriptor', async () => {
@@ -203,9 +204,9 @@ describe('Nucleus backend', () => {
 
     expect(result).toMatchObject({
       success: false,
-      error: expect.stringContaining('Nucleus target descriptor not found'),
+      error: expect.stringContaining('Nucleus target profile not found'),
     });
-    expect(api.buildPreparedSourceArtifacts).not.toHaveBeenCalled();
+    expect(api.build).not.toHaveBeenCalled();
   });
 
   it('rejects malformed D8 and retains the last complete generation', async () => {
@@ -235,7 +236,7 @@ describe('Nucleus backend', () => {
   it('reports prepared source build failures', async () => {
     const project = workspace();
     const api: NucleusCompilerApi = {
-      buildPreparedSourceArtifacts: vi.fn(() => Promise.reject(new Error('bad source'))),
+      build: vi.fn(() => Promise.reject(new Error('bad source'))),
     };
     const result = await new NucleusBackend(api).assemble({
       asmPath: project.source,
@@ -246,6 +247,35 @@ describe('Nucleus backend', () => {
     expect(result).toMatchObject({
       success: false,
       error: 'Nucleus build failed: bad source',
+    });
+  });
+
+  it('reports positioned source failures from the standalone Host API', async () => {
+    const project = workspace();
+    const api = compiler({
+      success: false,
+      kind: 'source',
+      message: 'Unknown statement or declaration',
+      diagnostic: {
+        code: 16,
+        sourcePart: 0,
+        sourceName: 'main.nu',
+        offset: 0,
+        line: 3,
+        column: 5,
+      },
+      instructions: 10,
+      cycles: 40,
+    });
+    const result = await new NucleusBackend(api).assemble({
+      asmPath: project.source,
+      hexPath: project.hex,
+      sourceRoot: project.root,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Nucleus build failed: main.nu:3:5: Unknown statement or declaration (16)',
     });
   });
 });

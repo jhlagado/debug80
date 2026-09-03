@@ -1,4 +1,0 @@
-extern GNRTDBS
-out D
-clobbers A,B,C,E,HL,carry,zero,sign,parity,halfCarry
-end

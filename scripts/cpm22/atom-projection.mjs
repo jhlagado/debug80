@@ -14,7 +14,7 @@ import {
   materializeAtomGeneration,
   renderAtomArtifacts,
   translateAzmSourceToAtom,
-} from "../../packages/atom/src/host/index.mjs";
+} from "atom-z80";
 
 export const converted8080Candidates = Object.freeze([
   {

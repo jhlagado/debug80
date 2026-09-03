@@ -12,7 +12,7 @@ nav_order: 4
 
 The CP/M 2.2 platform boots an idealized single-drive CP/M machine rather than a front-panel hardware monitor. It combines the real CP/M 2.2 CCP and BDOS with a Debug80 BIOS, an 80×24 terminal, and a workspace-to-guest installation path for built transient programs. The result is a launch flow where the host still builds a normal HEX artifact while the guest sees a conventional `A>` prompt and runs a normal `.COM` file.
 
-The platform lives in `src/platforms/cpm22/` on the extension side and `packages/debug80-runtime/src/platforms/cpm22/` in the shared runtime package.
+The extension provider lives in `src/platforms/cpm22/`. CPU-facing devices and guest storage are maintained in the standalone [Runtime CP/M module](https://github.com/jhlagado/debug80-runtime/tree/main/src/platforms/cpm22).
 
 ---
 

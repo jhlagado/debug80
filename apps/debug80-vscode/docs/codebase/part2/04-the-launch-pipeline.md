@@ -33,7 +33,7 @@ launchRequest arrives
     │     Derive source, .hex and D8 source-map paths → absolute file paths
     │
     ├─ 4. Assembly                    (launch-pipeline.ts, launch/assembler.ts)
-    │     Run AZM, Glimmer, or Nucleus backend → launch artifacts on disk
+    │     Run Atom, AZM, or Nucleus backend → launch artifacts on disk
     │
     ├─ 5. Program loading             (launch/program-loader.ts)
     │     Parse HEX, build memory image → HexProgram
@@ -207,7 +207,6 @@ assembleIfRequested({
 | Extension              | Backend |
 | ---------------------- | ------- |
 | `.asm`, `.inc`, `.z80` | Atom    |
-| `.glim`                | Glimmer |
 | `.nu`                  | Nucleus |
 
 Atom is the default in-process backend for ordinary assembly files. Atom and
@@ -216,7 +215,7 @@ Projects that need AZM should set `"assembler": "azm"` explicitly. The shared
 assembler-flavour normalizer accepts Atom as `atom` or `ATOM-Z80` and AZM as
 `azm` or `ASM80`; project configuration writes the canonical `atom` or `azm`
 value when it updates a target. Top-level `assembler` also accepts the frontend
-IDs `glimmer` and `nucleus`.
+ID `nucleus`.
 
 The backend conforms to the `AssemblerBackend` interface:
 
@@ -260,7 +259,7 @@ backend maps that location into `AssemblyDiagnostic`, reads the original source
 line when available, and sends the result through Debug80's ordinary build
 failure path. Included-file errors continue to name the included file.
 
-For the simple platform, ranged binary output is validated as a pair: `simple.binFrom` and `simple.binTo` must both be present or both be absent, and `binFrom` must be less than or equal to `binTo`. This is enforced during launch validation and again immediately before assembly. If a ranged simple build is requested through a backend without ranged-binary support, Debug80 fails the launch with a direct build error instead of pretending the range was applied. Atom and AZM support ranged binary output; Glimmer and Nucleus do not expose that backend capability.
+For the simple platform, ranged binary output is validated as a pair: `simple.binFrom` and `simple.binTo` must both be present or both be absent, and `binFrom` must be less than or equal to `binTo`. This is enforced during launch validation and again immediately before assembly. If a ranged simple build is requested through a backend without ranged-binary support, Debug80 fails the launch with a direct build error instead of pretending the range was applied. Atom and AZM support ranged binary output; Nucleus does not expose that backend capability.
 
 ### The AZM invocation
 
@@ -297,18 +296,10 @@ Assembler diagnostics are emitted through `OutputEvent`, so errors and warnings 
 
 Assembler backends should be treated as part of the extension's packaged dependency set for release. The release process must verify that `npm run package` / VSIX creation includes the runtime code needed for linked assembly on a clean machine, not only on the developer's workspace.
 
-### The Glimmer invocation
-
-`GlimmerBackend` in `src/debug/launch/glimmer-backend.ts` loads `@jhlagado/glimmer/build` and calls `buildGlimmerProgram()` in-process. Debug80 passes an output path at `<artifactBase>.asm`; Glimmer then writes the derived artifacts where the rest of the launch pipeline expects them: `<artifactBase>.hex`, `<artifactBase>.bin`, and `<artifactBase>.d8.json`.
-
-The Glimmer build path delegates code generation, AZM contract injection and checking, assembly, and debug-map rewriting to the Glimmer library. The resulting D8 map keeps executable block-body lines attributed to the original `.glim` file while the generated `.asm` remains available as a sibling artifact for inspection and for any downstream tools that need the lowered source.
-
-On failure, the backend forwards formatted Glimmer diagnostics to the Debug Console and converts the first error into Debug80's normal `AssemblyDiagnostic` shape. The diagnostic path points at the `.glim` source file, and when a line number is available the backend reads the original source line from disk so VS Code diagnostics and build-failed notifications highlight the authored Glimmer line instead of the generated assembly.
-
 ### The Nucleus invocation
 
 `NucleusBackend` in `src/debug/launch/nucleus-backend.ts` loads
-`@jhlagado/nucleus` in-process and calls the prepared-source publication API.
+`@jhlagado/nucleus` in-process and uses its `createNucleusCompiler()` Host API.
 The backend reads either:
 
 - a configured `nucleus.project` file relative to the Debug80 source root, or
@@ -321,10 +312,10 @@ project's `target` field unless launch config overrides it. Older project files
 that declare an ordered `sources` list are rejected. Import ordering now comes
 from leading `//% import` directives inside the prepared Nucleus source tree.
 
-The Nucleus launch path now delegates target validation and artifact generation
-to Nucleus itself. Debug80 checks only that the resolved target descriptor file
-exists before it calls the prepared-source build. Build failures are surfaced as
-direct launch errors from the package API.
+Debug80 calls Nucleus's `resolveNucleusImportGraph()` and
+`parseNucleusTargetProfile()` to prepare the source graph and validate the
+target, then calls `compiler.build()`. Build failures are surfaced as direct
+launch errors, preserving source locations when the compiler provides them.
 
 Successful builds receive one prepared artifact set from Nucleus: `.nobj`,
 flat `.hex`, native `.d8.json`, and the intermediate flat binary. Debug80
@@ -335,7 +326,7 @@ still forces the configured HEX path and one `.d8.json` path into that
 transaction. When `outputs` includes `.bin`, the intermediate flat binary is
 published too instead of remaining internal to the build result.
 
-Nucleus now owns source resolution, proof assembly selection, NOBJ publication,
+Nucleus owns source resolution, compilation, NOBJ generation,
 flat binary materialization, Intel HEX rendering, and D8 rendering. Debug80's
 launch backend is responsible for project-file loading, target-descriptor path
 resolution, D8 validation, and artifact publication into the session workspace.
@@ -400,7 +391,7 @@ Source mapping connects memory addresses to source file locations. This is what 
 
 The source mapping stage has three parts: building the debug map, building the symbol index, and resolving source roots. `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts` owns the top-level orchestration and delegates reusable setup helpers to `src/debug/launch/source-state-build-options.ts`. Two focused mapping helpers now carry the shared D8-specific logic: `src/debug/mapping/d8-source-paths.ts` resolves file paths and primary-source selection for D8 maps, and `src/debug/mapping/d8-symbols.ts` converts D8 symbol records into the richer source-map symbol shape used by the debugger and editor providers. `launch-sequence.ts` calls the orchestration entry point with the assembled inputs and receives a `LaunchSourceBuildResult` in return.
 
-Because the runtime package is now shared with headless verification, this stage is also the boundary where language-specific build output becomes language-neutral runtime state. Past this point the active session carries a parsed HEX image, D8-backed symbol metadata, and platform config rather than AZM- or Glimmer-specific compiler objects.
+Because the runtime package is now shared with headless verification, this stage is also the boundary where language-specific build output becomes language-neutral runtime state. Past this point the active session carries a parsed HEX image, D8-backed symbol metadata, and platform config rather than compiler-specific objects.
 
 ### `buildLaunchSourceState()` — `src/debug/launch/launch-source-state.ts`
 
@@ -606,7 +597,7 @@ All three paths send an error response to VS Code, which shows the error and cle
 
 - Platforms are lazy-loaded via dynamic imports. Each platform provides a `ResolvedPlatformProvider` that supplies I/O handlers, custom commands, ROM configurations, and entry point resolution.
 
-- The assembler backend is selected from the target configuration first, then from source-extension defaults when the target does not name a backend. Atom is the default for `.asm`, `.inc`, and `.z80`; AZM requires an explicit `azm`/`ASM80` selector; Glimmer handles `.glim`; Nucleus handles `.nu`. Assembly is optional and conditional on the `assemble` flag.
+- The assembler backend is selected from the target configuration first, then from source-extension defaults when the target does not name a backend. Atom is the default for `.asm`, `.inc`, and `.z80`; AZM requires an explicit `azm`/`ASM80` selector; Nucleus handles `.nu`. Assembly is optional and conditional on the `assemble` flag.
 
 - Program loading builds a platform-specific memory image: plain for simple, ROM + RAM overlay for TEC-1/TEC-1G. Source mapping and symbols come from the native D8 map emitted by the selected assembler backend.
 

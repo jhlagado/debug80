@@ -8,12 +8,12 @@
     "lint": "eslint test --ext .ts",
     "format": "prettier --write \"test/**/*.ts\" \"fixtures/**/*.asm\"",
     "format:check": "prettier --check \"test/**/*.ts\"",
-    "pretest": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
+    "pretest": "npm run build -w @jhlagado/azm",
     "test": "vitest run"
   },
   "dependencies": {
     "@jhlagado/azm": "^0.3.4",
-    "@jhlagado/debug80-runtime": "^0.3.0"
+    "@jhlagado/debug80-runtime": "git+https://github.com/jhlagado/debug80-runtime.git#b7343aa8c38c248abbc6ee801b4af270d4843ad6"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

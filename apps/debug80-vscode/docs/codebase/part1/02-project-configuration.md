@@ -538,10 +538,7 @@ For `simple/default` and `tec1/mon1b` the same structure is used, but with the k
 
 ### Assembler selection
 
-Glimmer and Nucleus have distinct source extensions, so Debug80 can infer them:
-
-- `.glim` → use Glimmer
-- `.nu` → use Nucleus
+Debug80 infers Nucleus for `.nu` source files.
 
 Atom and AZM deliberately share `.asm`, `.inc`, and `.z80`. When `assembler`
 is omitted, Debug80 selects Atom. A project that requires AZM sets
@@ -549,8 +546,7 @@ is omitted, Debug80 selects Atom. A project that requires AZM sets
 normalizer accepts Atom as `assembler: "atom"` or `assembler: "ATOM-Z80"`.
 
 Target discovery is independent of a mandatory `src/` folder. Debug80 looks
-for assembly entry points by convention (`main.asm` and `main.z80`) and treats
-a `.glim` file as runnable when it contains a top-level `program` declaration.
+for entry points by convention (`main.asm`, `main.z80`, and `main.nu`).
 Discovery finds candidates. Debug80 reads the target's `assembler` field to
 select the assembly dialect.
 

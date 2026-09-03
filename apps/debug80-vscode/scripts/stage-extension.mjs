@@ -1,13 +1,9 @@
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const extensionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(import.meta.url);
-const atomPackageRoot = path.resolve(path.dirname(require.resolve('atom-z80')), '..', '..');
-const nucleusPackageRoot = path.dirname(require.resolve('@jhlagado/nucleus/package.json'));
 
 const files = [
   'CHANGELOG.md',
@@ -30,24 +26,12 @@ export function stageExtension() {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.copyFileSync(path.join(extensionRoot, file), destination);
   }
-  fs.copyFileSync(
-    path.join(atomPackageRoot, 'assets', 'native-core.json'),
-    path.join(directory, 'assets', 'native-core.json')
-  );
-  for (const source of ['proofs', 'asm', 'atom-asm']) {
-    fs.cpSync(
-      path.join(nucleusPackageRoot, source),
-      path.join(directory, 'resources', 'nucleus', source),
-      { recursive: true }
-    );
-  }
   for (const source of directories) {
     fs.cpSync(path.join(extensionRoot, source), path.join(directory, source), {
       recursive: true,
       filter: (candidate) => !candidate.endsWith('.map'),
     });
   }
-
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'package.json'), 'utf8'));
   delete manifest.dependencies;
   delete manifest.devDependencies;

@@ -1,3 +1,0 @@
-extern GeneratedBase
-clobbers A,B,HL,carry,zero,sign,parity,halfCarry
-end
