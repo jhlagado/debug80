@@ -23,7 +23,7 @@ type ContractClauseKey = 'in' | 'out' | 'maybe-out' | 'clobbers' | 'preserves';
 
 const SYMBOL_RE = /[@.$?A-Za-z_][@.$?A-Za-z0-9_]*/;
 const D8_EXT = '.d8.json';
-export const D8_SOURCE_LANGUAGES = ['z80-asm', 'glim'] as const;
+export const D8_SOURCE_LANGUAGES = ['z80-asm', 'nucleus'] as const;
 const D8_DOCUMENT_SELECTOR = D8_SOURCE_LANGUAGES.map((language) => ({ language }));
 const D8_INDEX_SOURCE_UNITS = new WeakMap<
   Map<string, D8EditorSymbol[]>,

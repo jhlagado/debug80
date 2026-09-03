@@ -13,7 +13,6 @@ import {
   validateBoolean,
   validateTerminalConfig,
   validateAssembler,
-  validateGlimmerConfig,
   validateNucleusConfig,
   validateSimpleConfig,
   validateCpm22Config,
@@ -1054,29 +1053,14 @@ describe('config-validation', () => {
       });
     });
 
-    it('validates the Glimmer generated-source assembler', () => {
-      expect(validateGlimmerConfig({ assembler: 'atom' })).toMatchObject({ valid: true });
-      expect(validateGlimmerConfig({ assembler: 'ATOM-Z80' })).toMatchObject({ valid: true });
-      expect(validateGlimmerConfig({ assembler: 'azm' })).toMatchObject({ valid: true });
-      expect(validateGlimmerConfig({ assembler: 'ASM80' })).toMatchObject({ valid: true });
-      expect(validateGlimmerConfig({ assembler: 'other' })).toMatchObject({
-        valid: false,
-        errors: ['glimmer.assembler must select Atom or AZM'],
-      });
-      expect(validateGlimmerConfig(null)).toMatchObject({
-        valid: false,
-        errors: ['glimmer must be an object, got null'],
-      });
-    });
-
     it('validates the top-level assembler selector', () => {
-      for (const assembler of ['atom', 'ATOM-Z80', 'azm', 'ASM80', 'glimmer', 'nucleus']) {
+      for (const assembler of ['atom', 'ATOM-Z80', 'azm', 'ASM80', 'nucleus']) {
         expect(validateAssembler(assembler)).toMatchObject({ valid: true });
       }
       expect(validateAssembler(undefined)).toMatchObject({ valid: true });
       expect(validateAssembler('macro80')).toMatchObject({
         valid: false,
-        errors: ['assembler must select Atom, AZM, Glimmer, or Nucleus'],
+        errors: ['assembler must select Atom, AZM, or Nucleus'],
       });
       expect(validateAssembler(80)).toMatchObject({
         valid: false,
@@ -1084,7 +1068,7 @@ describe('config-validation', () => {
       });
       expect(validateLaunchArgs({ asm: 'main.asm', assembler: 'macro80' })).toMatchObject({
         valid: false,
-        errors: ['assembler must select Atom, AZM, Glimmer, or Nucleus'],
+        errors: ['assembler must select Atom, AZM, or Nucleus'],
       });
     });
 

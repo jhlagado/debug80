@@ -27,9 +27,14 @@ describe('Nucleus backend', () => {
     const target = path.join(root, 'nucleus-target.json');
     fs.writeFileSync(
       source,
-      ['var value as u16 = 3', 'var cleared as u8', 'sub main()', 'value = value * 2', 'end', ''].join(
-        '\n'
-      )
+      [
+        'var value as u16 = 3',
+        'var cleared as u8',
+        'sub main()',
+        'value = value * 2',
+        'end',
+        '',
+      ].join('\n')
     );
     fs.writeFileSync(
       target,
@@ -128,7 +133,7 @@ describe('Nucleus backend', () => {
       hexPath: project.hex,
       sourceRoot: project.root,
     });
-    expect(result.success).toBe(true);
+    expect(result.success, result.error).toBe(true);
     expect(fs.statSync(project.hex).size).toBeGreaterThan(0);
     expect(fs.statSync(path.join(project.root, 'build', 'main.nobj')).size).toBeGreaterThan(0);
     expect(fs.readFileSync(path.join(project.root, 'build', 'main.d8.json'), 'utf8')).toContain(
@@ -178,7 +183,9 @@ describe('Nucleus backend', () => {
 
     expect(result).toMatchObject({
       success: false,
-      error: expect.stringContaining('source ordering now comes from leading //% import directives'),
+      error: expect.stringContaining(
+        'source ordering now comes from leading //% import directives'
+      ),
     });
     expect(api.buildPreparedSourceArtifacts).not.toHaveBeenCalled();
   });

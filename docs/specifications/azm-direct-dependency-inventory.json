@@ -81,30 +81,6 @@
       "retirement": "Remove after all Atom host tests stop using AZM as the byte-identity oracle."
     },
     {
-      "file": "packages/glimmer/src/build.ts",
-      "classification": "glimmer-compatibility",
-      "owner": "Glimmer selectable generated-source assembler backend",
-      "retirement": "Remove after Glimmer no longer supports AZM as a generated-Z80 backend."
-    },
-    {
-      "file": "packages/glimmer/test/atom.test.ts",
-      "classification": "glimmer-compatibility",
-      "owner": "Glimmer Atom/AZM generated-source comparison tests",
-      "retirement": "Remove with Glimmer AZM backend support."
-    },
-    {
-      "file": "packages/glimmer/test/generate.test.ts",
-      "classification": "glimmer-compatibility",
-      "owner": "Glimmer generated AZM output tests",
-      "retirement": "Remove or translate when Glimmer's checked generated assembly format becomes Atom-only."
-    },
-    {
-      "file": "packages/glimmer/test/load.test.ts",
-      "classification": "glimmer-compatibility",
-      "owner": "Glimmer load/build tests with AZM backend coverage",
-      "retirement": "Remove with Glimmer AZM backend support."
-    },
-    {
       "file": "packages/nucleus/scripts/legacy-azm-comparison.mjs",
       "classification": "nucleus-proof-comparison",
       "owner": "Nucleus named legacy AZM binary-comparison boundary",
@@ -127,6 +103,12 @@
       "classification": "cpm22-development-tooling",
       "owner": "Shared native NOBJ strict-contract proof",
       "retirement": "Replace when the shared package can assemble and contract-check its native proof without creating a dependency cycle through Atom."
+    },
+    {
+      "file": "packages/z80-tool-services/test/native-nucleus-nobj-consumer.test.ts",
+      "classification": "cpm22-development-tooling",
+      "owner": "Shared native Nucleus NOBJ strict-contract proof",
+      "retirement": "Replace when the shared package can assemble and contract-check its native Nucleus proof without creating a dependency cycle through Atom."
     },
     {
       "file": "scripts/cpm22/azm-strict-sidecar.mjs",

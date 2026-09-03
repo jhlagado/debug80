@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export const TARGET_ENTRY_SOURCE_FILENAMES = ['main.asm', 'main.z80', 'main.nu'] as const;
-export const TARGET_SOURCE_EXTENSIONS = ['.asm', '.z80', '.glim', '.nu'] as const;
+export const TARGET_SOURCE_EXTENSIONS = ['.asm', '.z80', '.nu'] as const;
 
 const TARGET_DISCOVERY_EXCLUDED_DIRS = new Set([
   '.git',
@@ -22,10 +22,7 @@ const TARGET_DISCOVERY_EXCLUDED_DIRS = new Set([
 
 export function isTargetEntrySourcePath(filePath: string): boolean {
   const fileName = path.basename(filePath).toLowerCase();
-  return (
-    fileName.endsWith('.glim') ||
-    (TARGET_ENTRY_SOURCE_FILENAMES as readonly string[]).includes(fileName)
-  );
+  return (TARGET_ENTRY_SOURCE_FILENAMES as readonly string[]).includes(fileName);
 }
 
 export function isTargetSourcePath(filePath: string): boolean {
@@ -59,35 +56,6 @@ function collectTargetSourceFiles(rootPath: string, currentPath: string, results
     if (!entry.isFile() || !isTargetSourcePath(entry.name)) {
       continue;
     }
-    if (entry.name.toLowerCase().endsWith('.glim') && !hasGlimmerProgramDeclaration(fullPath)) {
-      continue;
-    }
-
     results.push(path.relative(rootPath, fullPath).split(path.sep).join('/'));
   }
-}
-
-function hasGlimmerProgramDeclaration(filePath: string): boolean {
-  try {
-    const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
-    let inAzmBody = false;
-    for (const rawLine of lines) {
-      const comment = rawLine.indexOf(';');
-      const line = (comment >= 0 ? rawLine.slice(0, comment) : rawLine).trim();
-      if (line === 'begin') {
-        inAzmBody = true;
-        continue;
-      }
-      if (line === 'end' && inAzmBody) {
-        inAzmBody = false;
-        continue;
-      }
-      if (!inAzmBody && /^program\s+[A-Za-z_][A-Za-z0-9_]*$/.test(line)) {
-        return true;
-      }
-    }
-  } catch {
-    return false;
-  }
-  return false;
 }

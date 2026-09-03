@@ -10,11 +10,7 @@ import {
   MissingConfigError,
   UnsupportedPlatformError,
 } from '../session/errors';
-import {
-  LaunchRequestArguments,
-  type GlimmerLaunchOptions,
-  type NucleusLaunchOptions,
-} from '../session/types';
+import { LaunchRequestArguments, type NucleusLaunchOptions } from '../session/types';
 import type { TerminalConfig } from '../session/terminal-types';
 import {
   Tec1PlatformConfig,
@@ -120,20 +116,6 @@ export function validateNucleusConfig(config: unknown): ValidationResult {
   ]);
 }
 
-export function validateGlimmerConfig(config: unknown): ValidationResult {
-  if (config === null) {
-    return invalidResult('glimmer must be an object, got null');
-  }
-  const objectResult = validateOptionalObject<GlimmerLaunchOptions>(config, 'glimmer');
-  if (objectResult.result !== undefined) {
-    return objectResult.result;
-  }
-  const assembler = objectResult.value.assembler;
-  return acceptsConcreteZ80Assembler(assembler)
-    ? validResult()
-    : invalidResult('glimmer.assembler must select Atom or AZM');
-}
-
 function acceptsConcreteZ80Assembler(value: unknown): boolean {
   try {
     normalizeZ80AssemblerFlavour(value, { allowAuto: false });
@@ -151,12 +133,12 @@ export function validateAssembler(value: unknown): ValidationResult {
     return invalidResult(`assembler must be a string, got ${typeof value}`);
   }
   const normalized = value.trim().toLowerCase();
-  if (normalized === 'glimmer' || normalized === 'nucleus') {
+  if (normalized === 'nucleus') {
     return validResult();
   }
   return acceptsConcreteZ80Assembler(value)
     ? validResult()
-    : invalidResult('assembler must select Atom, AZM, Glimmer, or Nucleus');
+    : invalidResult('assembler must select Atom, AZM, or Nucleus');
 }
 
 function validateSimpleBinaryRange(binFrom: unknown, binTo: unknown): ValidationResult {
@@ -374,7 +356,6 @@ function collectLaunchValidationResults(args: LaunchRequestArguments): Validatio
     validateStringArray(args.outputs, 'outputs'),
     ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) => validateInstructionLimit(args[field], field)),
     validateTerminalConfig(args.terminal),
-    validateGlimmerConfig(args.glimmer),
     validateNucleusConfig(args.nucleus),
     validateSimpleConfig(args.simple),
     validateCpm22Config(args.cpm22),

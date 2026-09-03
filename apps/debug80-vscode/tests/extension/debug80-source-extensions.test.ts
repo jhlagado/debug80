@@ -7,17 +7,16 @@ import {
 } from '../../src/extension/debug80-source-extensions';
 
 describe('Debug80 source extensions', () => {
-  it('keeps Glimmer separate from AZM language associations', () => {
+  it('keeps assembly source associations explicit', () => {
     expect(AZM_LANGUAGE_EXTENSIONS).toEqual(['.asm', '.z80', '.asmi']);
   });
 
-  it('rebuilds active sessions when AZM, Glimmer or Nucleus sources are saved', () => {
-    expect(DEBUG80_REBUILD_SOURCE_EXTENSIONS).toEqual(['.asm', '.z80', '.asmi', '.glim', '.nu']);
+  it('rebuilds active sessions when assembly or Nucleus sources are saved', () => {
+    expect(DEBUG80_REBUILD_SOURCE_EXTENSIONS).toEqual(['.asm', '.z80', '.asmi', '.nu']);
     expect(isDebug80RebuildSourcePath('/project/src/main.asm')).toBe(true);
     expect(isDebug80RebuildSourcePath('/project/src/main.z80')).toBe(true);
     expect(isDebug80RebuildSourcePath('/project/src/contracts.asmi')).toBe(true);
-    expect(isDebug80RebuildSourcePath('/project/src/game.glim')).toBe(true);
-    expect(isDebug80RebuildSourcePath('/project/src/GAME.GLIM')).toBe(true);
+    expect(isDebug80RebuildSourcePath('/project/src/game.glim')).toBe(false);
     expect(isDebug80RebuildSourcePath('/project/src/main.nu')).toBe(true);
   });
 
@@ -27,17 +26,17 @@ describe('Debug80 source extensions', () => {
   });
 
   it('requires a rebuild source to be inside the active workspace boundary', () => {
-    expect(isDebug80RebuildSourceWithinWorkspace('/work/demo/src/game.glim', '/work/demo')).toBe(
+    expect(isDebug80RebuildSourceWithinWorkspace('/work/demo/src/main.nu', '/work/demo')).toBe(
       true
     );
+    expect(isDebug80RebuildSourceWithinWorkspace('/work/demo-copy/src/main.nu', '/work/demo')).toBe(
+      false
+    );
     expect(
-      isDebug80RebuildSourceWithinWorkspace('/work/demo-copy/src/game.glim', '/work/demo')
-    ).toBe(false);
-    expect(
-      isDebug80RebuildSourceWithinWorkspace('C:\\Work\\Demo\\src\\game.glim', 'c:\\work\\demo')
+      isDebug80RebuildSourceWithinWorkspace('C:\\Work\\Demo\\src\\main.nu', 'c:\\work\\demo')
     ).toBe(true);
     expect(
-      isDebug80RebuildSourceWithinWorkspace('C:\\Work\\DemoCopy\\game.glim', 'c:\\work\\demo')
+      isDebug80RebuildSourceWithinWorkspace('C:\\Work\\DemoCopy\\main.nu', 'c:\\work\\demo')
     ).toBe(false);
   });
 });

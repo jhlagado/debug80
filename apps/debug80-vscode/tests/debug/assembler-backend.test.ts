@@ -11,7 +11,6 @@ vi.mock('vscode', () => ({
 import { resolveAssemblerBackend } from '../../src/debug/launch/assembler-backend';
 import { AtomBackend } from '../../src/debug/launch/atom-backend';
 import { AzmBackend } from '../../src/debug/launch/azm-backend';
-import { GlimmerBackend } from '../../src/debug/launch/glimmer-backend';
 import { NucleusBackend } from '../../src/debug/launch/nucleus-backend';
 
 function expectAzmBackend(id?: string, sourcePath?: string): void {
@@ -58,15 +57,6 @@ describe('assembler-backend', () => {
     expect(() => resolveAssemblerBackend('unknown', undefined)).toThrow(
       'Unknown assembler backend'
     );
-  });
-
-  it('returns glimmer for .glim source paths', () => {
-    expect(resolveAssemblerBackend(undefined, '/tmp/game.glim')).toBeInstanceOf(GlimmerBackend);
-  });
-
-  it('returns glimmer when explicitly requested', () => {
-    expect(resolveAssemblerBackend('glimmer', undefined)).toBeInstanceOf(GlimmerBackend);
-    expect(resolveAssemblerBackend('GLIMMER', undefined)).toBeInstanceOf(GlimmerBackend);
   });
 
   it('returns nucleus for .nu source paths or an explicit backend', () => {

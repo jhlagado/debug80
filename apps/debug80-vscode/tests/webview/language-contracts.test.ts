@@ -269,21 +269,17 @@ describe('package.json language contracts', () => {
     expect(lang!.extensions).not.toContain('.s');
   });
 
-  it('launch schema exposes Atom, AZM, Glimmer and Nucleus compiler backends', () => {
+  it('launch schema exposes Atom, AZM and Nucleus compiler backends', () => {
     const debuggerContribution = contributes.debuggers.find((debuggerEntry) => {
       return debuggerEntry.type === 'z80';
     });
     const assembler = debuggerContribution?.configurationAttributes?.launch?.properties?.assembler;
-    const glimmerAssembler =
-      debuggerContribution?.configurationAttributes?.launch?.properties?.glimmer?.properties
-        ?.assembler;
-
     expect(assembler?.default).toBeUndefined();
     expect(assembler?.enum).toBeUndefined();
     expect(assembler?.description).toContain('aliases normalized by Debug80');
-    expect(glimmerAssembler?.default).toBe('atom');
-    expect(glimmerAssembler?.enum).toBeUndefined();
-    expect(glimmerAssembler?.description).toContain('aliases normalized by Debug80');
+    expect(
+      debuggerContribution?.configurationAttributes?.launch?.properties?.glimmer
+    ).toBeUndefined();
   });
 
   it('launch schema exposes strict and insensitive AZM symbol lookup', () => {
@@ -315,7 +311,7 @@ describe('package.json language contracts', () => {
         return entry.command === 'debug80.setEntrySource';
       });
       expect(row).toBeDefined();
-      for (const extension of ['.asm', '.z80', '.glim', '.nu']) {
+      for (const extension of ['.asm', '.z80', '.nu']) {
         expect(row!.when).toContain(`resourceExtname == ${extension}`);
       }
       expect(row!.when).not.toContain('resourceExtname == .a80');
@@ -885,6 +881,7 @@ describe('package.json language contracts', () => {
   it('depends on Atom for default bundled assembly and AZM for compatibility', () => {
     expect(pkg.dependencies?.['atom-z80']).toBeDefined();
     expect(pkg.dependencies?.['@jhlagado/azm']).toBeDefined();
+    expect(pkg.dependencies?.['@jhlagado/glimmer']).toBeUndefined();
   });
 
   it('every contributed language has a breakpoint entry', () => {

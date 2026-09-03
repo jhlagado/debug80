@@ -25,14 +25,14 @@ describe('target discovery conventions', () => {
     expect(isTargetEntrySourcePath('src/main.nu')).toBe(true);
     expect(isTargetEntrySourcePath('src/pacmo.main.asm')).toBe(false);
     expect(isTargetEntrySourcePath('src/pacmo.main.z80')).toBe(false);
-    expect(isTargetEntrySourcePath('examples/tetro.glim')).toBe(true);
+    expect(isTargetEntrySourcePath('examples/tetro.glim')).toBe(false);
     expect(isTargetEntrySourcePath('src/include.asm')).toBe(false);
     expect(isTargetEntrySourcePath('src/tool.z80')).toBe(false);
     expect(isTargetEntrySourcePath('src/contracts.asmi')).toBe(false);
 
     expect(isTargetSourcePath('src/include.asm')).toBe(true);
     expect(isTargetSourcePath('src/tool.z80')).toBe(true);
-    expect(isTargetSourcePath('examples/tetro.glim')).toBe(true);
+    expect(isTargetSourcePath('examples/tetro.glim')).toBe(false);
     expect(isTargetSourcePath('src/module.nu')).toBe(true);
     expect(isTargetSourcePath('src/contracts.asmi')).toBe(false);
   });
@@ -47,14 +47,11 @@ describe('target discovery conventions', () => {
       'src/tool.main.z80',
       'src/games/tetro.main.asm',
       ['examples/tetro.glim', 'program Tetro\n'],
-      ['examples/trail-blocks.glim', 'effect Draw\nend\n'],
       'build/generated.main.asm',
     ]);
 
     expect(listTargetEntrySourceFiles(root)).toEqual(
-      ['src/main.asm', 'examples/tetro.glim', 'nucleus/main.nu'].sort((left, right) =>
-        left.localeCompare(right)
-      )
+      ['src/main.asm', 'nucleus/main.nu'].sort((left, right) => left.localeCompare(right))
     );
   });
 
@@ -62,8 +59,7 @@ describe('target discovery conventions', () => {
     const root = fixture.createWorkspace('debug80-target-discovery-root-', [
       'main.asm',
       'app.main.asm',
-      ['game.glim', '; entry\nprogram Game ; comment\n'],
-      ['part.glim', 'state X : byte\n'],
+      ['game.glim', '; retired frontend source\n'],
       'alt.z80',
       'loader.a80',
       'startup.s',
@@ -71,25 +67,24 @@ describe('target discovery conventions', () => {
       'lib/include.asm',
     ]);
 
-    expect(listTargetEntrySourceFiles(root)).toEqual(['game.glim', 'main.asm']);
+    expect(listTargetEntrySourceFiles(root)).toEqual(['main.asm']);
   });
 
-  it('lists any assembly source and valid Glimmer program as an explicit target candidate', () => {
+  it('lists assembly and Nucleus sources as explicit target candidates', () => {
     const root = fixture.createWorkspace('debug80-target-source-', [
       'main.asm',
       'src/helper.asm',
       'src/main.nu',
       'legacy/tool.z80',
       ['examples/game.glim', 'program Game\n'],
-      ['examples/library.glim', 'state Score : byte\n'],
       'build/generated.asm',
       'node_modules/package/main.z80',
       'src/contracts.asmi',
     ]);
 
     expect(listTargetSourceFiles(root)).toEqual(
-      ['examples/game.glim', 'legacy/tool.z80', 'main.asm', 'src/helper.asm', 'src/main.nu'].sort(
-        (left, right) => left.localeCompare(right)
+      ['legacy/tool.z80', 'main.asm', 'src/helper.asm', 'src/main.nu'].sort((left, right) =>
+        left.localeCompare(right)
       )
     );
   });

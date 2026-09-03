@@ -45,7 +45,7 @@ export async function addTargetCommand(
   );
   if (candidates.length === 0) {
     void vscode.window.showInformationMessage(
-      'Debug80: Every eligible ASM, Z80, or Glimmer program file is already a target.'
+      'Debug80: Every eligible ASM, Z80, or Nucleus program file is already a target.'
     );
     return undefined;
   }
@@ -132,7 +132,7 @@ async function selectTargetSource(
         ...(isTargetEntrySourcePath(source) ? { description: 'suggested entry' } : {}),
       })),
       {
-        placeHolder: 'Select an ASM, Z80, or Glimmer program file to add as a target',
+        placeHolder: 'Select an ASM, Z80, or Nucleus program file to add as a target',
         matchOnDescription: true,
       }
     )

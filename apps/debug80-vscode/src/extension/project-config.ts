@@ -39,29 +39,19 @@ function isSupportedAssemblerId(value: unknown): boolean {
     return false;
   }
   const normalized = value.trim().toLowerCase();
-  if (normalized === 'glimmer' || normalized === 'nucleus') {
+  if (normalized === 'nucleus') {
     return true;
   }
   return normalizeConcreteZ80AssemblerId(value) !== undefined;
 }
 
-function normalizeConcreteZ80AssemblerId(
-  value: unknown
-): ConcreteZ80AssemblerFlavour | undefined {
+function normalizeConcreteZ80AssemblerId(value: unknown): ConcreteZ80AssemblerFlavour | undefined {
   try {
     const assembler = normalizeZ80AssemblerFlavour(value, { allowAuto: false });
     return assembler === Z80_ASSEMBLER_FLAVOUR.auto ? undefined : assembler;
   } catch {
     return undefined;
   }
-}
-
-function glimmerAssembler(value: unknown): 'atom' | 'azm' | undefined {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-  const assembler = (value as { assembler?: unknown }).assembler;
-  return normalizeConcreteZ80AssemblerId(assembler);
 }
 
 /** Keep a target's explicit frontend and generated-source backend aligned with its entry file. */
@@ -72,12 +62,6 @@ export function selectTargetAssemblerForSource(
   const extension = path.extname(sourceFile).toLowerCase();
   const assembler =
     typeof target.assembler === 'string' ? target.assembler.trim().toLowerCase() : undefined;
-
-  if (extension === '.glim') {
-    target.assembler = 'glimmer';
-    target.glimmer = { assembler: glimmerAssembler(target.glimmer) ?? 'atom' };
-    return;
-  }
 
   delete target.glimmer;
   if (extension === '.nu') {

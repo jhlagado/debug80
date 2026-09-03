@@ -23,24 +23,6 @@ const PROJECT_CONFIG = '/project/debug80.json';
 const PROJECT_ROOT = '/project';
 
 describe('launch-config-merge', () => {
-  it('merges the Glimmer generated-source assembler in root, target and launch order', () => {
-    const projectConfig: LaunchProjectConfig = {
-      assembler: 'glimmer',
-      glimmer: { assembler: 'azm' },
-      targets: {
-        app: {
-          asm: 'src/main.glim',
-          glimmer: { assembler: 'atom' },
-        },
-      },
-      defaultTarget: 'app',
-    };
-    expect(mergeForTarget(projectConfig, 'app').glimmer).toEqual({ assembler: 'atom' });
-    expect(
-      mergeForTarget(projectConfig, 'app', launchArgs({ glimmer: { assembler: 'azm' } })).glimmer
-    ).toEqual({ assembler: 'azm' });
-  });
-
   it('merges Nucleus project options in root, target and launch order', () => {
     const projectConfig: LaunchProjectConfig = {
       assembler: 'nucleus',
@@ -102,9 +84,9 @@ describe('launch-config-merge', () => {
       'build/app.hex',
       'build/app.d8.json',
     ]);
-    expect(mergeForTarget(projectConfig, 'app', launchArgs({ outputs: ['tmp/debug.hex'] })).outputs).toEqual([
-      'tmp/debug.hex',
-    ]);
+    expect(
+      mergeForTarget(projectConfig, 'app', launchArgs({ outputs: ['tmp/debug.hex'] })).outputs
+    ).toEqual(['tmp/debug.hex']);
   });
 
   it('applies root config, target config, then explicit launch args in order', () => {

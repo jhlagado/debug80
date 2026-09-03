@@ -71,7 +71,6 @@ function validateInventoryEntry(entry, index) {
     "azm-headless-integration",
     "atom-oracle",
     "archived-tooling",
-    "glimmer-compatibility",
     "nucleus-proof-comparison",
     "nucleus-runtime-fallback",
     "cpm22-development-tooling",

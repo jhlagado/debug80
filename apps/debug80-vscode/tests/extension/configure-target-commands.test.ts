@@ -24,7 +24,6 @@ describe('configure-target command helpers', () => {
       },
       { label: 'atom', detail: 'Use the Atom assembler for Z80 assembly source' },
       { label: 'azm', detail: 'Use the AZM compatibility backend' },
-      { label: 'glimmer', detail: 'Use the Glimmer frontend and its configured Z80 assembler' },
       { label: 'nucleus', detail: 'Force the standalone Nucleus compiler backend' },
     ]);
   });

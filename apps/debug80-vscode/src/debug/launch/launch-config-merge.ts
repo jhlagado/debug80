@@ -460,24 +460,6 @@ function applyAzmOptions(
   setIfDefined(merged, 'azm', Object.keys(azmResolved).length > 0 ? azmResolved : undefined);
 }
 
-function applyGlimmerOptions(
-  merged: LaunchRequestArguments,
-  cfg: LaunchProjectConfig,
-  targetCfg: LaunchTargetConfig | undefined,
-  args: LaunchRequestArguments
-): void {
-  const glimmerResolved = {
-    ...(cfg.glimmer ?? {}),
-    ...(targetCfg?.glimmer ?? {}),
-    ...(args.glimmer ?? {}),
-  };
-  setIfDefined(
-    merged,
-    'glimmer',
-    Object.keys(glimmerResolved).length > 0 ? glimmerResolved : undefined
-  );
-}
-
 function applyNucleusOptions(
   merged: LaunchRequestArguments,
   cfg: LaunchProjectConfig,
@@ -505,7 +487,6 @@ function applySourceLaunchFields(
   setIfDefined(merged, 'asm', resolveAsmInput(cfg, targetCfg, args));
   setIfDefined(merged, 'assembler', args.assembler ?? targetCfg?.assembler ?? cfg.assembler);
   applyAzmOptions(merged, cfg, targetCfg, args);
-  applyGlimmerOptions(merged, cfg, targetCfg, args);
   applyNucleusOptions(merged, cfg, targetCfg, args);
   setIfDefined(merged, 'sourceFile', resolveSourceInput(cfg, targetCfg, args));
 }

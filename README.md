@@ -1,28 +1,24 @@
 # Debug80 Z80 Development Toolchain
 
 **Documentation: [debug80.com](https://debug80.com/)** — the Debug80 manual,
-the Atom reference, the AZM books, and the Glimmer book.
+the Atom reference, and the AZM books.
 
 Debug80 is a Z80 development environment built around source-level debugging.
-This monorepo contains the main parts of that environment:
+This repository contains the Debug80 application and the packages that have
+not yet completed their move to independent repositories:
 
 1. **Debug80 and its runtime** build, run, inspect, and debug Z80 programs.
 2. **Atom** assembles Z80 source through a Z80-native assembler core and records
    how the machine code maps back to it.
-3. **Glimmer** adds a reactive game language that compiles through Atom while
-   keeping handwritten Z80 assembly available where it is needed.
-4. **AZM** remains available for compatibility and for larger host-side
+3. **AZM** remains available for compatibility and for larger host-side
    assembly features that Atom does not claim.
 
 They form one source-to-debugging pipeline:
 
 ```text
-.asm / .z80 source ───────────────> Atom ──> BIN, HEX, COM, listing, or D8 map
-
-.glim source ──> Glimmer ──> generated Atom ──> BIN, HEX, or D8 map
-                                                     │
-                                                     v
-                                       Debug80 IDE + Z80 runtime
+.asm / .z80 source ──> Atom ───────┐
+.nu source ──────────> Nucleus ────┼─> BIN, HEX, COM, or D8 map
+                                   └─> Debug80 IDE + Z80 runtime
 ```
 
 HEX and BIN files contain the program delivered to hardware or an emulator.
@@ -45,7 +41,7 @@ and expansion-memory controls.
 
 The extension delegates CPU and machine behaviour to
 [`@jhlagado/debug80-runtime`](packages/debug80-runtime/README.md). The runtime
-has no dependency on VS Code, AZM, Glimmer, or the Debug Adapter Protocol. It
+has no dependency on VS Code, AZM, Nucleus, or the Debug Adapter Protocol. It
 can therefore run the same programs headlessly in tests, build pipelines, and
 other Node.js tools. Its public headless API supports bounded execution,
 symbol-aware memory access, input controls, and snapshots of emulated devices.
@@ -60,7 +56,7 @@ Start here:
 
 ## 2. Atom
 
-[Atom](packages/atom/README.md) is the default assembler for `.asm`, `.inc`,
+[Atom](https://github.com/jhlagado/atom) is the default assembler for `.asm`, `.inc`,
 and `.z80` source in Debug80. Its assembler core is written in Z80 assembly and
 runs either on a real Z80 system or in the Debug80 runtime. The host layer
 handles files, conditional preprocessing, binary inclusion, finished artifacts,
@@ -73,35 +69,9 @@ byte and fits inside one 16 KiB bank.
 
 Start here:
 
-- [Atom README](packages/atom/README.md)
-- [Atom command-line guide](packages/atom/docs/command-line.md)
-- [Atom language reference](packages/atom/docs/language-reference.md)
-- [Atom codebase tour](packages/atom/docs/codebase/index.md)
-
-## 3. Glimmer
-
-[Glimmer](packages/glimmer/README.md) is a reactive language and project format
-for Z80 games. It supplies declarations for state, input bindings, timers,
-pulses, effects, rendering, screens, sound, and game resources. Z80 bodies
-remain visible inside Glimmer blocks for the parts of a game that need direct
-control of the machine.
-
-Glimmer generates readable assembly and uses Atom by default to produce the final program.
-Its build pipeline rewrites the resulting D8 map so breakpoints and diagnostics
-lead back to the original `.glim` source rather than leaving the programmer in
-generated glue code. Debug80 treats `.glim` as a first-class source format and
-uses the same debugging workflow for Glimmer and assembly projects.
-
-The AZM compatibility backend remains available for Glimmer programs that use
-host-side features without an Atom equivalent.
-
-Start here:
-
-- [Glimmer README](packages/glimmer/README.md)
-- [Glimmer language manual](packages/glimmer/docs/manual/)
-- [Glimmer grammar reference](packages/glimmer/docs/reference/glim-grammar.md)
-- [Glimmer Book](https://debug80.com/glimmer-book/)
-- [Glimmer examples and corpus](packages/glimmer/corpus/README.md)
+- [Atom repository](https://github.com/jhlagado/atom)
+- [Atom command-line guide](https://github.com/jhlagado/atom/blob/main/docs/command-line.md)
+- [Atom language reference](https://github.com/jhlagado/atom/blob/main/docs/language-reference.md)
 
 ## Nucleus language
 
@@ -128,10 +98,9 @@ Start here:
 | You want to...                                | Begin with...                                                            |
 | --------------------------------------------- | ------------------------------------------------------------------------ |
 | Build and debug a Z80 program in VS Code      | [Debug80 extension guide](apps/debug80-vscode/README.md)                 |
-| Assemble an existing `.asm` or `.z80` program | [Atom README](packages/atom/README.md)                                   |
-| Learn Atom syntax                             | [Atom language reference](packages/atom/docs/language-reference.md)      |
+| Assemble an existing `.asm` or `.z80` program | [Atom repository](https://github.com/jhlagado/atom)                      |
+| Learn Atom syntax                             | [Atom language reference](https://github.com/jhlagado/atom/blob/main/docs/language-reference.md) |
 | Use AZM-specific host features                | [AZM README](packages/azm/README.md)                                     |
-| Write a reactive Z80 game                     | [Glimmer Book](https://debug80.com/glimmer-book/)                        |
 | Read or implement Nucleus                     | [Nucleus project](packages/nucleus/README.md)                            |
 | Run Z80 programs in automated tests           | [Debug80 runtime](packages/debug80-runtime/README.md)                    |
 | Understand or extend the implementation       | [Debug80 engineering manual](apps/debug80-vscode/docs/codebase/index.md) |
@@ -152,16 +121,17 @@ The main workspaces are:
 | ---------------------------- | ----------------------------------------------------------------- |
 | `apps/debug80-vscode`        | Debug80 VS Code extension                                         |
 | `packages/debug80-runtime`   | UI-independent Z80 and machine runtime                            |
-| `packages/atom`              | Atom assembler, native core, host API, and CLI                    |
+| `packages/atom`              | Temporary release bridge for the independent Atom repository     |
 | `packages/azm`               | AZM assembler and compile API                                     |
-| `packages/glimmer`           | Glimmer language, generator, and build API                        |
 | `packages/nucleus`           | Nucleus language, direct Z80 compiler, specifications, and proofs |
 | `packages/z80-tool-services` | Shared host-service contracts for Z80 tools                       |
 | `integration`                | Private end-to-end package integration checks                     |
 
-Each published package has its own version. The monorepo allows changes across
-the toolchain to be built and tested together without publishing intermediate
-packages.
+Atom and Debug80 Runtime now have independent local repositories. Their
+remaining workspace copies are release bridges: Debug80 can remove each copy
+after a published version contains the API and behaviour exercised by this
+repository. Glimmer source and history have moved to its own repository and are
+not part of the Debug80 extension or workspace.
 
 ## Debugging the Extension
 
@@ -188,9 +158,8 @@ code so its pre-launch task rebuilds both bundles.
 ## Dependency Boundaries
 
 Atom depends on Debug80 Runtime for Node-hosted execution and on
-`z80-tool-services` for host-service contracts. Glimmer depends on Atom for its
-default assembly path and keeps an AZM compatibility path for programs that
-need it. The Debug80 extension consumes Atom, AZM, Glimmer, and Debug80 Runtime.
+`z80-tool-services` for host-service contracts. The Debug80 extension consumes
+Atom, AZM, Nucleus, and Debug80 Runtime.
 Debug80 Runtime remains independent so it can execute already-built programs
 without bringing an assembler, language frontend, editor API, or UI into a
 headless process.

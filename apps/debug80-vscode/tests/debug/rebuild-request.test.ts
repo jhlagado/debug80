@@ -20,7 +20,7 @@ import { handleWarmRebuildRequest } from '../../src/debug/requests/rebuild-reque
 describe('warm rebuild requests', () => {
   it.each([
     ['AZM', 'game.asm'],
-    ['Glimmer', 'game.glim'],
+    ['Nucleus', 'game.nu'],
   ])('passes normalized Simple binary bounds to %s rebuilds', async (_name, sourceFile) => {
     assembleIfRequested.mockClear();
     const launchArgs: LaunchRequestArguments = {

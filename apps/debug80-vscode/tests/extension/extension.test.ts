@@ -139,12 +139,12 @@ describe('extension activation', () => {
     expect(registerCommand).toHaveBeenCalledWith('debug80.terminalInput', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTerminal', expect.anything());
     expect(registerDefinitionProvider).toHaveBeenCalledWith(
-      [{ language: 'z80-asm' }, { language: 'glim' }],
+      [{ language: 'z80-asm' }, { language: 'nucleus' }],
       expect.anything()
     );
     expect(registerWorkspaceSymbolProvider).toHaveBeenCalledWith(expect.anything());
     expect(registerHoverProvider).toHaveBeenCalledWith(
-      [{ language: 'z80-asm' }, { language: 'glim' }],
+      [{ language: 'z80-asm' }, { language: 'nucleus' }],
       expect.anything()
     );
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTec1', expect.anything());

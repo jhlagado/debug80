@@ -4,15 +4,10 @@
 
 import * as path from 'path';
 import type { MappingParseResult } from '../../mapping/types';
-import type {
-  AzmLaunchOptions,
-  GlimmerLaunchOptions,
-  NucleusLaunchOptions,
-} from '../session/types';
+import type { AzmLaunchOptions, NucleusLaunchOptions } from '../session/types';
 import type { AssembleResult } from './assembler';
 import { AtomBackend } from './atom-backend';
 import { AzmBackend } from './azm-backend';
-import { GlimmerBackend } from './glimmer-backend';
 import { NucleusBackend } from './nucleus-backend';
 import {
   selectConcreteZ80AssemblerFlavour,
@@ -31,7 +26,6 @@ export interface AssembleOptions {
     binTo: number;
   };
   azm?: AzmLaunchOptions;
-  glimmer?: GlimmerLaunchOptions;
   nucleus?: NucleusLaunchOptions;
   onOutput?: (message: string) => void;
 }
@@ -63,9 +57,6 @@ function inferAssemblerBackend(asmPath: string | undefined): string | undefined 
   if (assemblySourceExtensions.has(extension)) {
     return 'atom';
   }
-  if (extension === '.glim') {
-    return 'glimmer';
-  }
   if (extension === '.nu') {
     return 'nucleus';
   }
@@ -83,9 +74,6 @@ export function resolveAssemblerBackend(
 
   if (id === undefined || id === '') {
     return new AtomBackend();
-  }
-  if (id === 'glimmer') {
-    return new GlimmerBackend();
   }
   if (id === 'nucleus') {
     return new NucleusBackend();

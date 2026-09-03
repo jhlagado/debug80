@@ -94,25 +94,6 @@ describe('configure-project target edit', () => {
     expect(config.targets?.app?.assembler).toBe('atom');
   });
 
-  it('preserves the Glimmer assembler when changing program files', () => {
-    const config = singleTargetConfig(
-      targetConfig({
-        sourceFile: 'src/old.glim',
-        assembler: 'glimmer',
-        glimmer: { assembler: 'azm' },
-      })
-    );
-
-    applyConfigureProjectTargetEdit(config, 'app', {
-      kind: 'program',
-      sourceFile: 'src/game.glim',
-    });
-
-    expect(config.targets?.app?.assembler).toBe('glimmer');
-    expect(config.targets?.app?.glimmer).toEqual({ assembler: 'azm' });
-    expect(config.targets?.app?.sourceFile).toBe('src/game.glim');
-  });
-
   it('preserves Nucleus only for Nucleus source files', () => {
     const config = singleTargetConfig(
       targetConfig({ sourceFile: 'src/old.nu', assembler: 'nucleus' })

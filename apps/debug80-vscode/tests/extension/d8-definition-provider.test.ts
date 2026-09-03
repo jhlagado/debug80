@@ -162,8 +162,8 @@ function makeMapWithNonNavigableSymbols(): D8DebugMap {
 }
 
 describe('D8 definition provider helpers', () => {
-  it('enables D8 editor navigation for assembly and Glimmer source documents', () => {
-    expect(D8_SOURCE_LANGUAGES).toEqual(['z80-asm', 'glim']);
+  it('enables D8 editor navigation for assembly and Nucleus source documents', () => {
+    expect(D8_SOURCE_LANGUAGES).toEqual(['z80-asm', 'nucleus']);
   });
   it('converts only navigable D8 symbols into editor symbols', () => {
     expect(

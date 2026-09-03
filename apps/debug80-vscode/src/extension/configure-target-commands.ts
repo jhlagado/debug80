@@ -19,7 +19,7 @@ type ConfigureFieldId =
   'targetPlatformOverride' | 'program' | 'assembler' | 'targetName' | 'outputDir' | 'artifactBase';
 
 export interface ConfigureAssemblerPickItem {
-  label: 'default' | 'atom' | 'azm' | 'glimmer' | 'nucleus';
+  label: 'default' | 'atom' | 'azm' | 'nucleus';
   detail: string;
 }
 
@@ -28,7 +28,6 @@ export function buildAssemblerPickItems(): ConfigureAssemblerPickItem[] {
     { label: 'default', detail: 'Use Atom for assembly sources and infer other source types' },
     { label: 'atom', detail: 'Use the Atom assembler for Z80 assembly source' },
     { label: 'azm', detail: 'Use the AZM compatibility backend' },
-    { label: 'glimmer', detail: 'Use the Glimmer frontend and its configured Z80 assembler' },
     { label: 'nucleus', detail: 'Force the standalone Nucleus compiler backend' },
   ];
 }
@@ -142,7 +141,7 @@ export async function setEntrySourceCommand(
   const candidates = listTargetSourceFiles(folder.uri.fsPath);
   if (candidates.length === 0) {
     void vscode.window.showInformationMessage(
-      'Debug80: No runnable assembly, Glimmer, or Nucleus entry files were found in this project folder.'
+      'Debug80: No runnable assembly or Nucleus entry files were found in this project folder.'
     );
     return undefined;
   }
@@ -232,7 +231,7 @@ async function selectProgram(
   const sources = listTargetSourceFiles(folder.uri.fsPath);
   if (sources.length === 0) {
     void vscode.window.showInformationMessage(
-      'Debug80: No runnable assembly, Glimmer, or Nucleus entry files were found in this project folder.'
+      'Debug80: No runnable assembly or Nucleus entry files were found in this project folder.'
     );
     return undefined;
   }

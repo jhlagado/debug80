@@ -19,7 +19,6 @@ const ignoredDirectories = new Set([
   "out",
 ]);
 const assemblyExtensions = new Set([".asm", ".inc", ".z80"]);
-const glimmerExtension = ".glim";
 const retirementInventoryPath = path.join(
   "docs",
   "specifications",
@@ -80,27 +79,6 @@ for (const filename of await findProjectFiles(root)) {
       );
     } else if (assemblyExtensions.has(extension) && assemblyAssembler === Z80_ASSEMBLER_FLAVOUR.azm) {
       selectedAzmTargets.add(`${path.relative(root, filename)}#${targetName}`);
-    } else if (extension === glimmerExtension) {
-      if (targetAssembler !== "glimmer") {
-        failures.push(
-          `${path.relative(root, filename)} target ${targetName} must select assembler \"glimmer\"`,
-        );
-        continue;
-      }
-      const generatedAssembler =
-        target.glimmer !== null &&
-        typeof target.glimmer === "object"
-          ? normalizeConcreteAssembler(target.glimmer.assembler)
-          : undefined;
-      if (generatedAssembler === undefined) {
-        failures.push(
-          `${path.relative(root, filename)} target ${targetName} must select glimmer.assembler \"atom\" or \"azm\"`,
-        );
-      } else if (generatedAssembler === Z80_ASSEMBLER_FLAVOUR.azm) {
-        selectedAzmTargets.add(
-          `${path.relative(root, filename)}#${targetName}`,
-        );
-      }
     }
   }
 }

@@ -88,7 +88,7 @@ describe('launch-pipeline', () => {
 
   it('rejects ranged binaries when the backend does not support them', async () => {
     const noBinBackend: AssemblerBackend = {
-      id: 'glimmer',
+      id: 'nucleus',
       assemble: backend.assemble,
     };
 
@@ -98,7 +98,7 @@ describe('launch-pipeline', () => {
         simpleConfig: simpleBinaryConfig(),
       })
     ).rejects.toThrow(
-      'glimmer does not support simple.binFrom/simple.binTo; choose an assembler backend with ranged binary output.'
+      'nucleus does not support simple.binFrom/simple.binTo; choose an assembler backend with ranged binary output.'
     );
     expect(backend.assemble).not.toHaveBeenCalled();
   });

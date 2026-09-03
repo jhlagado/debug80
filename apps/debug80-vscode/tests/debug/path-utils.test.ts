@@ -69,7 +69,7 @@ describe('path-utils', () => {
 
   describe('isCanonicalPathWithin', () => {
     it('rejects sibling paths that only share a textual prefix', () => {
-      expect(isCanonicalPathWithin('/work/demo-copy/game.glim', '/work/demo')).toBe(false);
+      expect(isCanonicalPathWithin('/work/demo-copy/main.nu', '/work/demo')).toBe(false);
     });
 
     it.skipIf(IS_WINDOWS)('recognizes a real file through a symlinked workspace path', () => {
@@ -77,7 +77,7 @@ describe('path-utils', () => {
       try {
         const realWorkspace = path.join(tempRoot, 'real-workspace');
         const linkedWorkspace = path.join(tempRoot, 'linked-workspace');
-        const sourcePath = path.join(realWorkspace, 'src', 'game.glim');
+        const sourcePath = path.join(realWorkspace, 'src', 'main.nu');
         fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
         fs.writeFileSync(sourcePath, '');
         fs.symlinkSync(realWorkspace, linkedWorkspace, 'dir');

@@ -47,7 +47,6 @@
     "onLanguage:asm-collection",
     "onLanguage:z80-asm",
     "onLanguage:z80-macroasm",
-    "onLanguage:glim",
     "onLanguage:nucleus"
   ],
   "main": "./out/extension/extension.js",
@@ -74,7 +73,6 @@
         "*.asm": "z80-asm",
         "*.z80": "z80-asm",
         "*.asmi": "z80-asm",
-        "*.glim": "glim",
         "*.nu": "nucleus"
       },
       "editor.tokenColorCustomizations": {
@@ -244,94 +242,6 @@
             "settings": {
               "foreground": "#6A9955"
             }
-          },
-          {
-            "scope": [
-              "comment.line.semicolon.glim"
-            ],
-            "settings": {
-              "foreground": "#6A9955"
-            }
-          },
-          {
-            "scope": [
-              "keyword.control.begin.glim",
-              "keyword.control.end.glim",
-              "keyword.control.card.glim",
-              "keyword.control.bind.glim",
-              "keyword.control.import.glim",
-              "keyword.control.program.glim",
-              "keyword.control.trigger.glim",
-              "keyword.control.goto.glim",
-              "storage.type.block.glim",
-              "storage.type.resource.glim",
-              "storage.type.type.glim",
-              "storage.type.state.glim",
-              "storage.type.timing.glim"
-            ],
-            "settings": {
-              "foreground": "#FF66C4"
-            }
-          },
-          {
-            "scope": [
-              "entity.name.function.block.glim"
-            ],
-            "settings": {
-              "foreground": "#FDE047"
-            }
-          },
-          {
-            "scope": [
-              "entity.name.section.card.glim",
-              "entity.name.type.glim",
-              "entity.name.type.resource.glim",
-              "entity.name.namespace.glim"
-            ],
-            "settings": {
-              "foreground": "#B77DFF"
-            }
-          },
-          {
-            "scope": [
-              "variable.other.cell.glim",
-              "variable.other.pulse.glim",
-              "variable.other.field.glim"
-            ],
-            "settings": {
-              "foreground": "#FF4D6D"
-            }
-          },
-          {
-            "scope": [
-              "keyword.operator.type.glim",
-              "keyword.operator.assignment.glim",
-              "keyword.operator.fires.glim"
-            ],
-            "settings": {
-              "foreground": "#00D1A7"
-            }
-          },
-          {
-            "scope": [
-              "constant.numeric.glim",
-              "constant.language.key.glim",
-              "support.constant.color.glim",
-              "support.constant.preset.glim"
-            ],
-            "settings": {
-              "foreground": "#FFD166"
-            }
-          },
-          {
-            "scope": [
-              "string.quoted.double.glim",
-              "string.quoted.double.path.glim",
-              "string.quoted.double.pixels.glim"
-            ],
-            "settings": {
-              "foreground": "#A3E635"
-            }
           }
         ]
       }
@@ -350,16 +260,6 @@
         "configuration": "./language-configuration/z80-asm.json"
       },
       {
-        "id": "glim",
-        "aliases": [
-          "Glimmer"
-        ],
-        "extensions": [
-          ".glim"
-        ],
-        "configuration": "./language-configuration/glim.json"
-      },
-      {
         "id": "nucleus",
         "aliases": [
           "Nucleus"
@@ -375,11 +275,6 @@
         "language": "z80-asm",
         "scopeName": "source.z80.asm",
         "path": "./syntaxes/z80-asm.tmLanguage.json"
-      },
-      {
-        "language": "glim",
-        "scopeName": "source.glim",
-        "path": "./syntaxes/glim.tmLanguage.json"
       },
       {
         "language": "nucleus",
@@ -405,9 +300,6 @@
       },
       {
         "language": "z80"
-      },
-      {
-        "language": "glim"
       },
       {
         "language": "nucleus"
@@ -561,21 +453,21 @@
       "explorer/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim || resourceExtname == .nu",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .nu",
           "group": "navigation@9"
         }
       ],
       "editor/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim || resourceExtname == .nu",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .nu",
           "group": "navigation@9"
         }
       ],
       "editor/title/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim || resourceExtname == .nu",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .nu",
           "group": "navigation@9"
         }
       ],
@@ -598,7 +490,6 @@
           "wla-dx-asm",
           "asm",
           "z80",
-          "glim",
           "nucleus"
         ],
         "configurationAttributes": {
@@ -619,7 +510,7 @@
               },
               "assembler": {
                 "type": "string",
-                "description": "Assembler backend to use. Assembly sources default to Atom; select AZM explicitly when required. Accepts Atom and AZM aliases normalized by Debug80, plus glimmer and nucleus."
+                "description": "Assembler backend to use. Assembly sources default to Atom; select AZM explicitly when required. Accepts Atom and AZM aliases normalized by Debug80, plus nucleus."
               },
               "azm": {
                 "type": "object",
@@ -696,17 +587,6 @@
                     "items": {
                       "type": "string"
                     }
-                  }
-                }
-              },
-              "glimmer": {
-                "type": "object",
-                "description": "Glimmer frontend options",
-                "properties": {
-                  "assembler": {
-                    "type": "string",
-                    "description": "Assembler used for Glimmer's generated Z80 source. Accepts Atom and AZM aliases normalized by Debug80.",
-                    "default": "atom"
                   }
                 }
               },
@@ -1029,8 +909,7 @@
   },
   "dependencies": {
     "@jhlagado/azm": "^0.3.8",
-    "@jhlagado/debug80-runtime": "^0.1.0",
-    "@jhlagado/glimmer": "^0.6.2",
+    "@jhlagado/debug80-runtime": "^0.3.0",
     "@jhlagado/nucleus": "file:../../packages/nucleus",
     "@jhlagado/z80-tool-services": "file:../../packages/z80-tool-services",
     "@vscode/debugadapter": "^1.64.0",

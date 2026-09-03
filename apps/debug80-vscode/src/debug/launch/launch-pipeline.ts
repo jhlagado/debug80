@@ -71,7 +71,6 @@ export async function assembleIfRequested(options: {
     ...(binaryRange !== undefined ? { binaryRange } : {}),
     ...(sourceRoot !== undefined ? { sourceRoot } : {}),
     ...(args.azm !== undefined ? { azm: args.azm } : {}),
-    ...(args.glimmer !== undefined ? { glimmer: args.glimmer } : {}),
     ...(args.nucleus !== undefined ? { nucleus: args.nucleus } : {}),
     onOutput: (message) => {
       onOutput?.(message);
