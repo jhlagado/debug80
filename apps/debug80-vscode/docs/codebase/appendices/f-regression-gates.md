@@ -29,6 +29,7 @@ The source-of-truth strategy lives in `apps/debug80-vscode/docs/regression-test-
 | Adapter E2E tests        | Launch, breakpoints, stepping, restart, memory/register writes             |
 | Webview contract tests   | Project controls, message contracts, UI state invariants                   |
 | VS Code host integration | Activation, commands, views, workspace behavior through real VS Code APIs  |
+| Native lockfile guard    | Rollup and Rolldown platform bindings stay pinned in `package-lock.json`   |
 | VSIX content check       | Runtime dependencies and packaged assets are present; dev debris is absent |
 | Packaged workspace smoke | Packed package consumers exercise published CLI and runtime entry points   |
 | Packaged VSIX smoke      | Installed extension behaves like the user-facing product                   |
@@ -42,6 +43,7 @@ The most important scenarios to keep guarded are:
 - AZM assembles through the packaged linked library backend, not global CLIs;
 - installed Atom and Nucleus packages compile through their public APIs, with diagnostics attributed to authored sources;
 - development builds and staged VSIX builds both include Atom's native core and Nucleus's standard library;
+- `package-lock.json` retains the declared Rollup and Rolldown native optional bindings so clean Linux and macOS installs can start the bundler without rebuilding the lockfile;
 - headless sessions built from `@jhlagado/debug80-runtime/headless` execute the same TEC-1G runtime semantics that the extension uses, including symbol-addressed memory inspection and matrix/video timing boundaries;
 - sparse `ORG` programs preserve address-bearing HEX/D8M behavior;
 - breakpoints verify and stop in target and included source files;

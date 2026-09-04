@@ -24,6 +24,8 @@ the expected flow for contributors.
 
 - Build release candidates from a clean commit on `main`.
 - Keep runtime assembler dependencies in `dependencies`, not `devDependencies`.
+- Keep the root `package-lock.json` entries for Rollup and Rolldown native
+  optional bindings intact across supported platforms.
 - Do not rely on globally installed assemblers, `npm link`, or sibling
   checkouts.
 - Rebuild the extension and webview output before packaging.
@@ -37,10 +39,19 @@ From the toolchain repository root:
 
 ```bash
 npm ci
+npm run check:native-lockfile
 npm run package:debug80
 ```
 
-`npm run package:debug80` delegates to the extension workspace's `package:check` script. That script runs extension and webview type checks, the extension Vitest suites, VSIX packaging, and package-content verification. The generated file is written under `apps/debug80-vscode/`, for example:
+`npm run check:native-lockfile` verifies that `package-lock.json` still pins the
+declared Rollup and Rolldown native optional bindings for every supported
+platform. Run it from a clean install before packaging because a local
+`node_modules` tree can hide missing cross-platform entries.
+
+`npm run package:debug80` delegates to the extension workspace's `package:check`
+script. That script runs extension and webview type checks, the extension
+Vitest suites, VSIX packaging, and package-content verification. The generated
+file is written under `apps/debug80-vscode/`, for example:
 
 ```text
 apps/debug80-vscode/debug80-<version>.vsix
@@ -110,9 +121,11 @@ candidates for manual testing.
 CI is part of the Definition of Done for Debug80 changes. The `Toolchain CI`
 workflow in `.github/workflows/ci.yml` checks the maintained AZM, headless,
 source-size, and extension surfaces, including VS Code-hosted tests and VSIX
-packaging. Extracted packages have their own repository checks. After pushing,
-confirm that this workflow passes for the pushed commit before treating the
-change as complete or publishing a VSIX.
+packaging. The source-size job now runs `npm run check:native-lockfile` before
+its size and external-link gates so cross-platform bundler bindings stay pinned
+in `package-lock.json`. Extracted packages have their own repository checks.
+After pushing, confirm that this workflow passes for the pushed commit before
+treating the change as complete or publishing a VSIX.
 
 ```bash
 git rev-parse --short HEAD
