@@ -35,10 +35,6 @@ export const projectOwnedCandidates = Object.freeze([
   { name: "bootstrap.asm", projection: "small-symbols" },
   { name: "bios.asm", projection: "small-symbols" },
   { name: "smoke.asm", projection: "small-symbols" },
-  {
-    name: "editor.asm",
-    projection: "inline-includes-and-short-symbols",
-  },
 ]);
 
 const smallSourceSymbolMaps = Object.freeze({

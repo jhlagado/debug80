@@ -1,5 +1,7 @@
 # CP/M editor new-file design measurement
 
+> Historical design record: Edit source, measurements, and executable proofs now live in the standalone [`jhlagado/edit`](https://github.com/jhlagado/edit/tree/v0.1.0) repository. Debug80 consumes its pinned `EDIT.COM`; commands and paths below describe the pre-extraction implementation.
+
 Date: 2026-08-26
 
 Status: retained production implementation
@@ -17,7 +19,7 @@ search, screen, terminal, existing-file transaction, immutable strings, and
 memory partition come from production source. Only command explicitness,
 missing-file initialization, and first-save control differ. The executable
 comparison is
-[`measure-editor-new-file.mjs`](../../scripts/cpm22/measure-editor-new-file.mjs).
+[`measure-new-file.mjs`](https://github.com/jhlagado/edit/blob/v0.1.0/tools/measure-new-file.mjs).
 
 ## Result
 

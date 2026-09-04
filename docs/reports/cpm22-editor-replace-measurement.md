@@ -1,5 +1,7 @@
 # CP/M editor literal-replacement design measurement
 
+> Historical design record: Edit source, measurements, and executable proofs now live in the standalone [`jhlagado/edit`](https://github.com/jhlagado/edit/tree/v0.1.0) repository. Debug80 consumes its pinned `EDIT.COM`; commands and paths below describe the pre-extraction implementation.
+
 Date: 2026-08-26
 
 Status: single replacement implemented, compressed, and verified
@@ -16,7 +18,7 @@ Both candidates assemble a complete editor with strict register-contract
 checking. They use the production buffer, navigation, screen, terminal, save,
 new-file, and command paths. Replacement text occupies the inactive 128-byte
 CP/M DMA record while the prompt is active. The executable comparison is
-[`measure-editor-replace.mjs`](../../scripts/cpm22/measure-editor-replace.mjs).
+[`measure-replace.mjs`](https://github.com/jhlagado/edit/blob/v0.1.0/tools/measure-replace.mjs).
 
 ## Result
 

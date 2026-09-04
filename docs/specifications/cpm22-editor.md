@@ -1,5 +1,7 @@
 # Native CP/M editor contract
 
+> Historical design record: Edit source, measurements, and executable proofs now live in the standalone [`jhlagado/edit`](https://github.com/jhlagado/edit/tree/v0.1.0) repository. Debug80 consumes its pinned `EDIT.COM`; commands and paths below describe the pre-extraction implementation.
+
 Status: active implementation contract
 
 Date: 2026-08-26

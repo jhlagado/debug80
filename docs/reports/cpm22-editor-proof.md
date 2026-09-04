@@ -1,5 +1,7 @@
 # Native CP/M editor proof checkpoint
 
+> Historical design record: Edit source, measurements, and executable proofs now live in the standalone [`jhlagado/edit`](https://github.com/jhlagado/edit/tree/v0.1.0) repository. Debug80 consumes its pinned `EDIT.COM`; commands and paths below describe the pre-extraction implementation.
+
 Date: 2026-08-26
 
 This report records the first production `EDIT.COM`, its forward-search,
