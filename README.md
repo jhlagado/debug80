@@ -115,6 +115,13 @@ npm run build
 npm run check
 ```
 
+These default commands build and qualify the Debug80 consumer with ATOM.
+Historical AZM workspace tests and assembler comparisons remain available
+through `npm run check:historical`; they are excluded from ordinary CI and can
+be selected explicitly in the workflow's manual dispatch. The transitional
+`build:cpm22` and `import:cpm22-nucleus` tools still require historical assembly
+and are not part of the default consumer check.
+
 The main workspaces are:
 
 | Path                  | Package                                       |

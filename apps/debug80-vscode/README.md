@@ -45,11 +45,13 @@ are available at [debug80.com](https://debug80.com/).
 - **Conditional breakpoints**: use the same Watch expression language in VS
   Code breakpoint conditions, for example `[PACMO_LIVES] eq 0` or
   `zero and A eq $20`.
-- **Integrated build workflow**: Atom, AZM, and Nucleus are packaged
+- **Integrated build workflow**: Atom and Nucleus are packaged
   with the extension and called in-process, so users do not need global
   compiler installs. Assembly targets use Atom by default. Set
-  `"assembler": "azm"` only for source that still requires the AZM
-  compatibility backend. Targets can name generated artifacts with an
+  `"assembler": "azm"` only for retained historical source and install
+  `@jhlagado/azm` in that project when compatibility is required. Debug80 loads
+  that optional package from the project; it does not bundle or install AZM.
+  Targets can name generated artifacts with an
   `outputs` list, while Debug80 still creates the HEX and D8 files required for
   launch and source mapping.
 - **Register, symbol, stack, and memory visibility**: inspect CPU registers,

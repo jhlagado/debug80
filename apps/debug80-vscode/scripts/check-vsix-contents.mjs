@@ -239,7 +239,7 @@ async function smokeBundledAtomAssembly(stage) {
   }
   const source = bundle.replace(
     'export { activate, deactivate };',
-    `export { activate, deactivate, ${atomNamespace} as __debug80BundledAtomForSmoke };`
+    `export { activate, deactivate, ${atomNamespace} as __debug80BundledAtomForSmoke, AzmBackend as __debug80OptionalAzmForSmoke };`
   );
   if (!source.includes('__debug80BundledAtomForSmoke')) {
     return ['temporary bundled Atom smoke export could not be installed'];
@@ -265,6 +265,17 @@ async function smokeBundledAtomAssembly(stage) {
     const bytes = image?.bytes === undefined ? [] : Array.from(image.bytes);
     if (image?.address !== 0x0100 || bytes.length !== 1 || bytes[0] !== 0) {
       return ['bundled Atom smoke assembly did not emit NOP at $0100'];
+    }
+    const historical = await new module.__debug80OptionalAzmForSmoke().assemble({
+      asmPath: path.join(projectRoot, 'main.asm'),
+      hexPath: path.join(projectRoot, 'historical.hex'),
+      sourceRoot: projectRoot,
+    });
+    if (
+      historical.success ||
+      !historical.error?.includes('Optional historical AZM library failed to load')
+    ) {
+      return ['packaged extension did not reject unavailable optional historical AZM'];
     }
   } catch (error) {
     return [`bundled Atom smoke assembly failed: ${error?.stack ?? error}`];

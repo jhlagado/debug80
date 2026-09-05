@@ -17,14 +17,18 @@ const childProcess = vi.hoisted(() => ({
   spawnSync: vi.fn(),
 }));
 
-vi.mock('@jhlagado/azm/compile', () => ({
-  compile,
-  defaultFormatWriters: {
-    writeHex: vi.fn(),
-    writeBin: vi.fn(),
-    writeD8m: vi.fn(),
-  },
-}));
+function createBackend(): AzmBackend {
+  return new AzmBackend(() =>
+    Promise.resolve({
+      compile,
+      defaultFormatWriters: {
+        writeHex: vi.fn(),
+        writeBin: vi.fn(),
+        writeD8m: vi.fn(),
+      },
+    })
+  );
+}
 
 vi.mock('child_process', () => ({
   ...childProcess,
@@ -43,8 +47,41 @@ describe('azm-backend', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  it('fails clearly when the explicit historical package is absent from the project', async () => {
+    const { asmPath, hexPath } = createAssemblyFixture(tmpDir, 'ORG 0100h\nNOP\n');
+    const result = await new AzmBackend().assemble({ asmPath, hexPath, sourceRoot: tmpDir });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain(`Optional historical AZM library failed to load from ${tmpDir}`);
+    expect(result.error).toContain("Cannot find module '@jhlagado/azm/package.json'");
+    expect(fs.existsSync(hexPath)).toBe(false);
+    expectNoExternalProcess();
+  });
+
+  it('loads an explicitly supplied project package without using the extension dependency tree', async () => {
+    const packageRoot = path.join(tmpDir, 'node_modules', '@jhlagado', 'azm');
+    fs.mkdirSync(packageRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(packageRoot, 'package.json'),
+      JSON.stringify({
+        type: 'module',
+        exports: { './package.json': './package.json', './compile': { import: './compile.mjs' } },
+      })
+    );
+    // A tiny API fixture, not an assembler: proves project-local module loading.
+    fs.writeFileSync(
+      path.join(packageRoot, 'compile.mjs'),
+      'export const defaultFormatWriters = {};\nexport async function compile() { return { diagnostics: [{ severity: "error", message: "project optional fixture reached" }], artifacts: [] }; }\n'
+    );
+    const { asmPath, hexPath } = createAssemblyFixture(tmpDir, 'ORG 0100h\nNOP\n');
+    const result = await new AzmBackend().assemble({ asmPath, hexPath, sourceRoot: tmpDir });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('project optional fixture reached');
+    expect(result.error).not.toContain('failed to load');
+    expectNoExternalProcess();
+  });
+
   it('assembles through the AZM library and writes Debug80-controlled artifacts', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, outDir, hexPath, binPath } = createAssemblyFixture(
       tmpDir,
       'ORG 0100h\nSTART: NOP\n'
@@ -79,7 +116,7 @@ describe('azm-backend', () => {
   });
 
   it('requires native D8 output for source mapping', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, outDir, hexPath } = createAssemblyFixture(
       tmpDir,
       'ORG 4000h\nSTART: NOP\n',
@@ -95,7 +132,7 @@ describe('azm-backend', () => {
   });
 
   it('passes AZM register contracts launch options and writes register contract artifacts', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, outDir, hexPath } = createAssemblyFixture(tmpDir, 'ORG 4000h\nSTART: NOP\n');
     compile.mockResolvedValue({
       diagnostics: [],
@@ -147,7 +184,7 @@ describe('azm-backend', () => {
   });
 
   it('uses binFrom and binTo as compact output bounds for binary rebuilds', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, hexPath, binPath } = createAssemblyFixture(tmpDir, 'ORG 4000h\nDB 1,2,3\n');
 
     compile.mockResolvedValue({
@@ -172,7 +209,7 @@ describe('azm-backend', () => {
   });
 
   it('uses binaryRange as the primary Debug80 build binary bounds', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, hexPath, binPath } = createAssemblyFixture(tmpDir, 'ORG 4000h\nDB 1,3,4\n');
 
     compile.mockImplementation((_asmPath, _options, deps) =>
@@ -217,7 +254,7 @@ describe('azm-backend', () => {
   });
 
   it('returns compile diagnostics as Debug80 assembly failures', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, hexPath } = createAssemblyFixture(
       tmpDir,
       'BADOP\n',
@@ -247,7 +284,7 @@ describe('azm-backend', () => {
   });
 
   it('resolves project-relative AZM diagnostics against the source root', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, hexPath } = createAssemblyFixture(
       tmpDir,
       'CALL Missing\n',
@@ -276,7 +313,7 @@ describe('azm-backend', () => {
   });
 
   it('handles AZM diagnostics that do not include a source file', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, hexPath } = createAssemblyFixture(tmpDir, 'BADOP\n', 'prog.asm', tmpDir);
 
     compile.mockResolvedValue({
@@ -308,7 +345,7 @@ describe('azm-backend', () => {
   });
 
   it('fails when AZM succeeds but required artifacts are missing', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, hexPath } = createAssemblyFixture(
       tmpDir,
       'ORG 0100h\nSTART: NOP\n',
@@ -328,7 +365,7 @@ describe('azm-backend', () => {
   });
 
   it('fails when AZM succeeds without a native D8 map', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, hexPath } = createAssemblyFixture(
       tmpDir,
       'ORG 0100h\nSTART: NOP\n',
@@ -348,7 +385,7 @@ describe('azm-backend', () => {
   });
 
   it('fails when AZM produces an empty HEX artifact', async () => {
-    const backend = new AzmBackend();
+    const backend = createBackend();
     const { asmPath, hexPath } = createAssemblyFixture(tmpDir, 'ORG 0100h\n', 'prog.asm', tmpDir);
 
     compile.mockResolvedValue({

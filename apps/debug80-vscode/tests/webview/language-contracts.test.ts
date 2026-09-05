@@ -878,9 +878,9 @@ describe('package.json language contracts', () => {
     expect(pkg.dependencies?.['@jhlagado/zax']).toBeUndefined();
   });
 
-  it('depends on Atom for default bundled assembly and AZM for compatibility', () => {
+  it('bundles Atom and leaves historical AZM as an optional project tool', () => {
     expect(pkg.dependencies?.['atom-z80']).toBeDefined();
-    expect(pkg.dependencies?.['@jhlagado/azm']).toBeDefined();
+    expect(pkg.dependencies?.['@jhlagado/azm']).toBeUndefined();
     expect(pkg.dependencies?.['@jhlagado/glimmer']).toBeUndefined();
   });
 

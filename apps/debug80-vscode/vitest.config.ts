@@ -4,7 +4,12 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    exclude: ['tests/e2e/**', 'tests/webview/**', ...configDefaults.exclude],
+    exclude: [
+      'tests/e2e/**',
+      'tests/webview/**',
+      'tests/debug/azm-contract.test.ts',
+      ...configDefaults.exclude,
+    ],
     testTimeout: 30_000,
     coverage: {
       provider: 'v8',

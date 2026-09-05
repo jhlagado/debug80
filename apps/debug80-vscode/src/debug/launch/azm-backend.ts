@@ -4,6 +4,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { D8_DEBUG_MAP_EXT } from '../mapping/d8-map-paths';
 import type { AssemblyDiagnostic, AssembleResult } from './assembler';
 import type { AssembleBinOptions, AssembleOptions, AssemblerBackend } from './assembler-backend';
@@ -123,9 +125,32 @@ type LoadAzmResult = { success: true; modules: AzmModules } | LoadAzmFailure;
 type RequiredArtifactResult<K extends Artifact['kind']> =
   { ok: true; artifact: Extract<Artifact, { kind: K }> } | { ok: false; result: AssembleResult };
 
-async function loadAzmModules(): Promise<AzmModules> {
-  const { compile, defaultFormatWriters } =
-    (await import('@jhlagado/azm/compile')) as unknown as AzmModules;
+async function loadAzmModules(sourceRoot: string): Promise<AzmModules> {
+  const require = createRequire(path.resolve(sourceRoot, 'package.json'));
+  // AZM publishes an import-only API; require.resolve cannot select that
+  // condition. Locate its exported manifest from the project, then use its
+  // declared ESM entry without falling back to the extension's dependencies.
+  const manifestPath = require.resolve('@jhlagado/azm/package.json');
+  const manifest: unknown = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const exports =
+    typeof manifest === 'object' && manifest !== null && 'exports' in manifest
+      ? manifest.exports
+      : undefined;
+  const api =
+    typeof exports === 'object' && exports !== null && './compile' in exports
+      ? exports['./compile']
+      : undefined;
+  const entry =
+    typeof api === 'string'
+      ? api
+      : typeof api === 'object' && api !== null && 'import' in api
+        ? api.import
+        : undefined;
+  if (typeof entry !== 'string' || !entry.startsWith('./')) {
+    throw new Error('Historical AZM package has no supported ./compile ESM export');
+  }
+  const moduleUrl = new URL(entry, pathToFileURL(manifestPath)).href;
+  const { compile, defaultFormatWriters } = (await import(moduleUrl)) as unknown as AzmModules;
   return { compile, defaultFormatWriters };
 }
 
@@ -256,12 +281,14 @@ function resolveRegisterContractsReportPath(hexPath: string): string {
 }
 
 async function loadAzmModulesForAssembly(
-  onOutput: AssembleOptions['onOutput']
+  sourceRoot: string,
+  onOutput: AssembleOptions['onOutput'],
+  load: (sourceRoot: string) => Promise<AzmModules>
 ): Promise<LoadAzmResult> {
   try {
-    return { success: true, modules: await loadAzmModules() };
+    return { success: true, modules: await load(sourceRoot) };
   } catch (err) {
-    const message = `azm library failed to load: ${err instanceof Error ? err.message : String(err)}`;
+    const message = `Optional historical AZM library failed to load from ${sourceRoot}. Install @jhlagado/azm in that project only if historical compatibility is required; ordinary assembly uses ATOM. ${err instanceof Error ? err.message : String(err)}`;
     onOutput?.(`${message}\n`);
     return { success: false, result: azmFailure(message) };
   }
@@ -441,13 +468,15 @@ export class AzmBackend implements AssemblerBackend {
   public readonly id = 'azm';
   public readonly supportsRangedBinary = true;
 
+  public constructor(private readonly loadModules = loadAzmModules) {}
+
   public async assemble(options: AssembleOptions): Promise<AssembleResult> {
     const outDir = path.dirname(options.hexPath);
     const binPath = resolveBinPath(options.hexPath);
     const sourceRoot = options.sourceRoot ?? path.dirname(options.asmPath);
     fs.mkdirSync(outDir, { recursive: true });
 
-    const loaded = await loadAzmModulesForAssembly(options.onOutput);
+    const loaded = await loadAzmModulesForAssembly(sourceRoot, options.onOutput, this.loadModules);
     if (!loaded.success) {
       return loaded.result;
     }
@@ -506,7 +535,11 @@ export class AzmBackend implements AssemblerBackend {
   }
 
   public async assembleBin(options: AssembleBinOptions): Promise<AssembleResult> {
-    const loaded = await loadAzmModulesForAssembly(options.onOutput);
+    const loaded = await loadAzmModulesForAssembly(
+      options.sourceRoot ?? path.dirname(options.asmPath),
+      options.onOutput,
+      this.loadModules
+    );
     if (!loaded.success) {
       return loaded.result;
     }
