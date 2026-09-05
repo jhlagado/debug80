@@ -859,6 +859,7 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"webview/**/*.ts\"",
     "pretest": "npm run build",
     "test": "vitest run && npm run test:webview",
+    "test:historical": "vitest run --config vitest.historical.config.ts",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "perf:z80": "npm run build && node scripts/perf-z80.mjs",
@@ -908,7 +909,6 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
-    "@jhlagado/azm": "^0.3.8",
     "@jhlagado/debug80-runtime": "git+https://github.com/jhlagado/debug80-runtime.git#b7343aa8c38c248abbc6ee801b4af270d4843ad6",
     "@jhlagado/nucleus": "git+https://github.com/jhlagado/nucleus.git#384432a24faf3ccdb7ccd038844ffc4e3ff97499",
     "@jhlagado/z80-tool-services": "git+https://github.com/jhlagado/z80-tool-services.git#6313682d4a9bc3d08d32c11fe054d153ce350720",

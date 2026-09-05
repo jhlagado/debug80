@@ -11,8 +11,8 @@
     {
       "file": "apps/debug80-vscode/tests/debug/azm-contract.test.ts",
       "classification": "azm-backend",
-      "owner": "Debug80 packaged AZM compatibility contract",
-      "retirement": "Remove when Debug80 no longer ships or verifies the AZM compatibility backend."
+      "owner": "Debug80 opt-in historical AZM compatibility contract",
+      "retirement": "Remove when Debug80 no longer verifies the optional AZM compatibility backend; this test is isolated from the default consumer suite."
     },
     {
       "file": "archive/lanternfly/src/bootstrap/assemble.ts",

@@ -41,7 +41,7 @@ describe('azm compile contract', () => {
       );
 
       expect(result.diagnostics).toEqual([]);
-      expect(result.artifacts.map((artifact) => artifact.kind).sort()).toEqual([
+      expect(result.artifacts.map((artifact: { kind: unknown }) => artifact.kind).sort()).toEqual([
         'bin',
         'd8m',
         'hex',

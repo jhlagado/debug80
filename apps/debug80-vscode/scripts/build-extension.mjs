@@ -27,6 +27,23 @@ const inputOptions = {
   input: path.join(rootDirectory, 'src', 'extension', 'extension.ts'),
   external: (id) => id === 'vscode' || builtins.has(id),
   plugins: [
+    {
+      name: 'exclude-historical-assembler',
+      resolveId(id) {
+        if (id === '@jhlagado/azm' || id.startsWith('@jhlagado/azm/')) {
+          this.error(
+            'AZM must remain an optional project tool, not a bundled extension dependency'
+          );
+        }
+      },
+      generateBundle() {
+        for (const id of this.getModuleIds()) {
+          if (/\/(?:packages\/azm|node_modules\/@jhlagado\/azm)\//.test(id.replaceAll('\\', '/'))) {
+            this.error(`Historical AZM module reached the shipping bundle: ${id}`);
+          }
+        }
+      },
+    },
     nodeResolve({ preferBuiltins: true }),
     commonjs(),
     esbuild({ target: 'es2022', tsconfig: path.join(rootDirectory, 'tsconfig.json') }),

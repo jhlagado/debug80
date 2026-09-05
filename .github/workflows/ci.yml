@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      historical:
+        description: Run explicitly historical AZM compatibility checks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -13,10 +19,8 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-# Each maintained workspace verifies only when it changes.
-# Dependency graph:
-#   azm ──────────┬─▶ extension
-#                 └─▶ azm-headless
+# The extension consumes released tools. Historical AZM verification is opt-in
+# and is not a prerequisite for the ordinary consumer build.
 #
 # Runtime, Atom, Nucleus, and Z80 Tool Services are immutable external
 # dependencies here. Their own repositories verify their source releases.
@@ -53,7 +57,7 @@ jobs:
 
   azm:
     needs: changes
-    if: needs.changes.outputs.azm == 'true' || needs.changes.outputs.infra == 'true'
+    if: github.event_name == 'workflow_dispatch' && inputs.historical
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -89,10 +93,7 @@ jobs:
 
   azm-headless:
     needs: changes
-    if: >-
-      needs.changes.outputs.azm-headless == 'true' ||
-      needs.changes.outputs.azm == 'true' ||
-      needs.changes.outputs.infra == 'true'
+    if: github.event_name == 'workflow_dispatch' && inputs.historical
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -108,13 +109,15 @@ jobs:
       - run: npm run lint -w @jhlagado/azm-headless-integration
       - run: npm run format:check -w @jhlagado/azm-headless-integration
       - run: npm run test -w @jhlagado/azm-headless-integration
+      - run: npm run test:historical -w debug80
+      - run: npm run check:cpm22-atom-candidates
 
   extension:
     needs: changes
     if: >-
       needs.changes.outputs.extension == 'true' ||
-      needs.changes.outputs.azm == 'true' ||
-      needs.changes.outputs.infra == 'true'
+      needs.changes.outputs.infra == 'true' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -126,12 +129,11 @@ jobs:
       # Runtime and Tool Services build dist in prepare; the lockfile fixes
       # all four external packages to reviewed source revisions.
       - run: npm ci
-      - run: npm run build -w @jhlagado/azm
+      - run: npm run check:consumer-paths
       - run: npm run build -w debug80
       - run: npm run check:assembler-selections
       - run: npm run check:azm-dependency-inventory
       - run: npm run check:atom-e2e-fixtures
-      - run: npm run check:cpm22-atom-candidates
       - run: npm run typecheck -w debug80
       - run: npm run typecheck:webview -w debug80
       - run: npm run lint -w debug80

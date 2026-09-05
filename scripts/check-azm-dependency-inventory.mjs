@@ -21,7 +21,7 @@ const ignoredDirectories = new Set([
 ]);
 
 const scannedExtensions = new Set([".js", ".mjs", ".ts", ".mts", ".cts"]);
-const azmImportPattern = /(?:from\s+|import\s*\()\s*["']@jhlagado\/azm(?:\/compile)?["']/;
+const azmImportPattern = /(?:from\s+|import\s*\(|require\.resolve\s*\()\s*["']@jhlagado\/azm(?:\/(?:compile|package\.json))?["']/;
 
 async function findSourceFiles(directory, result = []) {
   for (const entry of await fs.readdir(directory, { withFileTypes: true })) {

@@ -34,7 +34,12 @@ export async function buildLocalMonitorRomIfPresent(options: {
     return { rom, built: false };
   }
 
-  const backend = resolveAssemblerBackend('azm', rom.sourcePath);
+  // The application's Nucleus compiler does not assemble its monitor ROM.
+  const requested = options.args.assembler?.trim().toLowerCase();
+  const backend = resolveAssemblerBackend(
+    requested === 'nucleus' ? 'atom' : requested,
+    rom.sourcePath
+  );
   const result = await backend.assemble({
     asmPath: rom.sourcePath,
     hexPath: rom.outputHexPath,
@@ -50,9 +55,13 @@ export async function buildLocalMonitorRomIfPresent(options: {
   });
 
   if (!result.success) {
+    const error = result.error ?? `${backend.id} failed to assemble monitor ROM`;
     throw new AssembleFailureError({
       ...result,
-      error: result.error ?? `${backend.id} failed to assemble monitor ROM`,
+      error:
+        backend.id === 'atom'
+          ? `${error}\nLocal monitor ${rom.sourcePath} must use ATOM-compatible source. Retained historical monitor sources require an explicitly selected historical assembler (assembler: "azm"); no automatic fallback is performed.`
+          : error,
     });
   }
 
