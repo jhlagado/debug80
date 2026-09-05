@@ -51,6 +51,7 @@ test("default consumer commands do not invoke historical workspaces or assembly 
     "package:debug80",
     "build:cpm22",
     "import:cpm22-nucleus",
+    "test:cpm22",
   ]) {
     for (const { key, command } of commandsFor(script)) {
       assert.doesNotMatch(
@@ -99,6 +100,7 @@ test("extension CI uses consumer checks and leaves historical jobs opt-in", asyn
     /npm run build -w @jhlagado\/azm|check:cpm22-atom-candidates/,
   );
   assert.match(extension, /npm run check:consumer-paths/);
+  assert.match(extension, /npm run test:cpm22/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /inputs\.historical/);
 });

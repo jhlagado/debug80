@@ -130,6 +130,7 @@ jobs:
       # all four external packages to reviewed source revisions.
       - run: npm ci
       - run: npm run check:consumer-paths
+      - run: npm run test:cpm22
       - run: npm run build -w debug80
       - run: npm run check:assembler-selections
       - run: npm run check:azm-dependency-inventory
