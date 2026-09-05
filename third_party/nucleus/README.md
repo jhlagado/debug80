@@ -2,13 +2,17 @@
 
 `NUC.COM` is the native Z80 Nucleus compiler from
 [`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
-`52cca195d1b557ebfbbc3a6d924ca3d6ea657829`. That repository contains the
-complete GPL-3.0-only source, fixed 16 KiB compiler-core accounting, strict
+`b5276a85fd36600a10dbd65039f0af3afc033f0d` (release `nucleus-v0.3.1`). That
+repository contains the complete GPL-3.0-only source, fixed 16 KiB compiler-core accounting, strict
 assembly checks, final-image publisher measurements, and guest execution
 proof corresponding to this binary.
 
-The checked artifact is 21,281 bytes with SHA-256
-`7b3da3c0b595a88b4906537fe0f76c44f7abd412e248d35d927d1aefd8971ef1`.
+The checked artifact is 21,271 bytes with SHA-256
+`1c047ac1ed5ff1c4e914321b66476b842a1b28cc0dfef4cfdb86f691ca037334`.
+It was assembled with ATOM revision
+`802b5c2d320bec777f427755ff2d7338e3b80a05`, loads and enters at address 256,
+and ends at exclusive address 21,527. The unmodified 466-byte manifest has
+SHA-256 `ea2555944622b59b45bc89c9aec63e0575eb9ae6d4a1e9c9430942d905132388`.
 `npm run import:cpm22-nucleus` verifies the vendored release without compiling
 or fetching anything. To import reviewed release inputs, set
 `NUCLEUS_RELEASE_DIR` to a directory containing `NUC.COM`, `NUC.manifest.json`
