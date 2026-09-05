@@ -2,14 +2,14 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const revision = "52cca195d1b557ebfbbc3a6d924ca3d6ea657829";
+const revision = "b5276a85fd36600a10dbd65039f0af3afc033f0d";
 const digest =
-  "7b3da3c0b595a88b4906537fe0f76c44f7abd412e248d35d927d1aefd8971ef1";
+  "1c047ac1ed5ff1c4e914321b66476b842a1b28cc0dfef4cfdb86f691ca037334";
 const manifestDigest =
-  "2a1e1bca236fb644aea7344573376d960ea27fe12e80e047b3c2aa3a363d535a";
+  "ea2555944622b59b45bc89c9aec63e0575eb9ae6d4a1e9c9430942d905132388";
 const repository = "https://github.com/jhlagado/nucleus.git";
 const origin =
-  "https://github.com/jhlagado/nucleus/releases/download/nucleus-v0.3.0/NUC.COM";
+  "https://github.com/jhlagado/nucleus/releases/download/nucleus-v0.3.1/NUC.COM";
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 // Preserve the existing Debug80 image builder's provenance fields.
@@ -20,7 +20,7 @@ export const nucleusProvenance = Object.freeze({
   sourcePath: "asm/vertical-slice/cpm22-native-compiler.asm",
   license: "GPL-3.0-only",
   artifactSha256: digest,
-  artifactBytes: 21281,
+  artifactBytes: 21271,
   manifestSha256: manifestDigest,
   release: origin,
 });
@@ -35,7 +35,7 @@ export async function readPinnedNucleusInputs(
     readFile(join(directory, provenanceName)),
   ]);
   if (
-    bytes.length !== 21281 ||
+    bytes.length !== 21271 ||
     hash(bytes) !== digest ||
     hash(manifestBytes) !== manifestDigest
   ) {
@@ -47,7 +47,7 @@ export async function readPinnedNucleusInputs(
     provenance?.schema !== "triptych-release-provenance-v1" ||
     provenance.repository !== repository ||
     provenance.revision !== revision ||
-    provenance.bytes !== 21281 ||
+    provenance.bytes !== 21271 ||
     provenance.sha256 !== digest ||
     provenance.manifestSha256 !== manifestDigest ||
     provenance.origin?.kind !== "release-asset" ||
@@ -56,7 +56,7 @@ export async function readPinnedNucleusInputs(
     manifest.artifact !== "NUC.COM" ||
     manifest.loadAddress !== 256 ||
     manifest.entryAddress !== 256 ||
-    manifest.endAddress !== 21537
+    manifest.endAddress !== 21527
   ) {
     throw new Error("Nucleus release provenance or CP/M contract mismatch");
   }

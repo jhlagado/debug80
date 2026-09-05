@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { importNucleusRelease } from "./import-nucleus.mjs";
-import { readVerifiedNucleusRelease } from "./nucleus-release.mjs";
+import {
+  nucleusProvenance,
+  readVerifiedNucleusRelease,
+} from "./nucleus-release.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 async function fixture(t) {
@@ -33,9 +36,33 @@ test("imports the released bytes and preserves the legacy builder contract", asy
   const { temporary, source, destination } = await fixture(t);
   const provenance = await importNucleusRelease(source, destination);
   const bytes = await readVerifiedNucleusRelease(temporary);
-  assert.equal(provenance.artifactBytes, 21281);
-  assert.equal(provenance.commit, "52cca195d1b557ebfbbc3a6d924ca3d6ea657829");
+  assert.equal(provenance.artifactBytes, 21271);
+  assert.equal(provenance.commit, "b5276a85fd36600a10dbd65039f0af3afc033f0d");
   assert.deepEqual(bytes, await readFile(join(source, "NUC.COM")));
+  assert.deepEqual(
+    await readFile(join(destination, "NUC.manifest.json")),
+    await readFile(join(source, "NUC.manifest.json")),
+  );
+});
+
+test("Node and CP/M consumers pin the same qualified Nucleus release", async () => {
+  const [extension, lock] = await Promise.all(
+    ["apps/debug80-vscode/package.json", "package-lock.json"].map(async (name) =>
+      JSON.parse(await readFile(join(root, name), "utf8")),
+    ),
+  );
+  const dependency = `git+${nucleusProvenance.repository}#${nucleusProvenance.commit}`;
+  assert.equal(extension.dependencies["@jhlagado/nucleus"], dependency);
+  assert.equal(
+    lock.packages["apps/debug80-vscode"].dependencies["@jhlagado/nucleus"],
+    dependency,
+  );
+  const installed = lock.packages["node_modules/@jhlagado/nucleus"];
+  assert.equal(installed.version, "0.3.1");
+  assert.equal(
+    installed.resolved,
+    `git+ssh://git@github.com/jhlagado/nucleus.git#${nucleusProvenance.commit}`,
+  );
 });
 
 for (const field of [

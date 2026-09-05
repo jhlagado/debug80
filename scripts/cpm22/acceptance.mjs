@@ -280,8 +280,8 @@ runCommand(
 );
 const nucleusExecution = runCommand("NUC INPUT.NU", "NUC INPUT.NU\r\r\n\r\nA>");
 assert.deepEqual(nucleusExecution, {
-  instructions: 302168,
-  tStates: 4824736,
+  instructions: 302181,
+  tStates: 4824865,
 });
 const nucleusOutputFile = readCpm22File(
   platform.disk.exportImage(),

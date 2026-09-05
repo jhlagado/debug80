@@ -911,8 +911,8 @@
   },
   "dependencies": {
     "@jhlagado/debug80-runtime": "git+https://github.com/jhlagado/debug80-runtime.git#b7343aa8c38c248abbc6ee801b4af270d4843ad6",
-    "@jhlagado/nucleus": "git+https://github.com/jhlagado/nucleus.git#52cca195d1b557ebfbbc3a6d924ca3d6ea657829",
-    "@jhlagado/z80-tool-services": "git+https://github.com/jhlagado/z80-tool-services.git#6313682d4a9bc3d08d32c11fe054d153ce350720",
+    "@jhlagado/nucleus": "git+https://github.com/jhlagado/nucleus.git#b5276a85fd36600a10dbd65039f0af3afc033f0d",
+    "@jhlagado/z80-tool-services": "git+https://github.com/jhlagado/z80-tool-services.git#853820c3008d6ab26f709c6bb05a6a7193072c60",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0",
     "atom-z80": "git+https://github.com/jhlagado/atom.git#802b5c2d320bec777f427755ff2d7338e3b80a05"
