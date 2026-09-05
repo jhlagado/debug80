@@ -118,9 +118,12 @@ npm run check
 These default commands build and qualify the Debug80 consumer with ATOM.
 Historical AZM workspace tests and assembler comparisons remain available
 through `npm run check:historical`; they are excluded from ordinary CI and can
-be selected explicitly in the workflow's manual dispatch. The transitional
-`build:cpm22` and `import:cpm22-nucleus` tools still require historical assembly
-and are not part of the default consumer check.
+be selected explicitly in the workflow's manual dispatch. `build:cpm22` uses
+ATOM for the Debug80 bootstrap and BIOS and verified releases for Portable
+CP/M, Nucleus and Edit. `import:cpm22-nucleus` verifies the vendored release by
+default; an explicit `NUCLEUS_RELEASE_DIR` imports a verified release directory.
+Neither command invokes AZM. The separate `test:cpm22` command rebuilds the
+disk and exercises its guest applications.
 
 The main workspaces are:
 
@@ -161,7 +164,9 @@ code so its pre-launch task rebuilds both bundles.
 
 Atom depends on Debug80 Runtime for Node-hosted execution and on
 `z80-tool-services` for host-service contracts. The Debug80 extension consumes
-Atom, AZM, Nucleus, and Debug80 Runtime.
+Atom, Nucleus, and Debug80 Runtime. AZM is an optional historical backend,
+not a mandatory extension dependency. Portable CP/M and Edit are independently
+released guest components; Debug80 retains its own machine BIOS.
 Debug80 Runtime remains independent so it can execute already-built programs
 without bringing an assembler, language frontend, editor API, or UI into a
 headless process.

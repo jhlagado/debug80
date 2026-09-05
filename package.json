@@ -15,7 +15,7 @@
     "lint": "npm run lint -w debug80",
     "format:check": "npm run format:check -w debug80",
     "test": "npm run check:consumer-paths && npm run test -w debug80",
-    "check:consumer-paths": "node --test scripts/consumer-paths.test.mjs",
+    "check:consumer-paths": "node --test scripts/consumer-paths.test.mjs scripts/cpm22/edit-release.test.mjs scripts/cpm22/nucleus-release.test.mjs",
     "check:historical": "npm run build -w @jhlagado/azm && npm run typecheck -w @jhlagado/azm && npm run typecheck -w @jhlagado/azm-headless-integration && npm run lint -w @jhlagado/azm && npm run lint -w @jhlagado/azm-headless-integration && npm run format:check -w @jhlagado/azm && npm run format:check -w @jhlagado/azm-headless-integration && npm run test -w @jhlagado/azm && npm run test -w @jhlagado/azm-headless-integration && npm run test:historical -w debug80 && npm run check:cpm22-atom-candidates",
     "format": "npm run format --workspaces --if-present",
     "check:links": "node scripts/check-links.mjs",
@@ -31,7 +31,7 @@
     "build:atom-e2e-fixtures": "node scripts/generate-atom-e2e-fixtures.mjs",
     "check:atom-e2e-fixtures": "node scripts/generate-atom-e2e-fixtures.mjs --check",
     "check:edit-release": "node scripts/cpm22/check-edit-release.mjs",
-    "build:cpm22": "npm run build -w @jhlagado/azm && node scripts/cpm22/build-image.mjs",
+    "build:cpm22": "node scripts/cpm22/build-image.mjs",
     "import:cpm22-nucleus": "node scripts/cpm22/import-nucleus.mjs",
     "test:cpm22": "npm run build:cpm22 && node scripts/cpm22/acceptance.mjs",
     "check:cpm22-atom-candidates": "node scripts/cpm22/check-atom-assembly-candidates.mjs"
@@ -42,6 +42,6 @@
   "devDependencies": {
     "@jhlagado/z80-tool-services": "git+https://github.com/jhlagado/z80-tool-services.git#6313682d4a9bc3d08d32c11fe054d153ce350720",
     "@jhlagado/debug80-runtime": "git+https://github.com/jhlagado/debug80-runtime.git#b7343aa8c38c248abbc6ee801b4af270d4843ad6",
-    "atom-z80": "git+https://github.com/jhlagado/atom.git#27b32ad97ee0596d1952617261b644f8ccc389f9"
+    "atom-z80": "git+https://github.com/jhlagado/atom.git#802b5c2d320bec777f427755ff2d7338e3b80a05"
   }
 }

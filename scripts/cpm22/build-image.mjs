@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,14 +6,13 @@ import { fileURLToPath } from "node:url";
 
 import { installCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
 import {
-  assembleConvertedWithAtom,
   assembleProjectOwnedAtomArtifacts,
   assembleProjectOwnedWithAtom,
-  converted8080Candidates,
   projectOwnedCandidates,
 } from "./atom-projection.mjs";
-import { compileAzmStrictSidecar } from "./azm-strict-sidecar.mjs";
 import { readVerifiedEditRelease } from "./edit-release.mjs";
+import { readVerifiedNucleusRelease } from "./nucleus-release.mjs";
+import { readVerifiedPortableCpmRelease } from "./portable-cpm-release.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..");
@@ -25,32 +23,13 @@ const outputDirectory = join(
   "roms",
   "cpm22",
 );
-const thirdPartyDirectory = join(repositoryRoot, "third_party", "cpm22");
 const atomImage = new URL(import.meta.resolve("atom-z80/cpm22/image"));
 const atomMeasurement = new URL(import.meta.resolve("atom-z80/cpm22/census"));
-const nucleusDirectory = join(repositoryRoot, "third_party", "nucleus");
-const converter = join(scriptDirectory, "convert-8080-to-z80.mjs");
 
 const diskBytes = 77 * 26 * 128;
-const systemBytes = 52 * 128;
 
 function fail(message) {
   throw new Error(message);
-}
-
-async function assemble(
-  source,
-  includeDebugMap = false,
-  registerContracts = "off",
-  registerContractsInterfaces = [],
-) {
-  return compileAzmStrictSidecar({
-    label: source,
-    source,
-    emitD8m: includeDebugMap,
-    registerContracts,
-    registerContractsInterfaces,
-  });
 }
 
 function copyExact(destination, offset, source, maximum, label) {
@@ -79,28 +58,20 @@ async function main() {
     join(tmpdir(), "debug80-cpm22-build-"),
   );
   try {
-    const [atom, atomSource, atomCensus, nucleus, nucleusProvenance, editor] =
+    const [atom, atomSource, atomCensus, nucleus, editor, portableCpm] =
       await Promise.all([
         readFile(atomImage),
         readFile(join(scriptDirectory, "atom-example.asm")),
         readFile(atomMeasurement, "utf8").then(JSON.parse),
-        readFile(join(nucleusDirectory, "NUC.COM")),
-        readFile(join(nucleusDirectory, "PROVENANCE.json"), "utf8").then(
-          JSON.parse,
-        ),
+        readVerifiedNucleusRelease(repositoryRoot),
         readVerifiedEditRelease(repositoryRoot),
+        readVerifiedPortableCpmRelease(repositoryRoot),
       ]);
     if (
       sha256(atom) !== atomCensus.sha256 ||
       atom.length !== atomCensus.residentBytes
     ) {
       fail("Atom CP/M artifact differs from its measured census");
-    }
-    if (
-      sha256(nucleus) !== nucleusProvenance.artifactSha256 ||
-      nucleus.length !== nucleusProvenance.artifactBytes
-    ) {
-      fail("vendored Nucleus CP/M artifact differs from its provenance record");
     }
     const nucleusSource = Buffer.from(
       [
@@ -148,74 +119,20 @@ async function main() {
     if (multipartPart1.length + multipartPart2.length <= 0xffff) {
       fail("multipart fixture must exceed one 65,535-byte source part");
     }
-    const convertedCcp = join(temporaryDirectory, "ccp.asm");
-    const convertedBdos = join(temporaryDirectory, "bdos.asm");
-    for (const [input, output, origin] of [
-      ["ccp.asm", convertedCcp, "$E400"],
-      ["bdos.asm", convertedBdos, "$EC00"],
-    ]) {
-      const converted = spawnSync(
-        process.execPath,
-        [converter, join(thirdPartyDirectory, input), output, origin],
-        {
-          cwd: repositoryRoot,
-          encoding: "utf8",
-        },
-      );
-      if (converted.status !== 0)
-        fail(
-          converted.stderr ||
-            converted.stdout ||
-            `conversion failed for ${input}`,
-        );
-    }
-
-    const [bootstrapAzm, ccpAzm, bdosAzm, biosAzm, smokeAzm] =
-      await Promise.all([
-        assemble(join(outputDirectory, "bootstrap.asm")),
-        assemble(convertedCcp),
-        assemble(convertedBdos),
-        assemble(join(outputDirectory, "bios.asm"), true),
-        assemble(join(outputDirectory, "smoke.asm")),
-      ]);
-    const convertedByName = new Map(
-      converted8080Candidates.map((candidate) => [candidate.name, candidate]),
-    );
+    const { ccp, bdos } = portableCpm;
     const projectOwnedByName = new Map(
       projectOwnedCandidates.map((candidate) => [candidate.name, candidate]),
     );
-    const withDebugMap = (assembled, debugSource) => ({
-      bytes: assembled,
-      debugMap: debugSource.debugMap,
-    });
-    const [bootstrap, ccp, bdos, bios, smoke] = await Promise.all([
+    const [bootstrap, bios, smoke] = await Promise.all([
       assembleProjectOwnedWithAtom({
         outputDirectory,
         temporaryDirectory,
         candidate: projectOwnedByName.get("bootstrap.asm"),
-        azmBytes: bootstrapAzm.bytes,
-      }).then((bytes) => withDebugMap(bytes, bootstrapAzm)),
-      assembleConvertedWithAtom({
-        repositoryRoot,
-        thirdPartyDirectory,
-        converter,
-        temporaryDirectory,
-        candidate: convertedByName.get("ccp"),
-        azmBytes: ccpAzm.bytes,
-      }).then((bytes) => withDebugMap(bytes, ccpAzm)),
-      assembleConvertedWithAtom({
-        repositoryRoot,
-        thirdPartyDirectory,
-        converter,
-        temporaryDirectory,
-        candidate: convertedByName.get("bdos"),
-        azmBytes: bdosAzm.bytes,
-      }).then((bytes) => withDebugMap(bytes, bdosAzm)),
+      }).then((bytes) => ({ bytes })),
       assembleProjectOwnedAtomArtifacts({
         outputDirectory,
         temporaryDirectory,
         candidate: projectOwnedByName.get("bios.asm"),
-        azmBytes: biosAzm.bytes,
         base: 0xfa00,
         entryAddress: 0xfa00,
       }),
@@ -223,8 +140,7 @@ async function main() {
         outputDirectory,
         temporaryDirectory,
         candidate: projectOwnedByName.get("smoke.asm"),
-        azmBytes: smokeAzm.bytes,
-      }).then((bytes) => withDebugMap(bytes, smokeAzm)),
+      }).then((bytes) => ({ bytes })),
     ]);
 
     if (bootstrap.bytes.length !== 256)
@@ -258,15 +174,12 @@ async function main() {
     image = installCpm22File(image, "INPUT.NU", nucleusSource);
     image = installCpm22File(image, "EDIT.COM", editor);
 
-    await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
-    await writeFile(join(outputDirectory, "cpm22.img"), image);
     if (bios.debugMap === undefined)
       fail("Atom did not emit the BIOS debug map");
     const biosMapBytes = Buffer.from(
       `${JSON.stringify(bios.debugMap, undefined, 2)}\n`,
       "utf8",
     );
-    await writeFile(join(outputDirectory, "bios.d8m.json"), biosMapBytes);
 
     const expected = JSON.parse(
       await readFile(join(scriptDirectory, "image-hashes.json"), "utf8"),
@@ -289,13 +202,44 @@ async function main() {
       disk: sha256(image),
       biosMap: sha256(biosMapBytes),
     };
-    if (
-      Object.entries(actual).some(([name, hash]) => expected[name] !== hash)
-    ) {
+    const mismatches = Object.keys(actual).filter(
+      (name) => expected[name] !== actual[name],
+    );
+    if (process.argv.includes("--candidate")) {
+      console.log(
+        JSON.stringify(
+          {
+            status: "candidate-only",
+            actual,
+            mismatches,
+            bytes: {
+              bootstrap: bootstrap.bytes.length,
+              ccp: ccp.bytes.length,
+              bdos: bdos.bytes.length,
+              bios: bios.bytes.length,
+              smoke: smoke.bytes.length,
+              atom: atom.length,
+              nucleus: nucleus.length,
+              editor: editor.length,
+              disk: image.length,
+              biosMap: biosMapBytes.length,
+            },
+          },
+          null,
+          2,
+        ),
+      );
+      return;
+    }
+    if (mismatches.length !== 0) {
       fail(
         `generated CP/M artifacts do not match the frozen hashes:\n${JSON.stringify(actual, undefined, 2)}`,
       );
     }
+    // Validate the complete candidate, including the map, before publishing anything.
+    await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
+    await writeFile(join(outputDirectory, "cpm22.img"), image);
+    await writeFile(join(outputDirectory, "bios.d8m.json"), biosMapBytes);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }

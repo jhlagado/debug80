@@ -138,6 +138,7 @@ assert.equal(
 
 stepUntil(() => transcript().endsWith("A>"), "cold-boot prompt");
 assert.equal(transcript(), "\r\nA>");
+const coldPromptStackPointer = cpu.getRegisters().sp;
 
 runCommand(
   "DIR",
@@ -158,8 +159,8 @@ const atomExecution = runCommand(
   "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
 );
 assert.deepEqual(atomExecution, {
-  instructions: 205925,
-  tStates: 2675545,
+  instructions: 141956,
+  tStates: 2414970,
 });
 const expectedOutput = Uint8Array.from([
   0x0e,
@@ -185,8 +186,8 @@ const namedAtomExecution = runCommand(
   "ATOM HELLO.ASM MADE.COM\r\r\n\r\nMADE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(namedAtomExecution, {
-  instructions: 216825,
-  tStates: 2780784,
+  instructions: 147309,
+  tStates: 2471156,
 });
 const namedOutputFile = readCpm22File(platform.disk.exportImage(), "MADE.COM");
 assert.ok(namedOutputFile, "native Atom did not publish selected MADE.COM");
@@ -200,8 +201,8 @@ const largeAtomExecution = runCommand(
   "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(largeAtomExecution, {
-  instructions: 4299448,
-  tStates: 42151783,
+  instructions: 4178606,
+  tStates: 41484718,
 });
 const largeOutputFile = readCpm22File(platform.disk.exportImage(), "LARGE.COM");
 assert.ok(
@@ -235,8 +236,8 @@ const multipartAtomExecution = runCommand(
   20_000_000,
 );
 assert.deepEqual(multipartAtomExecution, {
-  instructions: 16686554,
-  tStates: 161621679,
+  instructions: 16503417,
+  tStates: 160761452,
 });
 const multipartOutputFile = readCpm22File(
   platform.disk.exportImage(),
@@ -256,8 +257,8 @@ const rejectedNucleusExecution = runCommand(
   "NUC INPUT.NU KEEP.COM\r\r\n\r\nNucleus host error 61\r\n\r\nA>",
 );
 assert.deepEqual(rejectedNucleusExecution, {
-  instructions: 98300,
-  tStates: 1354959,
+  instructions: 98305,
+  tStates: 1573332,
 });
 assert.deepEqual(
   readCpm22File(platform.disk.exportImage(), "KEEP.COM")?.bytes.slice(
@@ -279,8 +280,8 @@ runCommand(
 );
 const nucleusExecution = runCommand("NUC INPUT.NU", "NUC INPUT.NU\r\r\n\r\nA>");
 assert.deepEqual(nucleusExecution, {
-  instructions: 332151,
-  tStates: 4686885,
+  instructions: 302168,
+  tStates: 4824736,
 });
 const nucleusOutputFile = readCpm22File(
   platform.disk.exportImage(),
@@ -292,8 +293,8 @@ assert.equal(nucleusOutputFile.bytes[0x0700], 0xc3);
 const nucleusProgramBdosStart = bdosCalls.length;
 const nucleusProgramExecution = runCommand("INPUT", "INPUT\r\r\nOK\r\nA>");
 assert.deepEqual(nucleusProgramExecution, {
-  instructions: 99033,
-  tStates: 1447303,
+  instructions: 116969,
+  tStates: 1816328,
 });
 assert.equal(
   bdosCalls
@@ -416,8 +417,8 @@ const editorExecution = {
   tStates: tStates - editorTStateStart,
 };
 assert.deepEqual(editorExecution, {
-  instructions: 382133,
-  tStates: 3750209,
+  instructions: 281823,
+  tStates: 3214319,
 });
 const editedNucleusSource = logicalCpmBytes(
   readCpm22File(platform.disk.exportImage(), "INPUT.NU"),
@@ -468,8 +469,8 @@ const newDiscardExecution = {
   tStates: tStates - newDiscardTStateStart,
 };
 assert.deepEqual(newDiscardExecution, {
-  instructions: 52351,
-  tStates: 559995,
+  instructions: 52548,
+  tStates: 759263,
 });
 assert.equal(
   readCpm22File(platform.disk.exportImage(), "THROW.NU"),
@@ -505,8 +506,8 @@ const newCreateExecution = {
   tStates: tStates - newCreateTStateStart,
 };
 assert.deepEqual(newCreateExecution, {
-  instructions: 113904,
-  tStates: 1147922,
+  instructions: 75358,
+  tStates: 1085867,
 });
 assert.deepEqual(
   logicalCpmBytes(
@@ -536,10 +537,18 @@ assert.deepEqual(
   sourceDiskImage,
   "session injection and guest writes must not change the bundled disk",
 );
+// Sampling stops inside BIOS console output immediately after '>' is emitted.
+// Portable BDOS loads STKTOP=$F98C; CALL OUTCHAR and CALL BIOCOT each push
+// a two-byte return address. This is the BDOS stack, before return to CCP.
 assert.equal(
   cpu.getRegisters().sp,
-  0xef3b,
-  "CCP prompt stack should return to its stable depth",
+  0xf988,
+  "prompt output must use the pinned Portable BDOS console stack depth",
+);
+assert.equal(
+  cpu.getRegisters().sp,
+  coldPromptStackPointer,
+  "cold and final prompts must have identical sampled stack depth",
 );
 
 console.log(

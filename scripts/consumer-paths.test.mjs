@@ -49,11 +49,13 @@ test("default consumer commands do not invoke historical workspaces or assembly 
     "test",
     "check",
     "package:debug80",
+    "build:cpm22",
+    "import:cpm22-nucleus",
   ]) {
     for (const { key, command } of commandsFor(script)) {
       assert.doesNotMatch(
         command,
-        /--workspaces|@jhlagado\/azm|cpm22\/(?:build-image|import-nucleus|check-atom-assembly-candidates)\.mjs|historical/,
+        /--workspaces|@jhlagado\/azm|cpm22\/check-atom-assembly-candidates\.mjs|historical/,
         key,
       );
     }
