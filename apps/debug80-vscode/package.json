@@ -871,7 +871,8 @@
     "test:webview": "vitest run -c vitest.webview.config.ts",
     "test:e2e:adapter": "vitest run -c vitest.e2e.config.ts",
     "test:e2e": "npm run test:e2e:adapter",
-    "test:vscode": "npm run build && node tests/integration-vscode/runTest.js"
+    "test:vscode": "npm run build && node tests/integration-vscode/runTest.js",
+    "test:installed-vsix": "node tests/integration-vscode/runInstalledTest.js"
   },
   "lint-staged": {
     "src/**/*.ts": [

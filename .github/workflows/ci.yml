@@ -142,6 +142,7 @@ jobs:
       - run: npm run test -w debug80
       - run: xvfb-run -a npm run test:vscode -w debug80
       - run: npm run package:debug80
+      - run: xvfb-run -a npm run test:installed-vsix -w debug80
 
   # Single required status; fails if any triggered job failed.
   ci-ok:

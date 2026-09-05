@@ -1,4 +1,6 @@
 import assert from 'node:assert';
+import { realpathSync } from 'node:fs';
+import path from 'node:path';
 
 import * as vscode from 'vscode';
 
@@ -17,6 +19,18 @@ export async function run() {
   const extension = vscode.extensions.getExtension(extensionId);
 
   assert.ok(extension, `Expected extension id to be present: ${extensionId}`);
+  if (process.env.DEBUG80_INSTALLED_EXTENSIONS_DIR) {
+    const installedRoot = realpathSync(process.env.DEBUG80_INSTALLED_EXTENSIONS_DIR);
+    const extensionPath = realpathSync(extension.extensionPath);
+    const relative = path.relative(installedRoot, extensionPath);
+    assert.ok(
+      relative !== '' &&
+        !path.isAbsolute(relative) &&
+        relative !== '..' &&
+        !relative.startsWith(`..${path.sep}`),
+      `Expected installed Debug80 under ${installedRoot}, got ${extensionPath}`
+    );
+  }
 
   await extension.activate();
   assert.strictEqual(extension.isActive, true, `${extension.id} should activate`);
