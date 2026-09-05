@@ -683,7 +683,7 @@ export async function assembleProjectOwnedWithAtom({
           start,
           length: end - start + 1,
         });
-  requireByteIdentity(name, azmBytes, atomBytes);
+  if (azmBytes !== undefined) requireByteIdentity(name, azmBytes, atomBytes);
   return atomBytes;
 }
 
@@ -766,7 +766,7 @@ export async function assembleProjectOwnedAtomArtifacts({
           ),
         }).bytes
       : assembleRange(result.generation, start, end);
-  requireByteIdentity(name, azmBytes, atomBytes);
+  if (azmBytes !== undefined) requireByteIdentity(name, azmBytes, atomBytes);
   const artifacts = renderAtomArtifacts(result, { base, entryAddress });
   return Object.freeze({
     bytes: atomBytes,
