@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3 - 2026-09-30
+
+- Restored the proven Debug80 0.3.2 codebase as the maintained release line.
+- Removed unreleased ATOM assembler and CP/M platform development from the
+  released extension.
+- Retained the established AZM, Glimmer, TEC-1, and TEC-1G workflows from
+  Debug80 0.3.2.
+
 ## 0.3.2 - 2026-07-27
 
 - Fixed the on-screen TEC-1G joystick and matrix keyboard controls so they
